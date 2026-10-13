@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+/*
+ * Genlixs design tokens — Design Guide v1.0 §04/§05.
+ * Brand colors are fixed inputs sampled from the supplied palette.
+ * Neutral and semantic values are the guide's usability additions; extra
+ * "-on-dark"/"-tint" values are derived tints whose contrast is recorded in
+ * design-handoff/genlixs/02_CREATIVE_DESIGN_BLUEPRINT.md.
+ */
+@theme {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Brand */
+  --color-brand-blue: #1c5dff;
+  --color-brand-blue-hover: #174ed9;
+  --color-brand-lime: #addb5a;
+  --color-brand-violet: #763dff;
+  --color-brand-orange: #fe5511;
+
+  /* Dark surfaces: public + customer studio */
+  --color-canvas: #0b0f1a;
+  --color-surface: #131a27;
+  --color-raised: #1a2333;
+  --color-line: #2a3548;
+  --color-line-strong: #6b7a94; /* control boundaries: ≥3:1 on raised/surface */
+  --color-ink: #f6f8fc;
+  --color-muted: #aab6c8;
+  --color-link: #a9c1ff;
+  --color-violet-on-dark: #c4a6ff;
+  --color-orange-on-dark: #ff7a45;
+  --color-error-on-dark: #ff8fa0;
+
+  /* Light surfaces: admin + affiliate data */
+  --color-paper: #f5f7fb;
+  --color-sheet: #ffffff;
+  --color-rule: #dce3ee;
+  --color-rule-strong: #7e8ba0; /* light form-control boundaries: ≥3:1 on white/paper */
+  --color-ink-dark: #172234;
+  --color-muted-dark: #52627a;
+
+  /* Semantic (light pairings tested ≥ 4.5:1) */
+  --color-error: #d63652;
+  --color-error-text: #b42318;
+  --color-error-tint: #fdecec;
+  --color-warning: #8a4b00;
+  --color-warning-tint: #fff4e0;
+  --color-success-text: #2f6a12;
+  --color-success-tint: #eef8dd;
+  --color-info-text: #1e4fd0;
+  --color-info-tint: #e8efff;
+  --color-violet-text: #5b2bd9;
+  --color-violet-tint: #f1ebff;
+  --color-orange-text: #b23c0a;
+  --color-orange-tint: #fff0e8;
+  --color-neutral-tint: #eef2f7;
+
+  /* Radius: 10-12px controls, 16px media, 20px dialogs */
+  --radius-control: 0.6875rem;
+  --radius-media: 1rem;
+  --radius-dialog: 1.25rem;
+
+  --shadow-pop: 0 12px 32px -8px rgb(4 10 25 / 0.45), 0 2px 6px rgb(4 10 25 / 0.3);
+  --shadow-lift: 0 1px 2px rgb(23 34 52 / 0.06), 0 4px 12px -4px rgb(23 34 52 / 0.08);
+
+  --animate-fade-up: fade-up 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-spin-slow: spin 1.4s linear infinite;
+  --animate-pulse-soft: pulse-soft 1.8s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+:root {
+  --focus-ring: #a9c1ff;
+  color-scheme: dark;
+}
+
+.surface-light {
+  --focus-ring: #1c5dff;
+  color-scheme: light;
+}
+
+/* Disabled primary on light data surfaces: clearly inactive, never mistaken for a dark CTA. */
+.surface-light .btn-primary:disabled,
+.surface-light .btn-primary[aria-disabled="true"] {
+  background: #e3e8f0;
+  color: #5d6b82;
+}
+
+/* Light-surface form fields need a ≥3:1 boundary (WCAG 1.4.11); layout dividers keep the lighter rule. */
+.surface-light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.surface-light select,
+.surface-light textarea {
+  border-color: var(--color-rule-strong);
+}
+.surface-light [aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.rail-dark {
+  --focus-ring: #a9c1ff;
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visually hidden but available to assistive technology. */
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Layer-stack accent — echoes the supplied symbol, where lime and orange
+ * edges sit behind the blue form. Used once per screen on the featured
+ * creation area (guide §04: "one subtle ... accent").
+ */
+.layer-stack {
+  position: relative;
+  isolation: isolate;
+}
+.layer-stack::before,
+.layer-stack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+}
+.layer-stack::before {
+  background: var(--color-brand-lime);
+  transform: translate(5px, 4px);
+}
+.layer-stack::after {
+  background: var(--color-brand-orange);
+  transform: translate(10px, 8px);
+  z-index: -2;
+}
+
+/* Restrained blue→violet glow behind the public composer only. */
+.creation-glow {
+  background:
+    radial-gradient(60% 60% at 30% 40%, rgb(28 93 255 / 0.22), transparent 70%),
+    radial-gradient(50% 55% at 75% 60%, rgb(118 61 255 / 0.18), transparent 70%);
+  filter: blur(24px);
+}
+
+/* Branded divider: the four palette colors as a short stacked rule. */
+.brand-rule {
+  display: inline-flex;
+  gap: 4px;
+}
+.brand-rule > span {
+  display: block;
+  height: 3px;
+  width: 20px;
+  border-radius: 2px;
+}
+
+/*
+ * Section reveal (guide §12: 300-450ms feel, 8-16px offset). CSS scroll-driven
+ * animation only: content is fully visible where unsupported, and no JS
+ * touches server-rendered markup.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: section-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 22%;
+    }
+  }
+}
+@keyframes section-reveal {
+  from {
+    opacity: 0.001;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Native range used by the before/after comparison. */
+.compare-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+.compare-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: transparent;
+}
+.compare-range::-moz-range-thumb {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* Thin, contained scrollbars for tables and rails. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.compare-wrap:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Studio (phones/tablets): the Generate bar stays above the safe area but steps out of
+   the way while a field has focus, so the on-screen keyboard never hides the input. */
+@media (max-width: 1023px) {
+  section:has(textarea:focus, input:focus) > div > .gen-bar,
+  section:has(textarea:focus, input:focus) .gen-bar {
+    position: static;
+  }
+}

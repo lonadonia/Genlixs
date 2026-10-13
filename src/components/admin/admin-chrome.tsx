@@ -1,0 +1,126 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
+import {
+  Activity,
+  Banknote,
+  Boxes,
+  Briefcase,
+  Coins,
+  CreditCard,
+  LayoutDashboard,
+  LifeBuoy,
+  ScrollText,
+  Search,
+  ShieldCheck,
+  Tag,
+  Users,
+  Wallet,
+} from "lucide-react";
+import { ConsoleShell, type NavGroup } from "@/components/console/console-shell";
+import { setDemo, useDemo, type AdminRole } from "@/lib/demo-store";
+
+const GROUPS: NavGroup[] = [
+  {
+    title: "Operations",
+    items: [
+      { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+      { href: "/admin/jobs", label: "Jobs", icon: Activity },
+      { label: "Customers", icon: Users, later: true },
+      { label: "Models", icon: Boxes, later: true },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      { label: "Pricing", icon: Tag, later: true },
+      { label: "Payments", icon: CreditCard, later: true },
+      { label: "Credits", icon: Coins, later: true },
+      { href: "/admin/payouts", label: "Payouts", icon: Banknote },
+    ],
+  },
+  {
+    title: "Partners",
+    items: [
+      { label: "Affiliates", icon: Briefcase, later: true },
+      { label: "Commissions", icon: Wallet, later: true },
+    ],
+  },
+  {
+    title: "Governance",
+    items: [
+      { label: "Support", icon: LifeBuoy, later: true },
+      { label: "Audit & reports", icon: ScrollText, later: true },
+    ],
+  },
+];
+
+export const ROLE_LABEL: Record<AdminRole, string> = {
+  operations: "Operations admin",
+  support: "Support agent",
+  finance: "Finance approver",
+};
+
+export function AdminChrome({ children }: { children: ReactNode }) {
+  const demo = useDemo();
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const ids = useId();
+
+  const search = (e: FormEvent) => {
+    e.preventDefault();
+    const v = q.trim();
+    router.push(v ? `/admin/jobs?q=${encodeURIComponent(v)}` : "/admin/jobs");
+  };
+
+  const badge = (
+    <p className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(173_219_90/0.35)] bg-[rgb(173_219_90/0.1)] px-2.5 py-1 text-xs font-semibold text-brand-lime">
+      <ShieldCheck aria-hidden className="size-3.5" /> Admin · {ROLE_LABEL[demo.adminRole]}
+    </p>
+  );
+
+  const topbar = (
+    <>
+      <form role="search" onSubmit={search} className="order-last flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1">
+        <label htmlFor={`${ids}-q`} className="sr-only">
+          Search jobs, customers, payments
+        </label>
+        <div className="relative w-full max-w-md">
+          <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-dark" />
+          <input
+            id={`${ids}-q`}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search job ID, customer ID or email…"
+            className="h-10 w-full rounded-[var(--radius-control)] border border-rule bg-paper pr-3 pl-9 text-sm text-ink-dark placeholder:text-muted-dark"
+          />
+        </div>
+      </form>
+      <div className="ml-auto flex items-center gap-2">
+        <label htmlFor={`${ids}-role`} className="hidden text-xs font-semibold text-muted-dark xl:block">
+          Prototype role
+        </label>
+        <select
+          id={`${ids}-role`}
+          value={demo.adminRole}
+          onChange={(e) => setDemo((s) => ({ ...s, adminRole: e.target.value as AdminRole }))}
+          className="h-10 rounded-[var(--radius-control)] border border-rule bg-sheet px-2 text-sm text-ink-dark"
+          aria-label="Prototype role (changes which actions are permitted)"
+        >
+          {(Object.keys(ROLE_LABEL) as AdminRole[]).map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+
+  return (
+    <ConsoleShell groups={GROUPS} label="Admin" badge={badge} topbar={topbar}>
+      {children}
+    </ConsoleShell>
+  );
+}
