@@ -109,9 +109,9 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
 
   // FLOW-5: library filter + detail dialog + share privacy
   await page.goto(base + '/studio/library', { waitUntil: 'networkidle' });
-  await page.getByLabel('Status').selectOption('expired');
+  await page.getByLabel('Status', { exact: true }).selectOption('expired');
   ok('FLOW-5a', 'Library status filter works', (await page.getByText(/1 result/).count()) > 0);
-  await page.getByLabel('Status').selectOption('all');
+  await page.getByLabel('Status', { exact: true }).selectOption('all');
   await page.getByRole('button', { name: /Aurora drift/ }).click();
   await page.waitForSelector('dialog[open]', { timeout: 5000 }).catch(() => null);
   ok('FLOW-5b', 'Result detail dialog opens', await page.getByRole('dialog').isVisible());

@@ -29,12 +29,12 @@ export function RatioChips({ value, options, onChange, legend = "Aspect ratio" }
             <label
               key={r}
               className={cn(
-                "flex h-14 min-w-[60px] cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-control)] border px-2 text-xs font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
-                selected ? "border-brand-blue bg-[rgb(28_93_255/0.16)] text-ink" : "border-line-strong bg-raised text-muted hover:text-ink",
+                "flex h-14 min-w-[60px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 text-xs font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
+                selected ? "border-brand-blue bg-[rgb(37_63_246/0.18)] text-ink" : "border-line-strong bg-raised text-muted hover:text-ink",
               )}
             >
               <input type="radio" name={name} value={r} checked={selected} onChange={() => onChange(r)} className="sr-only" />
-              <span aria-hidden className={cn("block rounded-[3px] border-2", selected ? "border-link" : "border-current")} style={{ width: w, height: h }} />
+              <span aria-hidden className={cn("block rounded-[3px] border-2", selected ? "border-brand-blue-bright" : "border-current")} style={{ width: w, height: h }} />
               {r}
             </label>
           );
@@ -61,14 +61,14 @@ export function Segmented<T extends string | number>({
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold text-ink">{legend}</legend>
-      <div className="inline-flex flex-wrap gap-1 rounded-[var(--radius-control)] border border-line-strong bg-raised p-1">
+      <div className="inline-flex flex-wrap gap-1 rounded-full border border-line-strong bg-raised p-1">
         {options.map((o) => {
           const selected = o === value;
           return (
             <label
               key={String(o)}
               className={cn(
-                "flex h-9 min-w-14 cursor-pointer items-center justify-center rounded-[8px] px-3 text-sm font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
+                "flex h-9 min-w-14 cursor-pointer items-center justify-center rounded-full px-3.5 text-sm font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
                 selected ? "bg-brand-blue text-white" : "text-muted hover:text-ink",
               )}
             >
@@ -100,7 +100,7 @@ export function Toggle({ label, description, checked, onChange }: { label: strin
         onClick={() => onChange(!checked)}
         className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "border-brand-blue bg-brand-blue" : "border-line-strong bg-raised")}
       >
-        <span aria-hidden className={cn("absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform", checked && "translate-x-5")} />
+        <span aria-hidden className={cn("absolute top-0.5 left-0.5 size-5 rounded-full transition-transform", checked ? "translate-x-5 bg-white" : "bg-white")} />
       </button>
     </div>
   );
@@ -121,9 +121,9 @@ export function ModelPicker({ models, value, onChange }: { models: ModelSlot[]; 
             <label
               key={m.id}
               className={cn(
-                "relative flex gap-3 rounded-[var(--radius-control)] border p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
+                "relative flex gap-3 rounded-2xl border p-3.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
                 disabled ? "cursor-not-allowed border-line bg-surface opacity-80" : "cursor-pointer",
-                selected ? "border-brand-blue bg-[rgb(28_93_255/0.12)]" : !disabled && "border-line-strong bg-raised hover:border-[#8f9db5]",
+                selected ? "border-brand-blue bg-[rgb(37_63_246/0.14)]" : !disabled && "border-line-strong bg-raised hover:border-white/50",
               )}
             >
               <input
@@ -133,7 +133,7 @@ export function ModelPicker({ models, value, onChange }: { models: ModelSlot[]; 
                 disabled={disabled}
                 aria-describedby={descId}
                 onChange={() => onChange(m)}
-                className="mt-1 size-4 shrink-0 accent-[#1c5dff]"
+                className="mt-1 size-4 shrink-0 accent-brand-blue"
               />
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center justify-between gap-2">

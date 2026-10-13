@@ -31,34 +31,13 @@ import {
   type JobOutcome,
 } from "@/lib/demo-store";
 import { cn, fmtCountdown, fmtCredits, fmtNum } from "@/lib/format";
-import type { MediaKey } from "@/lib/media";
+import { pickMedia, titleFrom } from "./demo-helpers";
 import { ModelPicker, RatioChips, Segmented, Toggle } from "./controls";
 import { JobStatus } from "./job-status";
 import { ReferenceUploader, type Reference } from "./reference-uploader";
 import { ResultActions, ResultDetails, ResultMedia, outputRatioClass } from "./result-view";
 
 const LIMIT = 1000;
-
-/** Preview only: pick the concept image closest to the prompt so reviewers see a plausible result. */
-const pickMedia = (tool: ToolId, s: Settings, prompt: string): MediaKey => {
-  if (tool === "video") return "auroraClip";
-  if (tool === "edit") return "dunesDusk";
-  const p = prompt.toLowerCase();
-  if (/sphere|ball|abstract|still life/.test(p)) return "spheres";
-  if (/bottle|product|pedestal|packshot/.test(p)) return "product";
-  if (/aurora|night|northern/.test(p)) return "auroraVertical";
-  if (/noon|midday|blue sky/.test(p)) return "dunesNoon";
-  if (/dune|desert|dusk|sunset/.test(p)) return "dunesDusk";
-  if (s.ratio === "9:16" || s.ratio === "2:3") return "auroraVertical";
-  if (s.ratio === "1:1" || s.ratio === "4:5") return "product";
-  if (s.ratio === "16:9") return "spheres";
-  return "dunesDusk";
-};
-
-const titleFrom = (prompt: string) => {
-  const t = prompt.trim().split(/[,.;\n]/)[0].trim();
-  return t.length > 48 ? `${t.slice(0, 46)}…` : t || "Untitled";
-};
 
 type Pane = "input" | "status" | "result";
 
@@ -158,12 +137,12 @@ export function Workspace({ tool }: { tool: ToolId }) {
     <div className="flex h-full flex-col">
       <div className="space-y-6 p-4 sm:p-5">
         {restored ? (
-          <div role="status" className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[rgb(28_93_255/0.4)] bg-[rgb(28_93_255/0.1)] p-3 text-sm">
+          <div role="status" className="flex items-start gap-2 rounded-2xl border border-[rgb(37_63_246/0.5)] bg-[rgb(37_63_246/0.14)] p-3 text-sm">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-link" />
             <p className="flex-1 text-ink">
               Draft restored from the {restored === "example" ? "example you picked" : "homepage"}. Nothing has been generated yet.
             </p>
-            <button type="button" onClick={() => write({})} className="-m-1 grid size-8 place-items-center rounded-[8px] text-muted hover:text-ink">
+            <button type="button" onClick={() => write({})} className="-m-1 grid size-8 place-items-center rounded-full text-muted hover:text-ink">
               <X aria-hidden className="size-4" />
               <span className="sr-only">Dismiss</span>
             </button>
@@ -205,7 +184,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
             placeholder={t.promptPlaceholder}
             aria-invalid={Boolean(errors.prompt)}
             aria-describedby={cn("studio-prompt-count", errors.prompt && "studio-prompt-error") || undefined}
-            className="block min-h-[120px] w-full resize-y rounded-[var(--radius-control)] border border-line-strong bg-raised px-3.5 py-3 text-[15px] leading-relaxed text-ink placeholder:text-[#8794ab] aria-invalid:border-error-on-dark"
+            className="block min-h-[132px] w-full resize-y rounded-2xl border border-line-strong bg-canvas/60 px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-subtle focus:border-brand-blue-bright aria-invalid:border-error-on-dark"
           />
           {errors.prompt ? (
             <p id="studio-prompt-error" className="mt-1.5 text-sm text-error-on-dark">
@@ -215,7 +194,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
           {!prompt ? (
             <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Starter prompts">
               {t.starters.map((s) => (
-                <button key={s} type="button" onClick={() => write({ prompt: s })} className="rounded-full border border-line-strong px-3 py-1.5 text-xs font-medium text-muted hover:text-ink">
+                <button key={s} type="button" onClick={() => write({ prompt: s })} className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-muted hover:border-white/30 hover:text-ink">
                   {s}
                 </button>
               ))}
@@ -241,7 +220,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
           <Toggle label="Ambient audio" description="Adds 12 credits. Audio never plays automatically." checked={Boolean(settings.audio)} onChange={(v) => write({ settings: { ...settings, audio: v } })} />
         ) : null}
 
-        <details className="group rounded-[var(--radius-control)] border border-dashed border-line-strong">
+        <details className="group rounded-2xl border border-dashed border-line-strong">
           <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm font-semibold text-muted">
             <FlaskConical aria-hidden className="size-4" /> Prototype: next job outcome
           </summary>
@@ -256,7 +235,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
               ] as const
             ).map(([v, l]) => (
               <label key={v} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm text-ink">
-                <input type="radio" name={`${paneId}-outcome`} checked={outcome === v} onChange={() => setOutcome(v)} className="size-4 accent-[#1c5dff]" />
+                <input type="radio" name={`${paneId}-outcome`} checked={outcome === v} onChange={() => setOutcome(v)} className="size-4 accent-brand-blue" />
                 {l}
               </label>
             ))}
@@ -265,15 +244,15 @@ export function Workspace({ tool }: { tool: ToolId }) {
       </div>
 
       {/* Price + action: adjacent, sticky at the bottom of the settings column */}
-      <div className="gen-bar sticky bottom-0 mt-auto border-t border-line bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5">
+      <div className="gen-bar sticky bottom-0 mt-auto border-t border-white/[0.07] bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5">
         <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-[10px] bg-raised px-3 py-2">
+          <div className="rounded-xl bg-raised px-3 py-2">
             <p className="text-xs text-muted">Cost</p>
             <p className="font-semibold text-ink tabular" aria-live="polite">
               {quoteLoading ? <span className="text-muted">Updating quote…</span> : fmtCredits(credits)}
             </p>
           </div>
-          <div className="rounded-[10px] bg-raised px-3 py-2">
+          <div className="rounded-xl bg-raised px-3 py-2">
             <p className="text-xs text-muted">Available</p>
             <p className="font-semibold text-ink tabular">
               {fmtNum(demo.available)}
@@ -283,14 +262,14 @@ export function Workspace({ tool }: { tool: ToolId }) {
         </div>
 
         {quoteExpired ? (
-          <div className="mb-3 flex items-center justify-between gap-3 rounded-[10px] border border-[rgb(254_85_17/0.35)] bg-[rgb(254_85_17/0.08)] px-3 py-2 text-sm">
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm">
             <span className="text-orange-on-dark">Quote expired. Prices may have changed.</span>
             <Button size="sm" variant="secondary" onClick={() => issueQuote(tool, quoteKey, credits)} icon={<RefreshCw aria-hidden className="size-3.5" />}>
               Refresh
             </Button>
           </div>
         ) : insufficient ? (
-          <div className="mb-3 rounded-[10px] border border-[rgb(254_85_17/0.35)] bg-[rgb(254_85_17/0.08)] px-3 py-2 text-sm">
+          <div className="mb-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm">
             <p className="text-orange-on-dark">You need {fmtCredits(credits - demo.available)} more for this job.</p>
             <Link href={`/studio/credits?return=${encodeURIComponent(t.href)}`} className="mt-1 inline-flex items-center gap-1 font-semibold text-link hover:underline">
               <Coins aria-hidden className="size-4" /> Top up — your draft stays here
@@ -324,7 +303,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
   const statusPanel = job ? (
     <JobStatus job={job} now={now} onRetry={() => reuse(job)} />
   ) : (
-    <div className="rounded-[var(--radius-media)] border border-dashed border-line-strong p-6 text-center text-sm text-muted">No job yet. Your job status appears here after you press Generate.</div>
+    <div className="rounded-2xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">No job yet. Your job status appears here after you press Generate.</div>
   );
 
   const resultPanel =
@@ -338,9 +317,9 @@ export function Workspace({ tool }: { tool: ToolId }) {
         <ResultDetails job={job} />
       </div>
     ) : job && running ? (
-      <div className={cn("grid place-items-center rounded-[var(--radius-media)] border border-line bg-surface", outputRatioClass(job), "max-h-[60vh] w-full")}>
+      <div className={cn("grid place-items-center rounded-[var(--radius-media)] border border-white/[0.08] bg-surface", outputRatioClass(job), "max-h-[60vh] w-full")}>
         <div className="p-6 text-center">
-          <span aria-hidden className="mx-auto block size-10 animate-pulse-soft rounded-full bg-[rgb(28_93_255/0.25)]" />
+          <span aria-hidden className="mx-auto block size-10 animate-pulse-soft rounded-full bg-[rgb(37_63_246/0.45)]" />
           <p className="mt-3 text-sm font-semibold text-ink">Space reserved for your {tool === "video" ? "clip" : "image"}</p>
           <p className="text-xs text-muted">{settingsSummaryShort(job.settings)}</p>
         </div>
@@ -367,9 +346,9 @@ export function Workspace({ tool }: { tool: ToolId }) {
   const history = sessionJobs.slice(0, 6);
 
   return (
-    <div className="lg:flex lg:min-h-[calc(100dvh-64px)]">
+    <div className="lg:flex lg:items-start lg:gap-6 lg:pr-6 lg:pb-3 lg:pl-0">
       {/* Mobile/tablet: Input / Status / Result */}
-      <div role="tablist" aria-label="Studio sections" className="sticky top-16 z-20 flex gap-1 border-b border-line bg-canvas px-4 py-2 lg:hidden">
+      <div role="tablist" aria-label="Studio sections" className="sticky top-16 z-20 flex gap-1 bg-canvas/95 px-4 py-2 backdrop-blur-md lg:hidden">
         {(["input", "status", "result"] as Pane[]).map((p) => (
           <button
             key={p}
@@ -379,7 +358,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
             aria-selected={pane === p}
             aria-controls={`${paneId}-pane-${p}`}
             onClick={() => setPane(p)}
-            className={cn("h-10 flex-1 rounded-[var(--radius-control)] text-sm font-semibold capitalize", pane === p ? "bg-raised text-ink" : "text-muted")}
+            className={cn("h-10 flex-1 rounded-full text-sm font-semibold capitalize transition-colors", pane === p ? "bg-brand-blue text-white" : "bg-white/[0.04] text-muted hover:text-ink")}
           >
             {p}
             {p === "status" && running ? <span className="ml-1.5 inline-block size-2 rounded-full bg-brand-blue align-middle" aria-hidden /> : null}
@@ -391,16 +370,19 @@ export function Workspace({ tool }: { tool: ToolId }) {
       <section
         id={`${paneId}-pane-input`}
         aria-label="Prompt and settings"
-        className={cn("border-line bg-surface lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-64px)] lg:w-[360px] lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:border-r scroll-thin", pane !== "input" && "hidden lg:flex")}
+        className={cn(
+          "scroll-thin border-y border-white/[0.07] bg-surface lg:sticky lg:top-[68px] lg:flex lg:h-[calc(100dvh-80px)] lg:w-[380px] lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:rounded-[24px] lg:border",
+          pane !== "input" && "hidden lg:flex",
+        )}
       >
-        <div className="hidden border-b border-line px-5 py-3 lg:block">
+        <div className="hidden border-b border-white/[0.07] px-5 py-4 lg:block">
           <h2 className="text-sm font-semibold text-ink">Prompt and settings</h2>
           <p className="text-xs text-muted">{t.summary}</p>
         </div>
         {inputPanel}
       </section>
 
-      <div className="min-w-0 flex-1 p-4 sm:p-6">
+      <div className="min-w-0 flex-1 p-4 sm:p-6 lg:px-0 lg:pt-1">
         <h1 className="sr-only">{t.studioTitle}</h1>
         <section id={`${paneId}-pane-status`} aria-label="Job status" className={cn("mb-5", pane !== "status" && "hidden lg:block", !job && "lg:hidden")}>
           {statusPanel}
@@ -417,7 +399,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
         ) : null}
 
         {history.length > 1 ? (
-          <section aria-labelledby="hist-h" className="mt-8 border-t border-line pt-6">
+          <section aria-labelledby="hist-h" className="mt-8 border-t border-white/[0.07] pt-6">
             <div className="flex items-center justify-between">
               <h2 id="hist-h" className="text-sm font-semibold text-ink">
                 This session
@@ -438,7 +420,7 @@ export function Workspace({ tool }: { tool: ToolId }) {
                         setPane(isTerminal(p) ? "result" : "status");
                       }}
                       aria-current={job?.id === h.id ? "true" : undefined}
-                      className={cn("w-40 rounded-[12px] border p-2 text-left text-xs", job?.id === h.id ? "border-brand-blue" : "border-line hover:border-line-strong")}
+                      className={cn("w-44 rounded-2xl border bg-surface p-3 text-left text-xs", job?.id === h.id ? "border-brand-blue-bright" : "border-white/[0.08] hover:border-white/25")}
                     >
                       <span className="block truncate font-semibold text-ink">{h.title}</span>
                       <span className="text-muted">

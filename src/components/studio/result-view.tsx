@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { TOOLS, modelById, settingsSummary } from "@/lib/catalog";
 import { updateJob, type Job } from "@/lib/demo-store";
 import { cn, fmtCredits, fmtDateTime } from "@/lib/format";
-import { MEDIA } from "@/lib/media";
+import { MEDIA, stillOf, type MediaItem, type MediaKey } from "@/lib/media";
 
 export const outputRatioClass = (job: Job) => {
   if (job.tool === "video") return job.settings.ratio === "9:16" ? "aspect-[9/16]" : job.settings.ratio === "1:1" ? "aspect-square" : "aspect-video";
@@ -24,12 +24,13 @@ export const outputRatioClass = (job: Job) => {
 export function ResultMedia({ job, uploadedRef, sizes = "(min-width: 1024px) 60vw, 100vw", maxH = "max-h-[62vh]" }: { job: Job; uploadedRef?: string | null; sizes?: string; maxH?: string }) {
   const [zoom, setZoom] = useState(false);
   const m = MEDIA[job.media];
+  const clip: MediaKey = m.kind === "video" ? job.media : "auroraClip";
 
   if (job.tool === "video") {
     return (
-      <div className="relative mx-auto w-full overflow-hidden rounded-[var(--radius-media)] border border-line bg-black">
-        <video controls playsInline preload="metadata" poster={MEDIA.auroraClip.poster} className={cn("mx-auto block w-full", maxH)} aria-label={`Your clip: ${job.title}`}>
-          <source src={MEDIA.auroraClip.src} type="video/mp4" />
+      <div className="relative mx-auto w-full overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
+        <video controls playsInline preload="metadata" poster={stillOf(clip)} className={cn("mx-auto block w-full", maxH)} aria-label={`Your clip: ${job.title}`}>
+          <source src={MEDIA[clip].src} type="video/mp4" />
         </video>
         <ConceptTag className="pointer-events-none absolute top-3 left-3" />
       </div>
@@ -53,20 +54,20 @@ export function ResultMedia({ job, uploadedRef, sizes = "(min-width: 1024px) 60v
 
   return (
     <>
-      <div className={cn("relative mx-auto overflow-hidden rounded-[var(--radius-media)] border border-line bg-raised", outputRatioClass(job), job.settings.ratio === "9:16" || job.settings.ratio === "2:3" ? "max-w-[min(100%,26rem)]" : "w-full")}>
+      <div className={cn("relative mx-auto overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-raised", outputRatioClass(job), job.settings.ratio === "9:16" || job.settings.ratio === "2:3" ? "max-w-[min(100%,26rem)]" : "w-full")}>
         <Image src={m.src} alt={`Your result: ${m.alt}`} fill sizes={sizes} className="object-cover" />
         <ConceptTag className="absolute top-3 left-3" />
         <button
           type="button"
           onClick={() => setZoom(true)}
-          className="absolute right-3 bottom-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-[rgb(11_15_26/0.8)] px-3 text-xs font-semibold text-ink backdrop-blur-sm hover:bg-[rgb(11_15_26/0.95)]"
+          className="absolute right-3 bottom-3 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/20 bg-[rgb(15_18_18/0.7)] px-3 text-xs font-semibold text-ink backdrop-blur-md hover:bg-[rgb(15_18_18/0.92)]"
         >
           <ZoomIn aria-hidden className="size-4" /> Zoom
         </button>
       </div>
       <Dialog open={zoom} onClose={() => setZoom(false)} title={job.title} description="Press Escape or Close to return." size="xl">
         <div className="relative">
-          <Image src={m.src} alt={`Your result at full size: ${m.alt}`} width={m.width} height={m.height} sizes="90vw" className="h-auto w-full rounded-[12px]" />
+          <Image src={m.src} alt={`Your result at full size: ${m.alt}`} width={m.width} height={m.height} sizes="90vw" className="h-auto w-full rounded-2xl" />
         </div>
       </Dialog>
     </>
@@ -85,7 +86,7 @@ export function ResultActions({ job, onReuse, compact }: { job: Job; onReuse?: (
         <a
           href={m.src}
           download={`genlixs-${job.id}.${ext}`}
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-control)] bg-brand-blue px-3.5 text-sm font-semibold text-white hover:bg-brand-blue-hover"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-blue px-4 text-sm font-semibold text-white hover:bg-brand-blue-hover"
         >
           <Download aria-hidden className="size-4" /> Download original
         </a>
@@ -100,7 +101,7 @@ export function ResultActions({ job, onReuse, compact }: { job: Job; onReuse?: (
           className="h-10"
           aria-pressed={Boolean(job.favorite)}
           onClick={() => updateJob(job.id, { favorite: !job.favorite })}
-          icon={<Heart aria-hidden className={cn("size-4", job.favorite && "fill-brand-orange text-brand-orange")} />}
+          icon={<Heart aria-hidden className={cn("size-4", job.favorite && "fill-brand-blue-bright text-brand-blue-bright")} />}
         >
           {job.favorite ? "Favorited" : "Favorite"}
         </Button>
@@ -142,7 +143,7 @@ export function ResultActions({ job, onReuse, compact }: { job: Job; onReuse?: (
         {job.shareUrl ? (
           <div className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input readOnly value={job.shareUrl} aria-label="Public link" className="h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-line-strong bg-raised px-3 text-sm text-ink" />
+              <input readOnly value={job.shareUrl} aria-label="Public link" className="h-11 min-w-0 flex-1 rounded-full border border-line-strong bg-raised px-4 text-sm text-ink" />
               <CopyButton value={job.shareUrl} label="Copy link" />
             </div>
             <p className="text-sm text-muted">Revoking stops the link working immediately. The result stays in your library.</p>
@@ -190,13 +191,14 @@ export function ResultActions({ job, onReuse, compact }: { job: Job; onReuse?: (
 
 export function ResultDetails({ job, defaultOpen }: { job: Job; defaultOpen?: boolean }) {
   const model = modelById(job.settings.modelId);
+  const clipMeta: MediaItem = MEDIA[MEDIA[job.media].kind === "video" ? job.media : "auroraClip"];
   return (
-    <details open={defaultOpen} className="group rounded-[var(--radius-media)] border border-line bg-surface">
+    <details open={defaultOpen} className="group rounded-[20px] border border-white/[0.08] bg-surface">
       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 text-sm font-semibold text-ink">
         Prompt, settings and job record
         <ChevronDown aria-hidden className="size-4 text-muted transition-transform group-open:rotate-180" />
       </summary>
-      <div className="border-t border-line px-4 py-4 text-sm">
+      <div className="border-t border-white/[0.07] px-4 py-4 text-sm">
         <p className="text-muted">Prompt</p>
         <p className="mt-1 text-ink">“{job.prompt}”</p>
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
@@ -222,7 +224,14 @@ export function ResultDetails({ job, defaultOpen }: { job: Job; defaultOpen?: bo
             }
           />
           <Row k="Visibility" v={job.shareUrl ? <Badge tone="attention" icon="none">Public link on</Badge> : "Private"} />
-          <Row k="Output" v={job.tool === "video" ? "MP4 · 1280×720 · 6s · no audio (delivered)" : `${MEDIA[job.media].width}×${MEDIA[job.media].height} JPEG (delivered)`} />
+          <Row
+            k="Output"
+            v={
+              job.tool === "video"
+                ? `MP4 · ${clipMeta.width}×${clipMeta.height} · ${clipMeta.duration ?? 5}s · no audio (delivered)`
+                : `${MEDIA[job.media].width}×${MEDIA[job.media].height} JPEG (delivered)`
+            }
+          />
         </dl>
       </div>
     </details>

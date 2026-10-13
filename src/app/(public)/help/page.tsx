@@ -87,7 +87,7 @@ export default function HelpPage() {
           <ul className="space-y-1 lg:sticky lg:top-28">
             {TOPICS.map((t) => (
               <li key={t.id}>
-                <a href={`#${t.id}`} className="flex min-h-10 items-center rounded-[var(--radius-control)] px-3 text-[15px] text-muted hover:bg-raised hover:text-ink">
+                <a href={`#${t.id}`} className="flex min-h-10 items-center rounded-full px-4 text-[15px] text-muted hover:bg-white/[0.05] hover:text-ink">
                   {t.title}
                 </a>
               </li>
@@ -96,7 +96,7 @@ export default function HelpPage() {
         </nav>
         <div className="space-y-6 lg:col-span-9">
           {TOPICS.map((t) => (
-            <section key={t.id} id={t.id} aria-labelledby={`${t.id}-h`} className="scroll-mt-28 rounded-[var(--radius-media)] border border-line bg-surface p-6 sm:p-8">
+            <section key={t.id} id={t.id} aria-labelledby={`${t.id}-h`} className="scroll-mt-28 rounded-[24px] border border-white/[0.08] bg-surface p-6 sm:p-8">
               <h2 id={`${t.id}-h`} className="text-xl font-semibold text-ink">
                 {t.title}
               </h2>

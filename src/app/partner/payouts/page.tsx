@@ -42,13 +42,13 @@ export default function PartnerPayoutsPage() {
           </dl>
           <ul className="mt-5 space-y-2 text-sm">
             <li className="flex items-center gap-2 text-ink-dark">
-              <CircleCheck aria-hidden className="size-4 text-[#5c9a1d]" /> Payout method verified (Bank transfer ••21)
+              <CircleCheck aria-hidden className="size-4 text-success-text" /> Payout method verified (Bank transfer ••21)
             </li>
             <li className="flex items-center gap-2 text-ink-dark">
-              <CircleCheck aria-hidden className="size-4 text-[#5c9a1d]" /> Agreement v1.2 accepted
+              <CircleCheck aria-hidden className="size-4 text-success-text" /> Agreement v1.2 accepted
             </li>
             <li className="flex items-center gap-2 text-ink-dark">
-              {ready ? <CircleCheck aria-hidden className="size-4 text-[#5c9a1d]" /> : <CircleDashed aria-hidden className="size-4 text-warning" />}
+              {ready ? <CircleCheck aria-hidden className="size-4 text-success-text" /> : <CircleDashed aria-hidden className="size-4 text-warning" />}
               Available balance reaches the minimum
               <span className="sr-only">{ready ? " — met" : " — not met"}</span>
             </li>

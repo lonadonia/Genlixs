@@ -72,7 +72,15 @@ export function JobsTable() {
     );
   };
 
-  const select = "h-10 rounded-[var(--radius-control)] border border-rule bg-sheet px-3 text-sm text-ink-dark";
+  const select = "h-10 rounded-[var(--radius-control)] border border-rule-strong bg-sheet px-3 text-sm text-ink-dark";
+  // Status filter chips: the selected one is electric blue (white text 6.7:1); the rest stay neutral.
+  const chip = (on: boolean) =>
+    cn(
+      "h-9 rounded-full border px-3 text-sm font-semibold transition-colors",
+      on ? "border-brand-blue bg-brand-blue text-white" : "border-[#cfd4cd] bg-sheet text-muted-dark hover:border-[#9aa29f] hover:text-ink-dark",
+    );
+  const pager =
+    "inline-flex h-10 items-center gap-1 rounded-full border border-[#cfd4cd] bg-sheet px-4 font-semibold text-ink-dark transition-colors hover:border-[#9aa29f] hover:bg-paper disabled:pointer-events-none disabled:opacity-50";
 
   return (
     <div className="space-y-4">
@@ -115,7 +123,7 @@ export function JobsTable() {
       </div>
 
       <div className="flex flex-wrap gap-2" aria-label="Status totals">
-        <button type="button" onClick={() => set({ status: null })} aria-pressed={status === "all"} className={cn("h-9 rounded-full border px-3 text-sm font-semibold", status === "all" ? "border-brand-blue bg-info-tint text-info-text" : "border-rule bg-sheet text-muted-dark")}>
+        <button type="button" onClick={() => set({ status: null })} aria-pressed={status === "all"} className={chip(status === "all")}>
           All · {base.length}
         </button>
         {(Object.keys(STATUS_META) as AdminJobStatus[])
@@ -126,7 +134,7 @@ export function JobsTable() {
               type="button"
               aria-pressed={status === s}
               onClick={() => set({ status: s })}
-              className={cn("h-9 rounded-full border px-3 text-sm font-semibold", status === s ? "border-brand-blue bg-info-tint text-info-text" : "border-rule bg-sheet text-muted-dark hover:text-ink-dark")}
+              className={chip(status === s)}
             >
               {STATUS_META[s].label} · {totals[s]}
             </button>
@@ -183,7 +191,7 @@ export function JobsTable() {
                       </Badge>
                     </td>
                     <td className="px-4 text-right">
-                      <Link href={`/admin/jobs/${j.id}?back=${back}`} className="inline-flex h-9 items-center rounded-[8px] px-2 font-semibold text-info-text hover:bg-info-tint">
+                      <Link href={`/admin/jobs/${j.id}?back=${back}`} className="inline-flex h-9 items-center rounded-full px-2 font-semibold text-info-text hover:bg-info-tint">
                         Details<span className="sr-only"> for {j.id}</span>
                       </Link>
                     </td>
@@ -219,7 +227,7 @@ export function JobsTable() {
             type="button"
             disabled={current <= 1}
             onClick={() => set({ page: String(current - 1) })}
-            className="inline-flex h-10 items-center gap-1 rounded-[var(--radius-control)] border border-rule bg-sheet px-3 font-semibold text-ink-dark disabled:opacity-50"
+            className={pager}
           >
             <ChevronLeft aria-hidden className="size-4" /> Previous
           </button>
@@ -227,7 +235,7 @@ export function JobsTable() {
             type="button"
             disabled={current >= pages}
             onClick={() => set({ page: String(current + 1) })}
-            className="inline-flex h-10 items-center gap-1 rounded-[var(--radius-control)] border border-rule bg-sheet px-3 font-semibold text-ink-dark disabled:opacity-50"
+            className={pager}
           >
             Next <ChevronRight aria-hidden className="size-4" />
           </button>
@@ -239,7 +247,7 @@ export function JobsTable() {
 
 function MobileCard({ j, back }: { j: AdminJob; back: string }) {
   return (
-    <Link href={`/admin/jobs/${j.id}?back=${back}`} className="block rounded-[var(--radius-media)] border border-rule bg-sheet p-4">
+    <Link href={`/admin/jobs/${j.id}?back=${back}`} className="block rounded-[var(--radius-media)] border border-rule bg-sheet p-4 transition-colors hover:border-brand-blue">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-sm font-semibold text-ink-dark">{j.id}</span>
         <Badge surface="light" tone={STATUS_META[j.status].tone}>

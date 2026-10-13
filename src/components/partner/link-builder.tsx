@@ -33,7 +33,7 @@ export function LinkBuilder() {
   if (label.trim()) params.set("t", slug(label));
   const url = `${PARTNER.link}${dest === "/" ? "" : `?to=${encodeURIComponent(dest)}&`}${dest === "/" ? "?" : ""}${params.toString()}`;
 
-  const field = "mt-1.5 block h-11 w-full rounded-[var(--radius-control)] border border-rule bg-sheet px-3 text-ink-dark";
+  const field = "mt-1.5 block h-11 w-full rounded-[var(--radius-control)] border border-rule-strong bg-sheet px-3 text-ink-dark";
 
   return (
     <div className="grid gap-6 xl:grid-cols-5">
@@ -65,7 +65,8 @@ export function LinkBuilder() {
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${ids}-err` : undefined}
             placeholder="October tutorial"
-            className={`${field} aria-invalid:border-error`}
+            // `!`: globals.css's light-field border rule (unlayered, higher specificity) otherwise hides the error border on text inputs.
+            className={`${field} aria-invalid:border-error!`}
           />
           {error ? (
             <p id={`${ids}-err`} className="mt-1 text-sm text-error-text">

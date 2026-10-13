@@ -3,14 +3,14 @@
 import Image from "next/image";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { EXAMPLES, TOOLS, modelById, type Example } from "@/lib/catalog";
-import { MEDIA } from "@/lib/media";
+import { MEDIA, stillOf } from "@/lib/media";
 import { cn } from "@/lib/format";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ConceptTag } from "@/components/ui/badge";
 import { MediaFrame } from "@/components/ui/media-frame";
 import { UsePromptButton } from "./prompt-buttons";
 
-const STORY_IDS = ["ex-dunes", "ex-edit-dusk", "ex-aurora-clip"];
+const STORY_IDS = ["ex-orbs", "ex-edit-dusk", "ex-loop"];
 
 function settingRows(ex: Example): [string, string][] {
   const m = modelById(ex.settings.modelId);
@@ -45,7 +45,7 @@ export function StoryTabs() {
 
   return (
     <div>
-      <div role="tablist" aria-label="Prompt-to-result examples" className="flex gap-1.5 overflow-x-auto pb-1">
+      <div role="tablist" aria-label="Prompt-to-result examples" className="scroll-none flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.04] p-1">
         {stories.map((s, i) => (
           <button
             key={s.id}
@@ -61,8 +61,8 @@ export function StoryTabs() {
             onClick={() => setActive(i)}
             onKeyDown={onKey}
             className={cn(
-              "h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors",
-              i === active ? "border-brand-blue bg-[rgb(28_93_255/0.16)] text-link" : "border-line bg-surface text-muted hover:text-ink",
+              "h-10 shrink-0 rounded-full px-5 text-sm font-semibold transition-colors",
+              i === active ? "bg-brand-blue text-white" : "text-muted hover:bg-white/[0.06] hover:text-ink",
             )}
           >
             {TOOLS[s.tool].label}
@@ -72,18 +72,18 @@ export function StoryTabs() {
 
       <div id={`${base}-p`} role="tabpanel" aria-labelledby={`${base}-t${active}`} className="mt-6 grid gap-6 lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-5">
-          <div className="rounded-[var(--radius-media)] border border-line bg-surface p-5 sm:p-6">
+          <div className="flex h-full flex-col rounded-[var(--radius-panel)] border border-white/[0.08] bg-surface p-5 sm:p-7">
             <p className="text-xs font-semibold tracking-wide text-muted uppercase">Input</p>
             {ex.reference ? (
               <div className="mt-3 flex items-center gap-3">
-                <div className="relative aspect-[3/2] w-28 shrink-0 overflow-hidden rounded-[10px] border border-line">
+                <div className="relative aspect-[3/2] w-28 shrink-0 overflow-hidden rounded-xl border border-white/10">
                   <Image src={MEDIA[ex.reference].src} alt={MEDIA[ex.reference].alt} fill sizes="112px" className="object-cover" />
                 </div>
                 <p className="text-sm text-muted">Reference image, kept as the original version.</p>
               </div>
             ) : null}
-            <blockquote className="mt-3 border-l-2 border-brand-lime pl-4 text-[17px] leading-relaxed text-ink">“{ex.prompt}”</blockquote>
-            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-5 text-sm">
+            <blockquote className="mt-3 border-l-2 border-brand-blue pl-4 text-[17px] leading-relaxed text-ink">“{ex.prompt}”</blockquote>
+            <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/[0.08] pt-5 text-sm lg:mt-auto">
               {settingRows(ex).map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-muted">{k}</dt>
@@ -100,16 +100,9 @@ export function StoryTabs() {
         <div className="lg:col-span-7">
           <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">Output · {ex.title}</p>
           {ex.tool === "video" ? (
-            <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-line bg-black">
-              <video
-                controls
-                playsInline
-                preload="none"
-                poster={MEDIA.auroraClip.poster}
-                className="block aspect-video w-full"
-                aria-label={MEDIA.auroraClip.alt}
-              >
-                <source src={MEDIA.auroraClip.src} type="video/mp4" />
+            <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
+              <video controls playsInline preload="none" poster={stillOf(ex.media)} className="block aspect-video w-full" aria-label={MEDIA[ex.media].alt}>
+                <source src={MEDIA[ex.media].src} type="video/mp4" />
               </video>
               <ConceptTag className="pointer-events-none absolute top-3 left-3" />
             </div>

@@ -75,7 +75,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
   };
 
   const badge = (
-    <p className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(173_219_90/0.35)] bg-[rgb(173_219_90/0.1)] px-2.5 py-1 text-xs font-semibold text-brand-lime">
+    <p className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(225_255_1/0.35)] bg-[rgb(225_255_1/0.08)] px-2.5 py-1 text-xs font-semibold text-brand-lime">
       <ShieldCheck aria-hidden className="size-3.5" /> Admin · {ROLE_LABEL[demo.adminRole]}
     </p>
   );
@@ -93,7 +93,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search job ID, customer ID or email…"
-            className="h-10 w-full rounded-[var(--radius-control)] border border-rule bg-paper pr-3 pl-9 text-sm text-ink-dark placeholder:text-muted-dark"
+            className="h-10 w-full rounded-[var(--radius-control)] border border-rule-strong bg-paper pr-3 pl-9 text-sm text-ink-dark placeholder:text-muted-dark"
           />
         </div>
       </form>
@@ -105,7 +105,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
           id={`${ids}-role`}
           value={demo.adminRole}
           onChange={(e) => setDemo((s) => ({ ...s, adminRole: e.target.value as AdminRole }))}
-          className="h-10 rounded-[var(--radius-control)] border border-rule bg-sheet px-2 text-sm text-ink-dark"
+          className="h-10 rounded-[var(--radius-control)] border border-rule-strong bg-sheet px-2 text-sm text-ink-dark"
           aria-label="Prototype role (changes which actions are permitted)"
         >
           {(Object.keys(ROLE_LABEL) as AdminRole[]).map((r) => (

@@ -78,8 +78,8 @@ export function ReferenceUploader({ value, onChange, invalid }: { value: Referen
       </p>
 
       {value.status === "accepted" ? (
-        <div className="flex gap-3 rounded-[var(--radius-control)] border border-line-strong bg-raised p-3">
-          <div className="relative size-20 shrink-0 overflow-hidden rounded-[8px] border border-line bg-canvas">
+        <div className="flex gap-3 rounded-2xl border border-line-strong bg-raised p-3">
+          <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-canvas">
             <Image src={value.url} alt={`Reference: ${value.name}`} fill sizes="80px" className="object-cover" unoptimized={!value.sample} />
           </div>
           <div className="min-w-0 flex-1">
@@ -90,7 +90,7 @@ export function ReferenceUploader({ value, onChange, invalid }: { value: Referen
             <div className="mt-2 flex flex-wrap gap-1.5">
               <label
                 htmlFor={id}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[8px] border border-line-strong px-2.5 text-xs font-semibold text-ink hover:bg-surface has-[:focus-visible]:outline-2"
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-line-strong px-3 text-xs font-semibold text-ink hover:bg-surface has-[:focus-visible]:outline-2"
               >
                 <RefreshCw aria-hidden className="size-3.5" /> Replace
                 {fileInput}
@@ -101,7 +101,7 @@ export function ReferenceUploader({ value, onChange, invalid }: { value: Referen
                   if (!value.sample) URL.revokeObjectURL(value.url);
                   onChange({ status: "empty" });
                 }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-line-strong px-2.5 text-xs font-semibold text-ink hover:bg-surface"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line-strong px-3 text-xs font-semibold text-ink hover:bg-surface"
               >
                 <Trash aria-hidden className="size-3.5" /> Remove
               </button>
@@ -117,8 +117,8 @@ export function ReferenceUploader({ value, onChange, invalid }: { value: Referen
           onDragLeave={() => setOver(false)}
           onDrop={onDrop}
           className={cn(
-            "rounded-[var(--radius-control)] border border-dashed p-4 text-center transition-colors",
-            over ? "border-link bg-[rgb(28_93_255/0.1)]" : invalid || value.status === "failed" ? "border-error-on-dark" : "border-line-strong bg-raised/50",
+            "rounded-2xl border border-dashed p-5 text-center transition-colors",
+            over ? "border-brand-blue-bright bg-[rgb(37_63_246/0.12)]" : invalid || value.status === "failed" ? "border-error-on-dark" : "border-line-strong bg-raised/50",
           )}
         >
           {value.status === "validating" ? (
@@ -127,7 +127,9 @@ export function ReferenceUploader({ value, onChange, invalid }: { value: Referen
             </p>
           ) : (
             <>
-              <ImagePlus aria-hidden className="mx-auto size-6 text-link" />
+              <span aria-hidden className="mx-auto grid size-12 place-items-center rounded-full bg-white/[0.06] text-brand-blue-bright">
+                <ImagePlus className="size-6" />
+              </span>
               <p className="mt-2 text-sm text-ink">
                 <label htmlFor={id} className="cursor-pointer font-semibold text-link underline-offset-2 hover:underline has-[:focus-visible]:outline-2">
                   Choose a file

@@ -42,7 +42,7 @@ export function Credits() {
     <div className="mx-auto max-w-[1200px] space-y-8 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight">Credits</h1>
+          <h1 className="font-display text-[1.875rem] leading-tight font-extrabold sm:text-[2.25rem]">Credits</h1>
           <p className="text-muted">Balances are kept separate so you always know what you can spend.</p>
         </div>
         <Button size="lg" onClick={() => setTopup(true)}>
@@ -51,18 +51,18 @@ export function Credits() {
       </div>
 
       {returnTo && !payment ? (
-        <p className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[rgb(28_93_255/0.4)] bg-[rgb(28_93_255/0.1)] p-3 text-sm text-ink">
+        <p className="flex items-start gap-2 rounded-2xl border border-[rgb(37_63_246/0.5)] bg-[rgb(37_63_246/0.14)] p-3 text-sm text-ink">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-link" />
           Your draft is saved. After topping up you can return to it — nothing is generated until you press Generate again.
         </p>
       ) : null}
 
       {payment ? (
-        <section aria-live="polite" className={cn("rounded-[var(--radius-media)] border p-5", pState === "confirmed" ? "border-[rgb(173_219_90/0.35)] bg-[rgb(173_219_90/0.07)]" : pState === "failed" ? "border-[rgb(214_54_82/0.45)] bg-[rgb(214_54_82/0.08)]" : "border-line bg-surface")}>
+        <section aria-live="polite" className={cn("rounded-[var(--radius-media)] border p-5", pState === "confirmed" ? "border-[rgb(225_255_1/0.35)] bg-[rgb(225_255_1/0.06)]" : pState === "failed" ? "border-[rgb(214_54_82/0.45)] bg-[rgb(214_54_82/0.08)]" : "border-white/[0.08] bg-surface")}>
           {pState === "verifying" ? (
             <>
               <p className="flex items-center gap-2 font-semibold text-ink">
-                <LoaderCircle aria-hidden className="size-5 animate-spin-slow text-link" /> Verifying payment
+                <LoaderCircle aria-hidden className="size-5 animate-spin-slow text-brand-blue-bright" /> Verifying payment
               </p>
               <p className="mt-1 text-sm text-muted">
                 We&apos;re waiting for the payment provider to confirm {payment.id}. Credits are added only after confirmation — returning from checkout is not enough.
@@ -103,24 +103,30 @@ export function Credits() {
         </h2>
         <dl className="grid gap-3 sm:grid-cols-3">
           {[
-            { k: "Available", v: demo.available, d: "Can start new jobs now.", accent: "bg-brand-lime" },
-            { k: "Reserved", v: demo.reserved, d: "Held for running jobs. Charged on save, returned on failure.", accent: "bg-brand-blue" },
+            { k: "Available", v: demo.available, d: "Can start new jobs now.", accent: "bg-brand-blue" },
+            { k: "Reserved", v: demo.reserved, d: "Held for running jobs. Charged on save, returned on failure.", accent: "bg-brand-lime" },
             { k: "Used this period", v: demo.usedThisPeriod, d: "Charged since 1 Oct 2026 (sample period).", accent: "bg-line-strong" },
-          ].map((b) => (
-            <div key={b.k} className="rounded-[var(--radius-media)] border border-line bg-surface p-5">
+          ].map((b, i) => (
+            <div
+              key={b.k}
+              className={cn(
+                "rounded-[24px] border border-white/[0.08] p-5",
+                i === 0 ? "bg-[radial-gradient(120%_90%_at_0%_0%,rgb(37_63_246/0.32),transparent_70%)] bg-surface" : "bg-surface",
+              )}
+            >
               <dt className="flex items-center gap-2 text-sm font-semibold text-muted">
                 <span aria-hidden className={cn("h-3 w-1 rounded-full", b.accent)} />
                 {b.k}
               </dt>
-              <dd className="mt-2 text-[2rem] leading-none font-semibold tracking-tight text-ink tabular">{fmtNum(b.v)}</dd>
+              <dd className="font-display mt-3 text-[2.25rem] leading-none font-extrabold text-ink tabular">{fmtNum(b.v)}</dd>
               <dd className="mt-2 text-sm text-muted">{b.d}</dd>
             </div>
           ))}
         </dl>
       </section>
 
-      <section aria-labelledby="lots-h" className="rounded-[var(--radius-media)] border border-line bg-surface">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line p-5">
+      <section aria-labelledby="lots-h" className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] p-5">
           <h2 id="lots-h" className="font-semibold">
             Credit lots
           </h2>
@@ -164,8 +170,8 @@ export function Credits() {
         </div>
       </section>
 
-      <section aria-labelledby="ledger-h" className="rounded-[var(--radius-media)] border border-line bg-surface">
-        <div className="border-b border-line p-5">
+      <section aria-labelledby="ledger-h" className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-surface">
+        <div className="border-b border-white/[0.07] p-5">
           <h2 id="ledger-h" className="font-semibold">
             Ledger movements
           </h2>
@@ -232,20 +238,20 @@ export function Credits() {
               <label
                 key={p.id}
                 className={cn(
-                  "cursor-pointer rounded-[var(--radius-control)] border p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
-                  pack === p.id ? "border-brand-blue bg-[rgb(28_93_255/0.12)]" : "border-line-strong bg-raised",
+                  "cursor-pointer rounded-2xl border p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
+                  pack === p.id ? "border-brand-blue bg-[rgb(37_63_246/0.16)]" : "border-line-strong bg-raised",
                 )}
               >
                 <input type="radio" name={`${ids}-pack`} checked={pack === p.id} onChange={() => setPack(p.id)} className="sr-only" />
                 <span className="block text-sm text-muted">{p.name}</span>
-                <span className="mt-1 block text-2xl font-semibold tabular">{fmtNum(p.credits)}</span>
+                <span className="font-display mt-1 block text-2xl font-extrabold tabular">{fmtNum(p.credits)}</span>
                 <span className="block text-sm text-muted">credits · {p.priceLabel}</span>
               </label>
             ))}
           </div>
         </fieldset>
         <p className="mt-4 text-sm text-muted">Sample packs and prices for layout review — not approved pricing. Taxes and currency are confirmed at checkout.</p>
-        <details className="mt-4 rounded-[var(--radius-control)] border border-dashed border-line-strong">
+        <details className="mt-4 rounded-2xl border border-dashed border-line-strong">
           <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm font-semibold text-muted">
             <FlaskConical aria-hidden className="size-4" /> Prototype: payment outcome
           </summary>
@@ -259,7 +265,7 @@ export function Credits() {
               ] as const
             ).map(([v, l]) => (
               <label key={v} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
-                <input type="radio" name={`${ids}-out`} checked={outcome === v} onChange={() => setOutcome(v)} className="size-4 accent-[#1c5dff]" />
+                <input type="radio" name={`${ids}-out`} checked={outcome === v} onChange={() => setOutcome(v)} className="size-4 accent-brand-blue" />
                 {l}
               </label>
             ))}

@@ -231,8 +231,44 @@ export type Example = {
   note?: string;
 };
 
-/** Curated examples (concept media until validated outputs exist). */
+/**
+ * Curated examples. Media are placeholders and prompts are *prompt ideas* written to match
+ * them — not the recorded prompts of a generation. Replace with validated outputs plus their
+ * real prompt/settings records before launch (guide §14).
+ */
 export const EXAMPLES: Example[] = [
+  {
+    id: "ex-torus",
+    tool: "image",
+    title: "Electric torus, lime core",
+    prompt: "Glossy electric-blue torus floating above a dark studio floor, a lime sphere passing through its centre, soft rim light, product-render look, vertical frame",
+    settings: { modelId: "img-detail", ratio: "4:5", quality: "High" },
+    media: "torus",
+  },
+  {
+    id: "ex-pills",
+    tool: "image",
+    title: "Capsule trio for stories",
+    prompt: "Three tall glossy capsules in lime, electric blue and white standing on a dark floor, blue studio glow, vertical story frame",
+    settings: { modelId: "img-standard", ratio: "9:16", quality: "High" },
+    media: "pills",
+  },
+  {
+    id: "ex-orbs",
+    tool: "image",
+    title: "Orbs on a night floor",
+    prompt: "Lime, chrome, electric-blue and white spheres with a white ring on a dark reflective floor, cinematic blue glow, wide frame",
+    settings: { modelId: "img-standard", ratio: "3:2", quality: "High" },
+    media: "orbs",
+  },
+  {
+    id: "ex-loop",
+    tool: "video",
+    title: "Orbit loop",
+    prompt: "A glossy electric-blue torus slowly rotates while a lime sphere orbits through it, dark studio, seamless loop, calm pace",
+    settings: { modelId: "vid-short", ratio: "16:9", duration: 5, resolution: "720p" },
+    media: "loop",
+  },
   {
     id: "ex-dunes",
     tool: "image",
@@ -285,7 +321,7 @@ export const EXAMPLES: Example[] = [
   {
     id: "ex-spheres",
     tool: "image",
-    title: "Studio spheres concept",
+    title: "Pastel studio spheres",
     prompt: "Four glossy spheres, orange, chrome, lime and violet, on a pale studio floor, soft shadows, calm composition",
     settings: { modelId: "img-standard", ratio: "3:2", quality: "Standard" },
     media: "spheres",

@@ -1,66 +1,74 @@
 @import "tailwindcss";
 
 /*
- * Genlixs design tokens — Design Guide v1.0 §04/§05.
- * Brand colors are fixed inputs sampled from the supplied palette.
- * Neutral and semantic values are the guide's usability additions; extra
- * "-on-dark"/"-tint" values are derived tints whose contrast is recorded in
- * design-handoff/genlixs/02_CREATIVE_DESIGN_BLUEPRINT.md.
+ * Genlixs design tokens — brand v2 (13 Oct 2026).
+ * Core palette supplied by the client: Night #0F1212 · Lime #E1FF01 · White #FFFFFF · Electric Blue #253FF6.
+ * Client instruction (v2 note): Electric Blue #253FF6 is THE primary colour — primary actions, selected states,
+ * current navigation and brand fields. Lime is a sparing secondary accent (underline, signal dots, success, focus ring).
+ * Neutrals, tints and semantic colours are usability additions; every text pairing below is ≥ 4.5:1 and every
+ * control boundary ≥ 3:1 (ratios recorded in design-handoff/genlixs/02_CREATIVE_DESIGN_BLUEPRINT.md).
+ * Legacy token names (brand-blue, link, …) are kept so earlier components re-theme without churn.
  */
 @theme {
   --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo Variable", "Archivo", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand */
-  --color-brand-blue: #1c5dff;
-  --color-brand-blue-hover: #174ed9;
-  --color-brand-lime: #addb5a;
-  --color-brand-violet: #763dff;
-  --color-brand-orange: #fe5511;
+  /* Brand v2 */
+  --color-brand-night: #0f1212;
+  --color-brand-lime: #e1ff01;
+  --color-brand-lime-hover: #ecff5c;
+  --color-brand-blue: #253ff6; /* PRIMARY: buttons, selected tabs, active nav, bands — white text 6.7:1; never text on dark (2.8:1) */
+  --color-brand-blue-hover: #1e33d6;
+  --color-brand-blue-bright: #5165f8; /* 20% tint for display accents and icons on dark: 4.1:1 on night, 3.9:1 on surface (large text / icons only) */
+  --color-brand-white: #ffffff;
 
-  /* Dark surfaces: public + customer studio */
-  --color-canvas: #0b0f1a;
-  --color-surface: #131a27;
-  --color-raised: #1a2333;
-  --color-line: #2a3548;
-  --color-line-strong: #6b7a94; /* control boundaries: ≥3:1 on raised/surface */
-  --color-ink: #f6f8fc;
-  --color-muted: #aab6c8;
-  --color-link: #a9c1ff;
-  --color-violet-on-dark: #c4a6ff;
-  --color-orange-on-dark: #ff7a45;
-  --color-error-on-dark: #ff8fa0;
+  /* Dark surfaces: public site + customer studio */
+  --color-canvas: #0f1212;
+  --color-surface: #151919;
+  --color-raised: #1b2020;
+  --color-elevated: #232929;
+  --color-line: #262c2c;
+  --color-line-strong: #6e7b7b; /* control boundaries: 3.75–4.29 on raised/canvas */
+  --color-ink: #ffffff;
+  --color-muted: #a3abab; /* 7.0–8.0 */
+  --color-subtle: #7e8888; /* tertiary text: 4.86–5.17 */
+  --color-link: #a9b4ff; /* electric-blue tint for small text: 8.4–9.6 */
+  --color-violet-on-dark: #a9b4ff; /* legacy alias → blue tint (video identity is electric blue in v2) */
+  --color-orange-on-dark: #ffb547; /* attention / warning text on dark: 10.7 */
+  --color-error-on-dark: #ff7a7a; /* 7.0 */
 
-  /* Light surfaces: admin + affiliate data */
-  --color-paper: #f5f7fb;
+  /* Light surfaces: admin + partner data */
+  --color-paper: #f4f5f2;
   --color-sheet: #ffffff;
-  --color-rule: #dce3ee;
-  --color-rule-strong: #7e8ba0; /* light form-control boundaries: ≥3:1 on white/paper */
-  --color-ink-dark: #172234;
-  --color-muted-dark: #52627a;
+  --color-rule: #e3e6e1;
+  --color-rule-strong: #7a8383; /* light form-control boundaries: 3.55–3.89 */
+  --color-ink-dark: #0f1212;
+  --color-muted-dark: #59615f; /* 5.55–6.36 */
 
-  /* Semantic (light pairings tested ≥ 4.5:1) */
+  /* Semantic */
   --color-error: #d63652;
   --color-error-text: #b42318;
   --color-error-tint: #fdecec;
   --color-warning: #8a4b00;
   --color-warning-tint: #fff4e0;
-  --color-success-text: #2f6a12;
-  --color-success-tint: #eef8dd;
-  --color-info-text: #1e4fd0;
-  --color-info-tint: #e8efff;
-  --color-violet-text: #5b2bd9;
-  --color-violet-tint: #f1ebff;
-  --color-orange-text: #b23c0a;
-  --color-orange-tint: #fff0e8;
-  --color-neutral-tint: #eef2f7;
+  --color-success-text: #3f4700; /* olive on lime tint: 8.9 */
+  --color-success-tint: #eff8c2;
+  --color-info-text: #253ff6; /* electric blue on its tint: 5.7; on white 6.7 */
+  --color-info-tint: #e9ecfe;
+  --color-violet-text: #1e33d6;
+  --color-violet-tint: #e9ecfe;
+  --color-orange-text: #8a4b00;
+  --color-orange-tint: #fff4e0;
+  --color-neutral-tint: #eef0ec;
 
-  /* Radius: 10-12px controls, 16px media, 20px dialogs */
-  --radius-control: 0.6875rem;
-  --radius-media: 1rem;
-  --radius-dialog: 1.25rem;
+  /* Shape: pill actions, soft panels */
+  --radius-control: 0.875rem;
+  --radius-media: 1.25rem;
+  --radius-dialog: 1.5rem;
+  --radius-panel: 1.5rem;
 
-  --shadow-pop: 0 12px 32px -8px rgb(4 10 25 / 0.45), 0 2px 6px rgb(4 10 25 / 0.3);
-  --shadow-lift: 0 1px 2px rgb(23 34 52 / 0.06), 0 4px 12px -4px rgb(23 34 52 / 0.08);
+  --shadow-pop: 0 18px 48px -12px rgb(0 0 0 / 0.6), 0 2px 8px rgb(0 0 0 / 0.35);
+  --shadow-lift: 0 1px 2px rgb(15 18 18 / 0.05), 0 6px 16px -6px rgb(15 18 18 / 0.08);
 
   --animate-fade-up: fade-up 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-spin-slow: spin 1.4s linear infinite;
@@ -88,20 +96,25 @@
 }
 
 :root {
-  --focus-ring: #a9c1ff;
+  --focus-ring: #e1ff01;
   color-scheme: dark;
 }
 
 .surface-light {
-  --focus-ring: #1c5dff;
+  --focus-ring: #253ff6;
   color-scheme: light;
 }
 
-/* Disabled primary on light data surfaces: clearly inactive, never mistaken for a dark CTA. */
+.rail-dark {
+  --focus-ring: #e1ff01;
+  color-scheme: dark;
+}
+
+/* Primary action: electric blue with white text on every surface; light surfaces use light disabled colours. */
 .surface-light .btn-primary:disabled,
 .surface-light .btn-primary[aria-disabled="true"] {
-  background: #e3e8f0;
-  color: #5d6b82;
+  background: #e3e6e1;
+  color: #59615f;
 }
 
 /* Light-surface form fields need a ≥3:1 boundary (WCAG 1.4.11); layout dividers keep the lighter rule. */
@@ -112,11 +125,6 @@
 }
 .surface-light [aria-invalid="true"] {
   border-color: var(--color-error);
-}
-
-.rail-dark {
-  --focus-ring: #a9c1ff;
-  color-scheme: dark;
 }
 
 html {
@@ -139,8 +147,25 @@ body {
   outline-offset: 2px;
 }
 
+::selection {
+  background: var(--color-brand-blue);
+  color: #ffffff;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Expanded display face for headlines (Archivo, width axis). */
+.font-display {
+  font-family: var(--font-display);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+.font-display-wide {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
 }
 
 /* Visually hidden but available to assistive technology. */
@@ -156,11 +181,46 @@ body {
   border: 0;
 }
 
-/*
- * Layer-stack accent — echoes the supplied symbol, where lime and orange
- * edges sit behind the blue form. Used once per screen on the featured
- * creation area (guide §04: "one subtle ... accent").
- */
+/* Soft dot field used behind creation areas (studio home, composer section). */
+.dot-field {
+  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 80%);
+}
+
+/* Restrained glows: electric blue as the field, lime as a small hot core. */
+.glow-electric {
+  background:
+    radial-gradient(55% 60% at 50% 45%, rgb(37 63 246 / 0.32), transparent 70%),
+    radial-gradient(25% 30% at 52% 55%, rgb(225 255 1 / 0.1), transparent 70%);
+  filter: blur(28px);
+}
+.creation-glow {
+  background:
+    radial-gradient(60% 60% at 30% 40%, rgb(37 63 246 / 0.3), transparent 70%),
+    radial-gradient(40% 45% at 75% 65%, rgb(225 255 1 / 0.1), transparent 70%);
+  filter: blur(24px);
+}
+
+/* Composer frame: hairline that brightens on focus, glow ring like a lit console. */
+.console-frame {
+  position: relative;
+  border-radius: 1.75rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.02));
+  border: 1px solid rgb(255 255 255 / 0.1);
+  box-shadow:
+    0 0 0 1px rgb(37 63 246 / 0.15),
+    0 30px 80px -30px rgb(37 63 246 / 0.55);
+  backdrop-filter: blur(14px);
+}
+.console-frame:focus-within {
+  border-color: var(--color-brand-blue-bright);
+  box-shadow:
+    0 0 0 1px rgb(81 101 248 / 0.55),
+    0 30px 90px -26px rgb(37 63 246 / 0.85);
+}
+
+/* Legacy layer-stack accent: the palette pair (lime over electric blue) behind a featured card. */
 .layer-stack {
   position: relative;
   isolation: isolate;
@@ -179,20 +239,12 @@ body {
   transform: translate(5px, 4px);
 }
 .layer-stack::after {
-  background: var(--color-brand-orange);
+  background: var(--color-brand-blue);
   transform: translate(10px, 8px);
   z-index: -2;
 }
 
-/* Restrained blue→violet glow behind the public composer only. */
-.creation-glow {
-  background:
-    radial-gradient(60% 60% at 30% 40%, rgb(28 93 255 / 0.22), transparent 70%),
-    radial-gradient(50% 55% at 75% 60%, rgb(118 61 255 / 0.18), transparent 70%);
-  filter: blur(24px);
-}
-
-/* Branded divider: the four palette colors as a short stacked rule. */
+/* Branded divider: palette as a short stacked rule. */
 .brand-rule {
   display: inline-flex;
   gap: 4px;
@@ -204,10 +256,76 @@ body {
   border-radius: 2px;
 }
 
+/* Vertical media marquee (hero capsule columns) and horizontal chip marquee. */
+@keyframes marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes marquee-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes marquee-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-up {
+  animation: marquee-up var(--marquee-duration, 48s) linear infinite;
+}
+.marquee-down {
+  animation: marquee-down var(--marquee-duration, 54s) linear infinite;
+}
+.marquee-left {
+  animation: marquee-left var(--marquee-duration, 40s) linear infinite;
+}
+.marquee-pause:hover .marquee-up,
+.marquee-pause:hover .marquee-down,
+.marquee-pause:hover .marquee-left,
+.marquee-pause:focus-within .marquee-up,
+.marquee-pause:focus-within .marquee-down,
+.marquee-pause:focus-within .marquee-left,
+.marquee-paused .marquee-up,
+.marquee-paused .marquee-down,
+.marquee-paused .marquee-left {
+  animation-play-state: paused;
+}
+.fade-y {
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+}
+.fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* Hand-drawn squiggle under the hero accent words: draws on load. */
+@keyframes squiggle-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.squiggle path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: squiggle-draw 900ms 250ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+
 /*
- * Section reveal (guide §12: 300-450ms feel, 8-16px offset). CSS scroll-driven
- * animation only: content is fully visible where unsupported, and no JS
- * touches server-rendered markup.
+ * Section reveal (300-450ms feel, 8-16px offset). CSS scroll-driven animation only:
+ * content is fully visible where unsupported, and no JS touches server-rendered markup.
  */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
@@ -251,11 +369,21 @@ body {
   border-radius: 999px;
   background: transparent;
 }
+.compare-wrap:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
 
 /* Thin, contained scrollbars for tables and rails. */
 .scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
+}
+.scroll-none {
+  scrollbar-width: none;
+}
+.scroll-none::-webkit-scrollbar {
+  display: none;
 }
 
 details > summary {
@@ -263,6 +391,15 @@ details > summary {
 }
 details > summary::-webkit-details-marker {
   display: none;
+}
+
+/* Studio (phones/tablets): the Generate bar stays above the safe area but steps out of
+   the way while a field has focus, so the on-screen keyboard never hides the input. */
+@media (max-width: 1023px) {
+  section:has(textarea:focus, input:focus) > div > .gen-bar,
+  section:has(textarea:focus, input:focus) .gen-bar {
+    position: static;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -274,18 +411,10 @@ details > summary::-webkit-details-marker {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-.compare-wrap:has(input:focus-visible) {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-/* Studio (phones/tablets): the Generate bar stays above the safe area but steps out of
-   the way while a field has focus, so the on-screen keyboard never hides the input. */
-@media (max-width: 1023px) {
-  section:has(textarea:focus, input:focus) > div > .gen-bar,
-  section:has(textarea:focus, input:focus) .gen-bar {
-    position: static;
+  .marquee-up,
+  .marquee-down,
+  .marquee-left,
+  .squiggle path {
+    animation: none !important;
   }
 }

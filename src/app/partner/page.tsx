@@ -35,7 +35,7 @@ export default function PartnerOverview() {
       />
 
       {/* 1–2. Main link first: the easiest element to find (guide §10). */}
-      <section aria-labelledby="link-h" className="rounded-[var(--radius-media)] border border-[#c9d8ff] bg-info-tint p-5 sm:p-6">
+      <section aria-labelledby="link-h" className="rounded-[var(--radius-media)] border border-[#c7cefd] bg-info-tint p-5 sm:p-6">
         <h2 id="link-h" className="text-sm font-semibold text-info-text">
           Your main link
         </h2>
@@ -52,7 +52,7 @@ export default function PartnerOverview() {
           </div>
         </div>
         <p className="mt-2 text-xs text-info-text">Preview links use the reserved example domain and do not track visits.</p>
-        <p className="mt-3 border-t border-[#c9d8ff] pt-3 text-sm text-ink-dark xl:hidden">
+        <p className="mt-3 border-t border-[#c7cefd] pt-3 text-sm text-ink-dark xl:hidden">
           Next payout: {readiness.every((r) => r.ok) ? "ready to request." : `${readiness.find((r) => !r.ok)?.detail}.`}{" "}
           <Link href="/partner/payouts" className="font-semibold text-info-text underline">
             View payouts
@@ -89,7 +89,8 @@ export default function PartnerOverview() {
           {PARTNER_BALANCES.map((b) => (
             <div key={b.key} className="rounded-[var(--radius-media)] border border-rule bg-sheet p-5 shadow-[var(--shadow-lift)]">
               <dt className="flex items-center gap-2 text-sm font-semibold text-muted-dark">
-                <span aria-hidden className={cn("h-3 w-1 rounded-full", b.key === "available" ? "bg-brand-lime" : b.key === "reserved" ? "bg-brand-blue" : b.key === "paid" ? "bg-[#9aa8bd]" : "bg-[#d0d8e4]")} />
+                {/* Key markers on white: olive success for Available (lime would be 1.1:1), blue for Reserved, neutrals for Paid / Pending. */}
+                <span aria-hidden className={cn("h-3 w-1 rounded-full", b.key === "available" ? "bg-success-text" : b.key === "reserved" ? "bg-brand-blue" : b.key === "paid" ? "bg-rule-strong" : "bg-[#cfd4cd]")} />
                 {b.label}
               </dt>
               <dd className="mt-2 text-[1.875rem] leading-none font-semibold text-ink-dark">{fmtUsd(b.value)}</dd>
@@ -148,7 +149,7 @@ export default function PartnerOverview() {
           <ul className="space-y-3">
             {readiness.map((r) => (
               <li key={r.label} className="flex items-start gap-3">
-                {r.ok ? <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-[#5c9a1d]" /> : <CircleDashed aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />}
+                {r.ok ? <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success-text" /> : <CircleDashed aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />}
                 <div>
                   <p className="text-sm font-semibold text-ink-dark">
                     {r.label}

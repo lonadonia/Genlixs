@@ -37,20 +37,20 @@ export function CompareSlider({
 
   return (
     <div className={className}>
-      <div className={cn("compare-wrap relative overflow-hidden rounded-[var(--radius-media)] border border-line bg-raised select-none", aspect)}>
+      <div className={cn("compare-wrap relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-raised select-none", aspect)}>
         <Image src={after} alt={afterAlt} fill sizes={sizes} className="object-cover" />
         <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
           <Image src={before} alt={beforeAlt} fill sizes={sizes} className="object-cover" />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/90 shadow-[0_0_0_1px_rgb(4_10_25/0.35)]" style={{ left: `calc(${pos}% - 1px)` }}>
-          <span className="absolute top-1/2 left-1/2 grid size-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/80 bg-[rgb(11_15_26/0.75)] text-white backdrop-blur-sm">
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow-[0_0_0_1px_rgb(15_18_18/0.35)]" style={{ left: `calc(${pos}% - 1px)` }}>
+          <span className="absolute top-1/2 left-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-brand-blue text-white shadow-[0_8px_24px_-6px_rgb(0_0_0/0.6)]">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m6 5-3 4 3 4M12 5l3 4-3 4" />
             </svg>
           </span>
         </div>
-        <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[rgb(11_15_26/0.78)] px-2.5 py-1 text-xs font-semibold text-ink">{beforeLabel}</span>
-        <span className="pointer-events-none absolute right-3 bottom-3 rounded-full bg-[rgb(11_15_26/0.78)] px-2.5 py-1 text-xs font-semibold text-ink">{afterLabel}</span>
+        <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[rgb(15_18_18/0.78)] px-2.5 py-1 text-xs font-semibold text-ink backdrop-blur-md">{beforeLabel}</span>
+        <span className="pointer-events-none absolute right-3 bottom-3 rounded-full bg-[rgb(15_18_18/0.78)] px-2.5 py-1 text-xs font-semibold text-ink backdrop-blur-md">{afterLabel}</span>
         {concept ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
         <label htmlFor={id} className="sr-only">
           Comparison position: drag or use arrow keys to reveal {beforeLabel.toLowerCase()} or {afterLabel.toLowerCase()}
@@ -78,8 +78,8 @@ export function CompareSlider({
             aria-pressed={pos === b.v}
             onClick={() => setPos(b.v)}
             className={cn(
-              "h-10 rounded-[var(--radius-control)] border px-3.5 text-sm font-semibold transition-colors",
-              pos === b.v ? "border-brand-blue bg-[rgb(28_93_255/0.16)] text-link" : "border-line-strong bg-raised text-ink hover:bg-[#222d40]",
+              "h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
+              pos === b.v ? "border-brand-blue bg-brand-blue text-white" : "border-white/20 bg-white/[0.04] text-ink hover:border-white/45",
             )}
           >
             {b.label}

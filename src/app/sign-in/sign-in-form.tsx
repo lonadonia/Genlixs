@@ -46,7 +46,7 @@ export function SignInForm({ next, reason }: { next: string | null; reason: "ref
 
   return (
     <div className="w-full max-w-md">
-      <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight">{mode === "sign-in" ? "Sign in to Genlixs" : "Create your Genlixs account"}</h1>
+      <h1 className="font-display text-[1.875rem] leading-[1.08] font-extrabold">{mode === "sign-in" ? "Sign in to Genlixs" : "Create your Genlixs account"}</h1>
       <p className="mt-2 text-muted">
         {reason === "reference"
           ? "Sign in to upload your reference image. Your instruction and settings are saved."
@@ -54,9 +54,9 @@ export function SignInForm({ next, reason }: { next: string | null; reason: "ref
       </p>
 
       {hydrated && draft && draft.prompt ? (
-        <section aria-label="Saved draft" className="mt-6 rounded-[var(--radius-media)] border border-line bg-surface p-4">
+        <section aria-label="Saved draft" className="mt-6 rounded-[24px] border border-white/[0.08] bg-surface p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <FileText aria-hidden className="size-4 text-brand-lime" />
+            <FileText aria-hidden className="size-4 text-brand-blue-bright" />
             Your draft is saved
           </p>
           <p className="mt-2 line-clamp-2 text-sm text-muted">“{draft.prompt}”</p>
@@ -80,7 +80,7 @@ export function SignInForm({ next, reason }: { next: string | null; reason: "ref
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "email-error" : undefined}
-            className="mt-1.5 block h-12 w-full rounded-[var(--radius-control)] border border-line-strong bg-raised px-3.5 text-base text-ink aria-invalid:border-error-on-dark"
+            className="mt-1.5 block h-12 w-full rounded-2xl border border-line-strong bg-raised px-3.5 text-base text-ink aria-invalid:border-error-on-dark"
           />
           {errors.email ? (
             <p id="email-error" className="mt-1.5 text-sm text-error-on-dark">
@@ -107,7 +107,7 @@ export function SignInForm({ next, reason }: { next: string | null; reason: "ref
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(errors.password)}
             aria-describedby={errors.password ? "password-error" : "password-hint"}
-            className="mt-1.5 block h-12 w-full rounded-[var(--radius-control)] border border-line-strong bg-raised px-3.5 text-base text-ink aria-invalid:border-error-on-dark"
+            className="mt-1.5 block h-12 w-full rounded-2xl border border-line-strong bg-raised px-3.5 text-base text-ink aria-invalid:border-error-on-dark"
           />
           {errors.password ? (
             <p id="password-error" className="mt-1.5 text-sm text-error-on-dark">
@@ -124,7 +124,7 @@ export function SignInForm({ next, reason }: { next: string | null; reason: "ref
         </Button>
       </form>
 
-      <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-control)] border border-line bg-surface p-3 text-sm text-muted">
+      <div className="mt-4 flex items-start gap-2 rounded-2xl border border-white/[0.08] bg-surface p-3 text-sm text-muted">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-link" />
         <p>
           Preview mode: no account is created and nothing is sent. Any valid-looking email works, or{" "}

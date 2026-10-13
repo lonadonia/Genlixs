@@ -73,7 +73,7 @@ export default function AdminOverview() {
                     <td className="px-3 py-3 text-right tabular">{m.jobs.toLocaleString("en-US")}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
-                        <div aria-hidden className="h-2 flex-1 rounded-full bg-[#e8edf5]">
+                        <div aria-hidden className="h-2 flex-1 rounded-full bg-info-tint">
                           <div className="h-2 rounded-r-[4px] rounded-l-full bg-brand-blue" style={{ width: `${m.success}%` }} />
                         </div>
                         <span className="w-12 text-right font-semibold text-ink-dark tabular">{m.success.toFixed(1)}%</span>

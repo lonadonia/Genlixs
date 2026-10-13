@@ -3,52 +3,64 @@ import Link from "next/link";
 import { cn } from "@/lib/format";
 
 /**
- * The supplied Genlixs wordmark, exported from the 21,627 × 4,487 px masters
- * without redrawing (brand/export_logo.py). Trimmed ratio ≈ 6.54 : 1.
- * White variant on dark surfaces, dark variant on light data surfaces.
+ * Genlixs logo v2 (supplied 13 Oct 2026), exported without redrawing (brand/export_logo.py):
+ * - "header": white tile mark + white wordmark — the supplied website-header logo, for dark surfaces
+ * - "color":  electric-blue mark + white wordmark, for dark surfaces
+ * - "dark":   electric-blue mark + night wordmark, for light surfaces
+ * - "mono":   all-white mark + wordmark, for photos and colour fields
+ * Trimmed ratio ≈ 4.87 : 1.
  */
-const RATIO = 960 / 147;
+const RATIO = 960 / 197;
+const SRC = {
+  header: "/brand/genlixs-header-white-960.png",
+  color: "/brand/genlixs-logo-color-960.png",
+  dark: "/brand/genlixs-logo-dark-960.png",
+  mono: "/brand/genlixs-logo-mono-white-960.png",
+} as const;
+
+export type LogoVariant = keyof typeof SRC;
 
 export function Logo({
-  variant = "white",
-  width = 168,
+  variant = "header",
+  width = 150,
   href = "/",
   className,
   priority,
   label = "Genlixs home",
 }: {
-  variant?: "white" | "dark";
+  variant?: LogoVariant;
   width?: number;
   href?: string | null;
   className?: string;
   priority?: boolean;
   label?: string;
 }) {
+  const height = Math.round(width / RATIO);
   const img = (
     <Image
-      src={variant === "white" ? "/brand/genlixs-logo-white-960.png" : "/brand/genlixs-logo-dark-960.png"}
+      src={SRC[variant]}
       alt="Genlixs"
       width={width}
-      height={Math.round(width / RATIO)}
-      priority={priority}
+      height={height}
+      loading={priority ? "eager" : undefined}
       sizes={`${width}px`}
       className="block max-w-none"
-      style={{ width: `${width}px`, height: `${Math.round(width / RATIO)}px` }}
+      style={{ width: `${width}px`, height: `${height}px` }}
     />
   );
-  if (!href) return <span className={cn("inline-flex p-2", className)}>{img}</span>;
+  if (!href) return <span className={cn("inline-flex p-1.5", className)}>{img}</span>;
   return (
-    <Link href={href} aria-label={label} className={cn("inline-flex rounded-[var(--radius-control)] p-2", className)}>
+    <Link href={href} aria-label={label} className={cn("inline-flex rounded-lg p-1.5", className)}>
       {img}
     </Link>
   );
 }
 
-/** Extracted supplied symbol for the collapsed rail (not a redraw). */
-export function BrandSymbol({ size = 32, className }: { size?: number; className?: string }) {
+/** Mark only, extracted from the supplied files (not a redraw). "tile" = header logo mark, "color" = blue mark. */
+export function BrandSymbol({ size = 32, variant = "tile", className }: { size?: number; variant?: "tile" | "color"; className?: string }) {
   return (
     <Image
-      src="/brand/genlixs-symbol-64.png"
+      src={variant === "tile" ? "/brand/genlixs-symbol-tile-64.png" : "/brand/genlixs-symbol-color-64.png"}
       alt=""
       width={size}
       height={size}

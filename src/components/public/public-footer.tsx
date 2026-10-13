@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 
@@ -32,16 +33,15 @@ const GROUPS = [
 
 export function PublicFooter() {
   return (
-    <footer className="border-t border-line bg-canvas">
-      <div className="mx-auto grid max-w-[1360px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)] lg:px-10">
+    <footer className="relative overflow-hidden border-t border-white/[0.06] bg-canvas">
+      <div className="mx-auto grid max-w-[1440px] gap-10 px-4 pt-16 pb-10 sm:px-6 md:grid-cols-[1.5fr_repeat(3,1fr)] lg:px-10">
         <div>
-          <Logo width={160} className="-ml-2" />
-          <p className="mt-3 max-w-xs text-sm text-muted">Create images, edit a reference, or generate a short video in one workspace.</p>
-          <div className="brand-rule mt-5" aria-hidden>
+          <Logo width={150} className="-ml-1.5" />
+          <p className="mt-4 max-w-xs text-sm text-muted">Create images, edit a reference, or generate a short video in one workspace.</p>
+          <div className="brand-rule mt-6" aria-hidden>
             <span className="bg-brand-blue" />
             <span className="bg-brand-lime" />
-            <span className="bg-brand-violet" />
-            <span className="bg-brand-orange" />
+            <span className="bg-white" />
           </div>
         </div>
         {GROUPS.map((g) => (
@@ -50,7 +50,7 @@ export function PublicFooter() {
             <ul className="mt-3 space-y-1">
               {g.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="inline-flex min-h-9 items-center text-sm text-muted hover:text-ink hover:underline">
+                  <Link href={l.href} className="inline-flex min-h-9 items-center text-sm text-muted transition-colors hover:text-ink">
                     {l.label}
                   </Link>
                 </li>
@@ -59,11 +59,15 @@ export function PublicFooter() {
           </nav>
         ))}
       </div>
-      <div className="border-t border-line">
-        <div className="mx-auto flex max-w-[1360px] flex-col gap-2 px-4 py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10">
+        <div className="flex flex-col gap-2 border-t border-white/[0.06] py-6 text-xs text-subtle sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 Genlixs. Design preview build.</p>
-          <p>Examples on this preview are temporary concept media, not model output.</p>
+          <p>Images and clips on this preview are temporary placeholders, not model output.</p>
         </div>
+      </div>
+      {/* Oversized wordmark watermark — the supplied mono logo at low opacity, cropped by the footer edge. */}
+      <div aria-hidden className="pointer-events-none mx-auto -mb-[4vw] max-w-[1440px] px-4 opacity-[0.06] select-none sm:px-6 lg:px-10">
+        <Image src="/brand/genlixs-logo-mono-white-960.png" alt="" width={960} height={197} className="h-auto w-full" />
       </div>
     </footer>
   );

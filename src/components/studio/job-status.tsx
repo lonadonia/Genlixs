@@ -26,7 +26,7 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
 
   if (phase === "failed" || phase === "cancelled") {
     return (
-      <div role="status" className="rounded-[var(--radius-media)] border border-[rgb(214_54_82/0.45)] bg-[rgb(214_54_82/0.08)] p-5">
+      <div role="status" className="rounded-[20px] border border-[rgb(214_54_82/0.45)] bg-[rgb(214_54_82/0.08)] p-5">
         <p className="flex items-center gap-2 font-semibold text-ink">
           <CircleX aria-hidden className="size-5 text-error-on-dark" />
           {phase === "cancelled" ? "Job cancelled before submission" : "This job didn't finish"}
@@ -43,7 +43,7 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
               Edit and try again
             </Button>
           ) : null}
-          <Link href="/studio/support" className="inline-flex h-9 items-center rounded-[var(--radius-control)] px-3 text-sm font-semibold text-link hover:underline">
+          <Link href="/studio/support" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold text-link hover:underline">
             Contact support
           </Link>
         </div>
@@ -53,7 +53,7 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
 
   if (phase === "ready") {
     return (
-      <p role="status" className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[rgb(173_219_90/0.3)] bg-[rgb(173_219_90/0.08)] px-4 py-3 text-sm font-semibold text-ink">
+      <p role="status" className="flex items-center gap-2 rounded-2xl border border-[rgb(225_255_1/0.3)] bg-[rgb(225_255_1/0.07)] px-4 py-3 text-sm font-semibold text-ink">
         <Check aria-hidden className="size-4 text-brand-lime" />
         Your file is ready · {job.settled === "charged" ? `${fmtCredits(job.credits)} charged` : "settling credits…"}
       </p>
@@ -61,10 +61,10 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
   }
 
   return (
-    <div className="rounded-[var(--radius-media)] border border-line bg-surface p-5">
+    <div className="rounded-[20px] border border-white/[0.08] bg-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-2 font-semibold text-ink" role="status" aria-live="polite">
-          <LoaderCircle aria-hidden className="size-5 animate-spin-slow text-link" />
+          <LoaderCircle aria-hidden className="size-5 animate-spin-slow text-brand-blue-bright" />
           {phase === "checking" ? "Confirming submission" : PHASE_LABEL[phase]}
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted tabular">
@@ -78,8 +78,8 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
           const current = i === stepIndex;
           return (
             <li key={s} className="min-w-0">
-              <span aria-hidden className={cn("block h-1.5 rounded-full", done ? "bg-brand-lime" : current ? "animate-pulse-soft bg-brand-blue" : "bg-raised")} />
-              <span className={cn("mt-1.5 block truncate text-[11px] font-semibold sm:text-xs", current ? "text-ink" : done ? "text-muted" : "text-[#8794ab]")}>
+              <span aria-hidden className={cn("block h-1.5 rounded-full", done ? "bg-brand-blue" : current ? "animate-pulse-soft bg-link" : "bg-elevated")} />
+              <span className={cn("mt-1.5 block truncate text-[11px] font-semibold sm:text-xs", current ? "text-ink" : done ? "text-muted" : "text-subtle")}>
                 {PHASE_LABEL[s]}
                 <span className="sr-only">{done ? " (done)" : current ? " (current)" : " (not started)"}</span>
               </span>
@@ -91,14 +91,14 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
       <p className="mt-4 text-sm text-muted">{COPY[phase]?.(toolWord)}</p>
 
       {phase === "checking" ? (
-        <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-control)] bg-[rgb(28_93_255/0.1)] p-3 text-sm text-link">
+        <p className="mt-3 flex items-start gap-2 rounded-xl bg-[rgb(37_63_246/0.14)] p-3 text-sm text-link">
           <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           Please don&apos;t generate again while we check — the {fmtCredits(job.credits)} stay reserved and you won&apos;t be charged twice for this request.
         </p>
       ) : null}
 
       {delayed ? (
-        <div className="mt-3 rounded-[var(--radius-control)] border border-[rgb(254_85_17/0.35)] bg-[rgb(254_85_17/0.08)] p-3 text-sm">
+        <div className="mt-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] p-3 text-sm">
           <p className="flex items-center gap-2 font-semibold text-orange-on-dark">
             <TriangleAlert aria-hidden className="size-4" /> This is taking longer than usual
           </p>
@@ -111,7 +111,7 @@ export function JobStatus({ job, now, onRetry }: { job: Job; now: number; onRetr
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-sm">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.07] pt-4 text-sm">
         <span className="inline-flex items-center gap-1.5 text-muted">
           <Hourglass aria-hidden className="size-4" /> {fmtCredits(job.credits)} reserved
         </span>

@@ -4,19 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  Activity,
   Bell,
+  CircleHelp,
   Clapperboard,
   Coins,
   FolderOpen,
+  House,
   ImagePlus,
-  LayoutGrid,
   LifeBuoy,
   LogOut,
   Menu,
+  Plus,
   Receipt,
   Users,
   WandSparkles,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { BrandSymbol, Logo } from "@/components/brand/logo";
 import { PreviewBanner, PreviewPill } from "@/components/preview-banner";
@@ -25,19 +29,38 @@ import { PHASE_LABEL, isTerminal, jobPhase, setDemo, useDemo, useNow } from "@/l
 import { TOOLS } from "@/lib/catalog";
 import { cn, fmtNum } from "@/lib/format";
 
-const NAV = [
-  { href: "/studio", label: "Overview", icon: LayoutGrid, exact: true },
-  { href: "/studio/image", label: "Image", icon: ImagePlus },
-  { href: "/studio/edit", label: "Edit", icon: WandSparkles },
-  { href: "/studio/video", label: "Video", icon: Clapperboard },
-  { href: "/studio/library", label: "Library", icon: FolderOpen },
-  { href: "/studio/credits", label: "Credits", icon: Coins },
-  { href: "/studio/billing", label: "Billing", icon: Receipt },
-  { href: "/studio/support", label: "Support", icon: LifeBuoy },
+type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
+
+/* Grouped like a creative app: make things, find them again, manage the account (guide §06). */
+const GROUPS: { title: string; items: Item[] }[] = [
+  {
+    title: "Create",
+    items: [
+      { href: "/studio", label: "Home", icon: House, exact: true },
+      { href: "/studio/image", label: "Image", icon: ImagePlus },
+      { href: "/studio/edit", label: "Edit", icon: WandSparkles },
+      { href: "/studio/video", label: "Video", icon: Clapperboard },
+    ],
+  },
+  { title: "Your work", items: [{ href: "/studio/library", label: "Library", icon: FolderOpen }] },
+  {
+    title: "Account",
+    items: [
+      { href: "/studio/credits", label: "Credits", icon: Coins },
+      { href: "/studio/billing", label: "Billing", icon: Receipt },
+      { href: "/studio/support", label: "Support", icon: LifeBuoy },
+    ],
+  },
+];
+
+const FOOTER_LINKS: Item[] = [
+  { href: "/partner", label: "Partner portal", icon: Users },
+  { href: "/help", label: "Help centre", icon: CircleHelp },
+  { href: "/status", label: "Service status", icon: Activity },
 ];
 
 const TITLES: Record<string, string> = {
-  "/studio": "Overview",
+  "/studio": "Home",
   "/studio/image": "Image studio",
   "/studio/edit": "Edit studio",
   "/studio/video": "Video studio",
@@ -47,7 +70,18 @@ const TITLES: Record<string, string> = {
   "/studio/support": "Support",
 };
 
-function RailLink({ item, active, collapsed, onNavigate }: { item: (typeof NAV)[number]; active: boolean; collapsed?: boolean; onNavigate?: () => void }) {
+function Tip({ children }: { children: ReactNode }) {
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute left-full z-50 ml-3 hidden rounded-lg border border-white/10 bg-elevated px-2.5 py-1 text-sm whitespace-nowrap text-ink shadow-[var(--shadow-pop)] group-hover:block group-focus-visible:block"
+    >
+      {children}
+    </span>
+  );
+}
+
+function RailLink({ item, active, collapsed, onNavigate }: { item: Item; active: boolean; collapsed?: boolean; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
@@ -56,23 +90,14 @@ function RailLink({ item, active, collapsed, onNavigate }: { item: (typeof NAV)[
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       className={cn(
-        "group relative flex h-11 items-center gap-3 rounded-[var(--radius-control)] text-[15px] font-medium transition-colors",
+        "group relative flex h-11 items-center gap-3 rounded-xl text-[15px] font-medium transition-colors",
         collapsed ? "justify-center px-0" : "px-3",
-        active ? "bg-[rgb(28_93_255/0.18)] text-ink" : "text-muted hover:bg-raised hover:text-ink",
+        active ? "bg-[rgb(37_63_246/0.16)] text-ink" : "text-muted hover:bg-white/[0.04] hover:text-ink",
       )}
     >
-      {active ? <span aria-hidden className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-brand-blue" /> : null}
-      <Icon aria-hidden className={cn("size-5 shrink-0", active && "text-link")} />
-      {collapsed ? (
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute left-full z-50 ml-3 hidden rounded-md border border-line bg-raised px-2.5 py-1 text-sm whitespace-nowrap text-ink shadow-[var(--shadow-pop)] group-hover:block group-focus-visible:block"
-        >
-          {item.label}
-        </span>
-      ) : (
-        <span>{item.label}</span>
-      )}
+      {active ? <span aria-hidden className="absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-full bg-brand-blue" /> : null}
+      <Icon aria-hidden className={cn("size-5 shrink-0", active && "text-brand-blue-bright")} />
+      {collapsed ? <Tip>{item.label}</Tip> : <span>{item.label}</span>}
     </Link>
   );
 }
@@ -120,19 +145,17 @@ export function StudioShell({ children }: { children: ReactNode }) {
     return (
       <>
         <PreviewBanner />
-        <main id="main" className="grid min-h-[calc(100dvh-33px)] place-items-center px-4">
-          <div className="w-full max-w-md rounded-[var(--radius-dialog)] border border-line bg-surface p-8 text-center">
+        <main id="main" className="relative isolate grid min-h-[calc(100dvh-36px)] place-items-center overflow-hidden px-4">
+          <div aria-hidden className="glow-electric pointer-events-none absolute top-1/4 left-1/2 -z-10 h-[420px] w-[min(900px,100%)] -translate-x-1/2" />
+          <div className="console-frame w-full max-w-md p-8 text-center">
             <Logo width={150} href="/" className="mx-auto" />
-            <h1 className="mt-6 text-2xl font-semibold">Sign in to open your studio</h1>
+            <h1 className="font-display mt-7 text-2xl font-extrabold">Sign in to open your studio</h1>
             <p className="mt-2 text-muted">Your drafts, library and credits are tied to your account.</p>
-            <div className="mt-6 grid gap-2">
+            <div className="mt-7 grid gap-2">
               <ButtonLink href={`/sign-in?next=${encodeURIComponent(pathname)}`} size="lg">
                 Sign in
               </ButtonLink>
-              <Button
-                variant="secondary"
-                onClick={() => setDemo((s) => ({ ...s, signedIn: true, email: "demo.creator@example.com" }))}
-              >
+              <Button variant="secondary" size="lg" onClick={() => setDemo((s) => ({ ...s, signedIn: true, email: "demo.creator@example.com" }))}>
                 Continue with demo account
               </Button>
             </div>
@@ -142,150 +165,196 @@ export function StudioShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const rail = (collapsed: boolean, onNavigate?: () => void) => (
-    <nav aria-label="Studio" className="flex flex-1 flex-col gap-1">
-      {NAV.map((n) => (
-        <RailLink key={n.href} item={n} active={isActive(n.href, n.exact)} collapsed={collapsed} onNavigate={onNavigate} />
+  const nav = (collapsed: boolean, onNavigate?: () => void) => (
+    <nav aria-label="Studio" className="flex flex-col gap-5">
+      {GROUPS.map((g, gi) => (
+        <div key={g.title}>
+          {collapsed ? (
+            gi > 0 ? <span aria-hidden className="mx-auto mb-2 block h-px w-6 bg-white/10" /> : null
+          ) : (
+            <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-subtle uppercase">{g.title}</p>
+          )}
+          <ul className="flex flex-col gap-0.5">
+            {g.items.map((n) => (
+              <li key={n.href}>
+                <RailLink item={n} active={isActive(n.href, n.exact)} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
     </nav>
   );
 
+  const initial = (demo.email || "D").slice(0, 1).toUpperCase();
+
   return (
     <div className="min-h-dvh">
-      <div className="flex">
-        {/* Desktop rail: 232px at ≥1280, collapsed 72px at 1024–1279 */}
-        <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-surface lg:flex lg:w-[72px] xl:w-[232px]">
-          <div className="flex h-16 items-center justify-center border-b border-line xl:justify-start xl:px-3">
-            <span className="hidden xl:block">
-              <Logo width={150} href="/" />
+      {/* Floating rail: 236 px at ≥1280, 72 px icon rail with tooltips at 1024–1279, drawer below 1024 */}
+      <aside className="fixed inset-y-3 left-3 z-40 hidden w-[72px] flex-col rounded-[24px] border border-white/[0.07] bg-surface lg:flex xl:w-[236px]">
+        <div className="flex h-[68px] shrink-0 items-center justify-center px-3 xl:justify-start xl:px-4">
+          <span className="hidden xl:block">
+            <Logo width={140} href="/" priority />
+          </span>
+          <Link href="/" aria-label="Genlixs home" className="rounded-xl p-1.5 xl:hidden">
+            <BrandSymbol size={30} />
+          </Link>
+        </div>
+
+        <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
+          <Link
+            href="/studio"
+            className="group relative mb-5 flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-blue font-semibold text-white shadow-[0_10px_28px_-12px_rgb(37_63_246/0.9)] transition-colors hover:bg-brand-blue-hover xl:justify-start xl:px-3"
+            aria-label="New creation"
+          >
+            <Plus aria-hidden className="size-5" />
+            <span className="hidden xl:inline">New creation</span>
+            <span className="xl:hidden">
+              <Tip>New creation</Tip>
             </span>
-            <Link href="/" aria-label="Genlixs home" className="rounded-[var(--radius-control)] p-2 xl:hidden">
-              <BrandSymbol size={30} />
-            </Link>
-          </div>
-          <div className="scroll-thin flex flex-1 flex-col overflow-y-auto p-3">
-            <div className="hidden flex-1 flex-col xl:flex">{rail(false)}</div>
-            <div className="flex flex-1 flex-col xl:hidden">{rail(true)}</div>
-            <div className="mt-4 border-t border-line pt-4">
-              <Link
-                href="/partner"
-                aria-label="Switch to Partner portal"
-                className="group relative flex h-11 items-center justify-center gap-3 rounded-[var(--radius-control)] text-sm font-medium text-muted hover:bg-raised hover:text-ink xl:justify-start xl:px-3"
-              >
-                <Users aria-hidden className="size-5 shrink-0" />
-                <span className="hidden xl:inline">Partner portal</span>
+          </Link>
+          <div className="hidden xl:block">{nav(false)}</div>
+          <div className="xl:hidden">{nav(true)}</div>
+
+          {/* Balance card (expanded rail only); the header keeps the balance visible at every width. */}
+          <div className="mt-auto hidden pt-5 xl:block">
+            <div className="rounded-2xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_0%_0%,rgb(37_63_246/0.35),transparent_70%)] bg-raised p-4">
+              <p className="text-xs font-medium text-muted">Available credits</p>
+              <p className="font-display mt-1 text-2xl font-extrabold text-ink tabular">{fmtNum(demo.available)}</p>
+              {demo.reserved ? <p className="text-xs text-muted tabular">{fmtNum(demo.reserved)} reserved for running jobs</p> : null}
+              <Link href="/studio/credits" className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-sm font-semibold text-brand-night hover:bg-white/90">
+                <Coins aria-hidden className="size-4" /> Top up
               </Link>
             </div>
           </div>
-        </aside>
+        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-line bg-[rgb(11_15_26/0.92)] px-3 backdrop-blur-md sm:gap-3 sm:px-6">
+        <div className="flex shrink-0 items-center justify-center gap-1 border-t border-white/[0.07] p-2 max-xl:flex-col">
+          {FOOTER_LINKS.map((l) => (
+            <Link key={l.href} href={l.href} aria-label={l.label} className="group relative grid size-10 place-items-center rounded-xl text-muted hover:bg-white/[0.06] hover:text-ink">
+              <l.icon aria-hidden className="size-[18px]" />
+              <Tip>{l.label}</Tip>
+            </Link>
+          ))}
+        </div>
+      </aside>
+
+      <div className="flex min-h-dvh min-w-0 flex-col lg:pl-[96px] xl:pl-[260px]">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 bg-[rgb(15_18_18/0.82)] px-3 backdrop-blur-xl sm:gap-3 sm:px-6 lg:h-[68px] lg:pl-2">
+          <button
+            ref={menuBtn}
+            type="button"
+            onClick={() => setDrawer(true)}
+            aria-haspopup="dialog"
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-white/20 lg:hidden"
+          >
+            <Menu aria-hidden className="size-5" />
+            <span className="sr-only">Open studio menu</span>
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <p className="min-w-0 truncate text-lg font-semibold">{title}</p>
+            <span className="hidden sm:inline-flex">
+              <PreviewPill />
+            </span>
+          </div>
+
+          <div role="group" aria-label="Workspace" className="hidden items-center rounded-full border border-white/10 bg-white/[0.03] p-1 text-sm md:flex">
+            <span aria-current="true" className="rounded-full bg-brand-blue px-3.5 py-1.5 font-semibold text-white">
+              Customer studio
+            </span>
+            <Link href="/partner" className="rounded-full px-3.5 py-1.5 font-medium text-muted hover:text-ink">
+              Partner portal
+            </Link>
+          </div>
+
+          <Link
+            href="/studio/credits"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold hover:border-white/25"
+          >
+            <Coins aria-hidden className="size-4 text-brand-blue-bright" />
+            <span className="tabular">{fmtNum(demo.available)}</span>
+            <span className="hidden text-muted xl:inline">credits available</span>
+            <span className="sr-only xl:hidden">credits available</span>
+          </Link>
+          <span className="hidden sm:inline-flex">
+            <ButtonLink href="/studio/credits" size="sm" className="h-10 px-4">
+              Top up
+            </ButtonLink>
+          </span>
+
+          <div ref={bellRef} className="relative">
             <button
-              ref={menuBtn}
               type="button"
-              onClick={() => setDrawer(true)}
-              aria-haspopup="dialog"
-              className="grid size-11 place-items-center rounded-[var(--radius-control)] border border-line-strong lg:hidden"
+              onClick={() => setBell((b) => !b)}
+              aria-expanded={bell}
+              aria-controls="notif-panel"
+              className="relative grid size-10 place-items-center rounded-full text-muted hover:bg-white/[0.06] hover:text-ink"
             >
-              <Menu aria-hidden className="size-5" />
-              <span className="sr-only">Open studio menu</span>
+              <Bell aria-hidden className="size-5" />
+              {active.length ? (
+                <span className="absolute top-1 right-1 grid size-4 place-items-center rounded-full bg-brand-blue text-[10px] font-bold text-white">{active.length}</span>
+              ) : null}
+              <span className="sr-only">Notifications{active.length ? `, ${active.length} running` : ""}</span>
             </button>
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <p className="min-w-0 truncate text-lg font-semibold">{title}</p>
-              <span className="hidden sm:inline-flex">
-                <PreviewPill />
-              </span>
-            </div>
+            {bell ? (
+              <div id="notif-panel" className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-elevated p-2 shadow-[var(--shadow-pop)]">
+                <p className="px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-muted uppercase">Recent jobs</p>
+                <ul>
+                  {recent.map((j) => {
+                    const p = jobPhase(j, now);
+                    return (
+                      <li key={j.id}>
+                        <Link
+                          href={j.settled ? `/studio/library?job=${j.id}` : TOOLS[j.tool].href}
+                          onClick={() => setBell(false)}
+                          className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm hover:bg-white/[0.05]"
+                        >
+                          <span className="min-w-0 truncate">{j.title}</span>
+                          <span className="shrink-0 text-xs text-muted">{j.expired ? "Expired" : PHASE_LABEL[p]}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
 
-            <div role="group" aria-label="Workspace" className="hidden items-center rounded-[var(--radius-control)] border border-line bg-surface p-1 text-sm md:flex">
-              <span aria-current="true" className="rounded-[8px] bg-raised px-3 py-1.5 font-semibold text-ink">
-                Customer studio
+          <details className="group relative">
+            <summary className="grid size-10 cursor-pointer place-items-center rounded-full bg-[linear-gradient(135deg,var(--color-brand-lime),#9ecbff_55%,var(--color-brand-blue))] p-[2px]">
+              <span className="grid size-full place-items-center rounded-full bg-brand-night text-sm font-bold text-ink">
+                <span aria-hidden>{initial}</span>
               </span>
-              <Link href="/partner" className="rounded-[8px] px-3 py-1.5 font-medium text-muted hover:text-ink">
-                Partner portal
+              <span className="sr-only">Account menu</span>
+            </summary>
+            <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-white/10 bg-elevated p-2 shadow-[var(--shadow-pop)]">
+              <p className="truncate px-2 py-1.5 text-sm text-muted">{demo.email || "demo.creator@example.com"}</p>
+              <Link href="/studio/billing" className="flex h-10 items-center rounded-xl px-2 text-sm hover:bg-white/[0.05]">
+                Plan and billing
               </Link>
-            </div>
-
-            <Link
-              href="/studio/credits"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:border-line-strong"
-            >
-              <Coins aria-hidden className="size-4 text-brand-lime" />
-              <span className="tabular">{fmtNum(demo.available)}</span>
-              <span className="hidden text-muted sm:inline">credits available</span>
-              <span className="sr-only sm:hidden">credits available</span>
-            </Link>
-
-            <div ref={bellRef} className="relative">
+              <Link href="/help" className="flex h-10 items-center rounded-xl px-2 text-sm hover:bg-white/[0.05]">
+                Help centre
+              </Link>
               <button
                 type="button"
-                onClick={() => setBell((b) => !b)}
-                aria-expanded={bell}
-                aria-controls="notif-panel"
-                className="relative grid size-10 place-items-center rounded-[var(--radius-control)] text-muted hover:bg-raised hover:text-ink"
+                onClick={() => {
+                  setDemo((s) => ({ ...s, signedIn: false }));
+                  router.push("/");
+                }}
+                className="flex h-10 w-full items-center gap-2 rounded-xl px-2 text-left text-sm hover:bg-white/[0.05]"
               >
-                <Bell aria-hidden className="size-5" />
-                {active.length ? (
-                  <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-brand-blue text-[10px] font-bold text-white">{active.length}</span>
-                ) : null}
-                <span className="sr-only">Notifications{active.length ? `, ${active.length} running` : ""}</span>
+                <LogOut aria-hidden className="size-4" /> Sign out
               </button>
-              {bell ? (
-                <div id="notif-panel" className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-[var(--radius-media)] border border-line bg-raised p-2 shadow-[var(--shadow-pop)]">
-                  <p className="px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-muted uppercase">Recent jobs</p>
-                  <ul>
-                    {recent.map((j) => {
-                      const p = jobPhase(j, now);
-                      return (
-                        <li key={j.id}>
-                          <Link
-                            href={j.settled ? `/studio/library?job=${j.id}` : TOOLS[j.tool].href}
-                            onClick={() => setBell(false)}
-                            className="flex items-center justify-between gap-3 rounded-[10px] px-2 py-2 text-sm hover:bg-surface"
-                          >
-                            <span className="min-w-0 truncate">{j.title}</span>
-                            <span className="shrink-0 text-xs text-muted">{j.expired ? "Expired" : PHASE_LABEL[p]}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : null}
             </div>
+          </details>
+        </header>
+        <p className="px-4 pb-2 text-xs text-muted sm:hidden">
+          <PreviewPill /> <span className="ml-1">Nothing here is real.</span>
+        </p>
 
-            <details className="group relative">
-              <summary className="grid size-10 cursor-pointer place-items-center rounded-full bg-brand-violet text-sm font-bold text-white">
-                <span aria-hidden>{(demo.email || "D").slice(0, 1).toUpperCase()}</span>
-                <span className="sr-only">Account menu</span>
-              </summary>
-              <div className="absolute right-0 z-50 mt-2 w-64 rounded-[var(--radius-media)] border border-line bg-raised p-2 shadow-[var(--shadow-pop)]">
-                <p className="truncate px-2 py-1.5 text-sm text-muted">{demo.email || "demo.creator@example.com"}</p>
-                <Link href="/help" className="flex h-10 items-center rounded-[10px] px-2 text-sm hover:bg-surface">
-                  Help centre
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDemo((s) => ({ ...s, signedIn: false }));
-                    router.push("/");
-                  }}
-                  className="flex h-10 w-full items-center gap-2 rounded-[10px] px-2 text-left text-sm hover:bg-surface"
-                >
-                  <LogOut aria-hidden className="size-4" /> Sign out
-                </button>
-              </div>
-            </details>
-          </header>
-          <p className="border-b border-line px-4 py-1.5 text-xs text-muted sm:hidden">
-            <PreviewPill /> <span className="ml-1">Nothing here is real.</span>
-          </p>
-
-          <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
-            {demo.hydrated ? children : <ShellSkeleton />}
-          </main>
-        </div>
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+          {demo.hydrated ? children : <ShellSkeleton />}
+        </main>
       </div>
 
       <dialog
@@ -298,25 +367,33 @@ export function StudioShell({ children }: { children: ReactNode }) {
         onClick={(e) => {
           if (e.target === drawerRef.current) drawerRef.current?.close();
         }}
-        className="mr-auto ml-0 h-dvh max-h-dvh w-[min(20rem,100vw)] max-w-none border-r border-line bg-surface p-0 text-ink backdrop:bg-[rgb(4_10_25/0.7)]"
+        className="mr-auto ml-0 h-dvh max-h-dvh w-[min(20rem,100vw)] max-w-none rounded-r-[24px] border-r border-white/[0.07] bg-surface p-0 text-ink"
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b border-line px-3">
-            <Logo width={140} href="/" />
-            <button type="button" onClick={() => drawerRef.current?.close()} className="grid size-11 place-items-center rounded-[var(--radius-control)] text-muted hover:bg-raised">
+          <div className="flex h-16 items-center justify-between px-3">
+            <Logo width={136} href="/" />
+            <button type="button" onClick={() => drawerRef.current?.close()} className="grid size-11 place-items-center rounded-full text-muted hover:bg-white/[0.06]">
               <X aria-hidden className="size-5" />
               <span className="sr-only">Close menu</span>
             </button>
           </div>
           <div className="flex flex-1 flex-col overflow-y-auto p-3">
-            {rail(false, () => setDrawer(false))}
-            <div className="mt-4 grid gap-1 border-t border-line pt-4">
-              <Link href="/partner" className="flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-[15px] text-muted hover:bg-raised hover:text-ink">
-                <Users aria-hidden className="size-5" /> Partner portal
-              </Link>
-              <Link href="/help" className="flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-[15px] text-muted hover:bg-raised hover:text-ink">
-                <LifeBuoy aria-hidden className="size-5" /> Help centre
-              </Link>
+            <div className="mb-4 rounded-2xl border border-white/[0.08] bg-raised p-4">
+              <p className="text-xs text-muted">Available credits</p>
+              <p className="font-display text-2xl font-extrabold tabular">{fmtNum(demo.available)}</p>
+            </div>
+            {nav(false, () => setDrawer(false))}
+            <div className="mt-5 grid gap-0.5 border-t border-white/[0.07] pt-4">
+              {FOOTER_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setDrawer(false)}
+                  className="flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] text-muted hover:bg-white/[0.04] hover:text-ink"
+                >
+                  <l.icon aria-hidden className="size-5" /> {l.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
@@ -328,12 +405,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
 function ShellSkeleton() {
   return (
     <div className="p-6" aria-busy="true" aria-label="Loading studio">
-      <div className="h-8 w-56 animate-pulse-soft rounded-lg bg-raised" />
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-36 animate-pulse-soft rounded-[var(--radius-media)] bg-surface" />
-        ))}
-      </div>
+      <div className="mx-auto h-10 w-80 max-w-full animate-pulse-soft rounded-xl bg-raised" />
+      <div className="mx-auto mt-8 h-48 max-w-[860px] animate-pulse-soft rounded-[28px] bg-surface" />
     </div>
   );
 }

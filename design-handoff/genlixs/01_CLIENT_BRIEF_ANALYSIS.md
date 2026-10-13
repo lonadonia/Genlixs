@@ -1,5 +1,10 @@
 # 01 · Client brief analysis — Genlixs
 
+| Revision | Date | Inputs | Result |
+| --- | --- | --- | --- |
+| v1 | 13 Oct 2026 | Design Guide v1.0 (MD + PDF), `Logo.zip` (v1 masters) | First working preview of the four surfaces |
+| **v2** | 13–14 Oct 2026 | New logo package (`logo.zip`), new 4-colour palette (follow-up note: **the primary colour must be `#253FF6`**), three reference screenshots (a full-page AI-video-site capture, the "REDNIT" NFT hero, an AI-creation dashboard), a Google Drive media folder | Brand v2 across all surfaces, reference-led homepage hero, lit composer, reference-led customer dashboard, refreshed admin/partner rail. Rows changed by v2 are marked **v2** below |
+
 ## 1. Project snapshot
 
 | Item | Value |
@@ -7,7 +12,7 @@
 | Client / product | Genlixs — AI creation platform for images, reference-image edits and short videos |
 | Brief | *Genlixs — Website and Product Design Guide* v1.0, 13 Oct 2026 (Markdown + 32-page PDF) |
 | Deliverable named by the brief | Design brief and execution guide for four surfaces: public website, customer studio, admin console, affiliate portal (§Header, §18) |
-| Delivered in this run | Working, responsive Next.js design preview of all four surfaces with simulated data, plus this handoff set |
+| Delivered | Working, responsive Next.js design preview of all four surfaces with simulated data, plus this handoff set (v2 restyle on top of v1 behaviour) |
 | Repository | `lonadonia/Genlixs` (GitHub, **public**), branch `claude/nice-curie-ispn6l` |
 | Phase | Design / prototype. Backend, payments, auth and payouts are explicitly not built (§16: "Do not treat static mockups as proof of API … functionality") |
 
@@ -17,10 +22,13 @@
 | --- | --- | --- |
 | `Genlixs_Design_Guide_EN.md` | Read in full | Primary source of truth for this work |
 | `Genlixs_Design_Guide_EN.pdf` (32 pp.) | Pages 1–23 viewed; 24–32 mirror the Markdown | Branded schematics on pp. 11, 14, 18, 21 used for hierarchy only |
-| `Logo.zip` | Extracted and inspected | `Logo-white.png`, `logo-black.png` (RGBA), `Untitled-1.png`, `logo-fullwhite.png` (RGB, baked `#040A19`), all 21,627 × 4,487 px — matches §03 |
+| `Logo.zip` (v1) | Extracted and inspected — **superseded by v2** | `Logo-white.png`, `logo-black.png` (RGBA), `Untitled-1.png`, `logo-fullwhite.png` (RGB, baked `#040A19`), all 21,627 × 4,487 px |
+| `logo.zip` (**v2**, current) | Extracted and inspected | `Website-header-logo.png`, `white-logo.png`, `Full white-logo.png` (RGB, baked near-black `#101211`), `dark-logo.png` (RGBA), all 20,171 × 4,487 px (90.5 MP). Exported by colour-to-alpha against the baked background, trim and resize only (`brand/export_logo.py`) |
+| Palette image (**v2**) | Read from the attachment | Night `#0F1212` (swatch labelled "Lime" in the image — treated as a labelling slip), Lime `#E1FF01`, White `#FFFFFF`, Electric Blue `#253FF6`. Replaces the guide's §04 colours by client instruction |
+| Reference screenshots (**v2**) | Viewed as attachments | (1) full-page capture of an AI video/image site — section rhythm, lit composer, bento tool cards, FAQ, closing video band; (2) "REDNIT" NFT hero — huge headline with one accent word and a hand-drawn underline, pill CTAs, capsule portrait columns, three icon features under a hairline; (3) AI-creation dashboard — floating rounded sidebar with groups and a bottom icon row, top-right upgrade/credits/account, centred title, tool pill tabs, large glowing composer with upload tile, settings chips, cost and round submit, promo cards. Used for layout and interaction patterns only — no assets, copy, logos or brand names reproduced |
+| Google Drive folder (**v2**) | **BLOCKED_EXTERNAL** — not downloaded | The build environment's network policy denies `drive.google.com` (HTTP 403 from the egress proxy); the Drive connector caps downloads at 10 MB and the folder's archives are far larger. Placeholder media in the v2 palette were rendered instead (`brand/placeholder_renders.py`) and every frame is tagged "Placeholder" |
 | `Genlixs_Project_Blueprint_v2.md` (v2.1) | **NOT SUPPLIED** | Governs capabilities, pricing, financial algorithms, permissions. Every dependent value is a labelled placeholder |
-| `image.png` (palette) | NOT SUPPLIED | Hex values taken from guide §04, which states they were sampled from it |
-| Pollo / Higgsfield screenshots and sites | NOT SUPPLIED / not used | The guide already records the reference analysis (§02); no reference assets, copy or branding were reproduced |
+| `image.png` (v1 palette) | NOT SUPPLIED in v1 | v1 used guide §04 values; superseded by the v2 palette image |
 
 ## 3. What the client actually wants
 
@@ -28,6 +36,8 @@
 - **Tone:** usability of a creation console + confidence of an editorial media gallery; suitable for creators and businesses.
 - **Principles:** next action beside the information needed to take it; artwork gets space while settings, pricing and status stay readable; one brand and component system with role-specific density.
 - **Success definition:** "a usable creation journey and a coherent visual identity. A striking hero alone does not satisfy this brief."
+- **v2 follow-up (client note, Arabic):** "the primary colour must be 253FF6" — electric blue is the main brand and action colour; lime stays only as a small secondary accent.
+- **v2 request (client message, Arabic, paraphrased):** use the new logo package and palette; make the whole site more professional and beautiful, inspired by the attached site capture; model the hero on the attached hero image and the customer dashboard on the attached dashboard; use the images and videos in the Drive folder as visual inspiration for visitors.
 
 ## 4. Scope boundary
 
@@ -46,33 +56,33 @@ Classification: `EXPLICIT` (stated in guide), `CONSTRAINT`, `DEPENDENCY`, `PROPO
 
 | ID | Class | Source | Requirement | Priority | Implementation | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| REQ-001 | CONSTRAINT | §03 | Use supplied wordmark; white on dark, dark on light; never redraw/stretch | MUST | `components/brand/logo.tsx`, exports in `public/brand/` (trim + resize only) | Verified |
-| REQ-002 | EXPLICIT | §03 | Optimised delivery exports; never ship the 97 MP masters; preserve masters | MUST | 480/960 px PNG+WebP exports; masters in `brand/source/` (not served) | Verified |
-| REQ-003 | EXPLICIT | §03 | Header wordmark 160–184 px desktop, 136–152 px mobile, ≥ 8 px clear space | SHOULD | 168 px / 136 px with 8 px padding | Verified |
-| REQ-004 | EXPLICIT | §03 | Collapsed rail / favicon use the extracted supplied symbol | SHOULD | `genlixs-symbol-*.png`, `app/icon.png`, `favicon.ico`, `apple-icon.png` | Verified |
-| REQ-005 | CONSTRAINT | §04 | Exact core colours `#1C5DFF #ADDB5A #763DFF #FE5511`; blue owns primary actions | MUST | `globals.css` `@theme` tokens; all primary buttons blue | Verified |
-| REQ-006 | EXPLICIT | §04 | Neutral + semantic token table | MUST | `--color-canvas … --color-warning` | Verified |
-| REQ-007 | EXPLICIT | §04 | Contrast rules: no small text in base blue/violet on dark; dark text on lime/orange | MUST | Derived tints `#A9C1FF`, `#C4A6FF`, `#FF7A45`, `#FF8FA0` for dark text; ratios in 02 | Verified |
-| REQ-008 | CONSTRAINT | §04 | Decoration limited: one subtle glow / branded divider / editorial accent | MUST | One blue→violet glow behind composer; "layer-stack" accent; 4-colour brand rule | Verified |
-| REQ-009 | EXPLICIT | §05 | Inter; type scale; body 1.45–1.65, headline 1.05–1.15 | MUST | Self-hosted Inter Variable; h1 32→56 px, line-height 1.08 | Verified |
+| REQ-001 | CONSTRAINT | §03, **v2** | Use the supplied wordmark (now the v2 package); light on dark, dark on light; never redraw/stretch | MUST | `components/brand/logo.tsx` variants header / color / dark / mono; exports in `public/brand/` (colour-to-alpha, trim + resize only) | Verified |
+| REQ-002 | EXPLICIT | §03 | Optimised delivery exports; never ship the 90 MP masters; preserve masters | MUST | 480/960 px PNG+WebP exports (≤ 53 KB); masters in `brand/source/` (not served) | Verified |
+| REQ-003 | EXPLICIT | §03 | Header wordmark 160–184 px desktop, 136–152 px mobile, ≥ 8 px clear space | SHOULD | v2 wordmark is wider (4.87 : 1), so 150 px desktop / 128 px phone gives the same cap height as v1's 168 / 136 px; 6 px padding inside a 76 px header | Verified (adjusted for the v2 ratio) |
+| REQ-004 | EXPLICIT | §03 | Collapsed rail / favicon use the extracted supplied symbol | SHOULD | `genlixs-symbol-tile-*.png` / `-color-*.png`, `app/icon.png`, `favicon.ico`, `apple-icon.png`, `opengraph-image.png` | Verified |
+| REQ-005 | CONSTRAINT | §04 → **v2** | Exact core colours, now **Night `#0F1212`, Lime `#E1FF01`, White, Electric Blue `#253FF6`** (client v2 palette); **Electric Blue is the primary colour** (client note) | MUST | `globals.css` `@theme`: `brand-blue` fills every primary button, selected tab, active nav item, announcement bar and brand band (white text 6.7 : 1); `brand-blue-bright` `#5165F8` for display accents and icons on dark; lime only for the hero underline, signal dots, success states and the focus ring | Verified |
+| REQ-006 | EXPLICIT | §04 | Neutral + semantic token table | MUST | Night-tinted neutrals `canvas … elevated`, `line`, `line-strong`; light `paper … rule-strong`; semantic tints | Verified |
+| REQ-007 | EXPLICIT | §04, **v2** | Contrast: no text in raw electric blue on dark (2.8 : 1); dark text on lime | MUST | Accent headlines use `#5165F8` (4.1 : 1 on night, ≥ 3.5 : 1 in glow areas — large text only); small blue-family text uses `link` `#A9B4FF` (9.0–9.6 : 1); lime never used as text/graphic on white (1.1 : 1); ratios in 02 §3 | Verified (computed) |
+| REQ-008 | CONSTRAINT | §04 → **v2** | Decoration limited (guide) vs. the client's v2 request for a richer, reference-led look | MUST | Client direction applied within limits: electric-blue glows behind the creation areas, one hand-drawn lime underline (hero), capsule media columns, brand rule; no particles, parallax, rainbow borders or sound | Verified (client-directed change) |
+| REQ-009 | EXPLICIT | §05, **v2** | Inter; type scale; body 1.45–1.65, headline 1.05–1.15 | MUST | Inter Variable for UI/body; **Archivo Variable (expanded, OFL)** for display headlines to match the references' wide grotesk; hero h1 40 → 68 px, line-height 1.04 | Verified |
 | REQ-010 | EXPLICIT | §05 | Spacing scale, 32–48 px desktop gutters, 16–20 px mobile, 64–96 px public sections, 44–48 px controls | SHOULD | `px-4 sm:px-6 lg:px-10`, `py-16 lg:py-24`, `h-11/h-12` controls | Verified |
 | REQ-011 | EXPLICIT | §05 | Radii 10–12 / 16 / 20 px; fine borders; shadows only on dropdowns/dialogs/light cards | SHOULD | `--radius-control/media/dialog`; `--shadow-pop/lift` | Verified |
 | REQ-012 | EXPLICIT | §06 | Public top nav Tools, Examples, Pricing, Partners, Help + Sign in / Create | MUST | `public-header.tsx` | Verified |
-| REQ-013 | EXPLICIT | §06 | Customer rail: Overview, Image, Edit, Video, Library, Credits, Billing, Support; credits, notifications, account | MUST | `studio-shell.tsx` | Verified |
-| REQ-014 | EXPLICIT | §06 | Rail 224–240 px; collapsed ≈ 72 px with labels/tooltips; mobile drawer keeps names | MUST | 232 px ≥ 1280, 72 px 1024–1279 with tooltips + aria-labels, labelled drawer < 1024 | Verified |
+| REQ-013 | EXPLICIT | §06, **v2** | Customer rail: Overview, Image, Edit, Video, Library, Credits, Billing, Support; credits, notifications, account | MUST | `studio-shell.tsx`: grouped Create / Your work / Account (Overview is labelled "Home"), "New creation" action, balance card, bottom icon row (Partner portal, Help, Status); header Top up, credits, notifications, account | Verified |
+| REQ-014 | EXPLICIT | §06 | Rail 224–240 px; collapsed ≈ 72 px with labels/tooltips; mobile drawer keeps names | MUST | Floating rounded rail: 236 px ≥ 1280, 72 px 1024–1279 with tooltips + aria-labels, labelled drawer < 1024 | Verified |
 | REQ-015 | EXPLICIT | §06 | "Customer studio / Partner portal" switch; never combine cash earnings and credits | MUST | Switch in both headers; balances are separate everywhere | Verified |
 | REQ-016 | EXPLICIT | §06 | Admin role-gated and visually explicit | MUST | Role badge in rail; role-dependent actions (prototype role switch) | Verified (simulated) |
-| REQ-017 | EXPLICIT | §07 | 72 px header; eyebrow; headline "Turn your ideas into images and videos."; sentence "Create images, edit a reference, or generate a short video in one workspace." | MUST | `(public)/page.tsx` hero — copy verbatim | Verified |
-| REQ-018 | EXPLICIT | §07 | 720–880 px composer: Image / Edit image / Video tabs, 100–160 px prompt, reference slot, settings row, action; Image default | MUST | `composer.tsx` (max-w 880 px, 112–132 px prompt) | Verified |
+| REQ-017 | EXPLICIT | §07, **v2** | Header; eyebrow; headline "Turn your ideas into images and videos."; sentence "Create images, edit a reference, or generate a short video in one workspace." | MUST | `public/hero.tsx` — copy verbatim in the reference-led layout (76 px header) | Verified |
+| REQ-018 | EXPLICIT | §07, **v2** | 720–880 px composer: Image / Edit image / Video tabs, 100–160 px prompt, reference slot, settings row, action; Image default | MUST | `public/composer.tsx`: lit console (max-w 880 px), blue pill tabs, 104–120 px prompt, "+" reference tile on Edit, settings chips, blue action; prompt ideas below | Verified |
 | REQ-019 | EXPLICIT | §07 | Guest action "Open image/video studio"; draft saved before sign-in; no invented price for guests; studio shows "Generate for N credits" | MUST | Draft in `demo-store`; `/sign-in?next=` | Verified (FLOW-1) |
 | REQ-020 | EXPLICIT | §07 | Guest reference action asks to sign in, retains prompt; never implies anonymous upload | MUST | Edit tab: "Sign in to add reference" | Verified |
-| REQ-021 | EXPLICIT | §07 | Media rail: featured output, edit comparison, video example; model/tool info; "Use this prompt" | MUST | Hero "Curated examples" rail | Verified |
-| REQ-022 | EXPLICIT | §07 | Section order: header, creation stage, featured gallery, prompt-to-result, use cases, before/after + motion, four steps, model cards, price preview, partner invitation, FAQ, footer | MUST | Same order in `(public)/page.tsx` | Verified |
-| REQ-023 | EXPLICIT | §07 | Layouts reflect content; no repeated three-card pattern | SHOULD | Asymmetric gallery, tabbed story, scroll row, wide comparison, joined step strip, tool columns, contained pricing block | Verified |
-| REQ-024 | EXPLICIT | §07 | 16:9 / 3:2 / 9:16 frames, text below media, hover + touch actions, poster + explicit playback, no autoplay audio | MUST | `MediaFrame`, native `<video controls preload="none">` | Verified |
+| REQ-021 | EXPLICIT | §07 | Media rail: featured output, edit comparison, video example; model/tool info; "Use this prompt" | MUST | "Curated examples" rail under the composer | Verified |
+| REQ-022 | EXPLICIT | §07, **v2** | Section order: header, creation stage, featured gallery, prompt-to-result, use cases, before/after + motion, four steps, model cards, price preview, partner invitation, FAQ, footer | MUST | Same order; the creation stage is now hero + composer section; v2 adds an electric CTA band after the four steps and a closing video band before the footer | Verified |
+| REQ-023 | EXPLICIT | §07 | Layouts reflect content; no repeated three-card pattern | SHOULD | Bento gallery (4-col, dense), tabbed story, scroll row, wide comparison, numeral step cards, tool columns, split pricing, partner split panel, accordion | Verified |
+| REQ-024 | EXPLICIT | §07 | 16:9 / 3:2 / 9:16 frames, text below media, hover + touch actions, poster + explicit playback, no autoplay audio | MUST | `MediaFrame`; gallery "Use prompt" on hover/focus, always visible on touch; story/edit clips use native `<video controls preload="none">`; optional muted previews (hero capsule, gallery hover, closing band) load only when visible, honour reduced motion/save-data, pause offscreen, when hidden and on demand (guide §07, §12) | Verified |
 | REQ-025 | EXPLICIT | §07 | Home responsive behaviour at 1024 / 768 / 390 / 360 | MUST | Nav collapses < 1024; one featured card < 640 | Verified |
-| REQ-026 | EXPLICIT | §08 | Overview: "What would you like to create?", draft card, active tasks, recent outputs, credit badge; no revenue charts | MUST | `overview.tsx` | Verified |
-| REQ-027 | EXPLICIT | §08 | Studio: ≈ 224 nav / 360 settings / canvas; cost + Generate at the bottom of settings, visible | MUST | `workspace.tsx` sticky price/action block | Verified |
+| REQ-026 | EXPLICIT | §08, **v2** | Overview: "What would you like to create?", draft card, active tasks, recent outputs, credit badge; no revenue charts | MUST | `overview.tsx` (studio Home): centred title, tool tabs, lit composer holding the saved draft with exact cost beside a round Generate, promo cards, active jobs, recent work; balance in rail + header | Verified |
+| REQ-027 | EXPLICIT | §08 | Studio: ≈ 224 nav / 360 settings / canvas; cost + Generate at the bottom of settings, visible | MUST | `workspace.tsx`: 380 px floating settings panel with sticky price/action block | Verified |
 | REQ-028 | EXPLICIT | §08 | Capability-driven settings; model picker explains purpose; cost change refreshes quote; demo vs personal output distinct | MUST | `ModelPicker`, `reconcileSettings`, "Updating quote…", "Example — not your output" | Verified |
 | REQ-029 | EXPLICIT | §08 | Image: ratio rectangles, example + starter on empty canvas, zoom with Escape, original download, metadata panel | MUST | `RatioChips`, `ResultMedia`, `ResultDetails` | Verified |
 | REQ-030 | EXPLICIT | §08 | Edit: reference first (thumb, name/type, Remove, Replace); labelled versions; slider + discrete buttons; no mask/layers | MUST | `ReferenceUploader`, `CompareSlider` | Verified |
@@ -103,6 +113,14 @@ Classification: `EXPLICIT` (stated in guide), `CONSTRAINT`, `DEPENDENCY`, `PROPO
 | REQ-055 | EXPLICIT | §15 | Editable design file (Figma if chosen) | SHOULD | Not producible here; coded components + tokens + screenshots | BLOCKED_EXTERNAL |
 | REQ-056 | DEPENDENCY | §13 | Arabic / RTL only if enabled | COULD | Not enabled | NOT_APPLICABLE |
 | REQ-057 | DEPENDENCY | Blueprint | Real catalog, prices, credit rules, partner terms | MUST (for launch) | Data-driven placeholders in `catalog.ts`, `packs.ts`, `admin-data.ts` | BLOCKED_EXTERNAL |
+| REQ-058 | EXPLICIT | **v2** client | Use the new logo package | MUST | v2 masters in `brand/source/`; header / color / dark / mono exports, symbols, favicon, OG image | Verified |
+| REQ-059 | EXPLICIT | **v2** client | Use the new colour palette | MUST | Tokens in `globals.css`; v1 colours removed from all surfaces (grep-verified) | Verified |
+| REQ-060 | EXPLICIT | **v2** client | Make the whole site more professional and beautiful, inspired by the attached site capture | MUST | Display typography, section eyebrows, bento gallery, lit composer, numeral steps, electric band, closing video band, rounded 24–32 px panels, refreshed info pages and sign-in | Verified (visual review) |
+| REQ-061 | EXPLICIT | **v2** client | Hero modelled on the attached hero image | MUST | `public/hero.tsx`: oversized headline with an electric-blue accent phrase + drawn lime underline, blue "Start creating ↗" + outline "See examples ▷", three icon features under a hairline, three capsule columns scrolling in alternate directions (horizontal strip on phones) | Verified |
+| REQ-062 | EXPLICIT | **v2** client | Customer dashboard modelled on the attached dashboard | MUST | `studio-shell.tsx` + `overview.tsx` (see REQ-013, 014, 026) | Verified |
+| REQ-063 | EXPLICIT | **v2** client | Use the images and videos in the shared Drive folder as visual inspiration | SHOULD | Not reachable from the build environment (proxy 403 on `drive.google.com`; connector 10 MB cap). Brand-palette placeholders rendered instead; media manifest `src/lib/media.ts` has a `placeholder` flag so approved files can replace them without component changes | BLOCKED_EXTERNAL |
+| REQ-064 | CONSTRAINT | WCAG 2.2.2 | Auto-moving content (> 5 s) needs a pause control | MUST | `MotionRegion` adds a visible Pause/Play button to the hero columns, phone strip and closing band; hover/focus also pause; reduced motion stops them | Verified |
+| REQ-065 | EXPLICIT | **v2** client note | "The primary colour must be `#253FF6`" | MUST | See REQ-005; no lime primary buttons remain (grep); screenshots `01`, `07`, `11`, `18`, `23` | Verified |
 
 ## 6. Current experience audit
 
@@ -110,7 +128,15 @@ No existing site or code was supplied; the repository was empty (`git log`: no c
 
 ## 7. Reference analysis
 
-The guide's own analysis (§02) is adopted: creator-console composer + curated, reusable examples; public top nav, customer rail. No reference visuals were available in this session, and none were reproduced.
+v1 adopted the guide's own analysis (§02): creator-console composer + curated, reusable examples; public top nav, customer rail.
+
+v2 adds the client's three screenshots. What was taken (patterns only) and what was deliberately not:
+
+| Reference | Patterns adopted | Not adopted |
+| --- | --- | --- |
+| Full-page AI video/image site | Dark canvas with electric glow, lit composer as the main entry, tool cards with media headers, bento example grid, FAQ cards, closing video band, pill nav | Their logos, model names, thumbnails, copy, testimonials, user counts, "unlimited" or discount claims |
+| "REDNIT" hero | Oversized headline with one accent phrase + hand-drawn underline, pill CTAs (filled + outline), capsule media columns, three icon features under a hairline | NFT content, illustration style, any artwork |
+| AI-creation dashboard | Floating rounded sidebar with groups and a bottom icon row, top-right upgrade / credits / account, centred title, tool pill tabs, glowing composer with upload tile, settings chips, cost + round submit, promo cards | Their product names, models, promos and pricing |
 
 ## 8. Assumptions, contradictions and missing inputs
 
@@ -122,6 +148,9 @@ The guide's own analysis (§02) is adopted: creator-console composer + curated, 
 | A-004 | Admin roles: Operations admin, Support agent, Finance approver; support cannot adjust credits; only finance approves payouts; approver ≠ preparer | Medium | Permissions copy | Confirm against blueprint permissions |
 | A-005 | Delayed = running > expected duration + 4 s in the simulation | Low (simulation only) | None in production | Production uses observed p95 data (§08) |
 | A-006 | Payout threshold $50 and 72 h payout-detail cooldown are sample policy | Low | Copy | Replace with approved terms |
+| A-007 (v2) | The palette swatch labelled "Lime" with value `#0F1212` is the night/background colour (a labelling slip); lime is `#E1FF01` | High | Low — token rename only | Confirm with the client |
+| A-008 (v2) | **Resolved by the client:** electric blue `#253FF6` is the primary colour on every surface; lime is a secondary accent | — | — | Confirmed by client note |
+| A-009 (v2) | Archivo (expanded, OFL) is an acceptable display face beside Inter; the guide names only Inter | Medium | Low — one token (`--font-display`) | Confirm or supply the brand display face |
 
 Contradiction noted: §07 asks the composer to include an "optional reference slot", while §07 also says the guest reference action must request sign-in. Resolved by showing the reference slot only on the Edit tab (where a reference is required) with a sign-in action, avoiding an implied anonymous upload.
 
@@ -129,7 +158,7 @@ Contradiction noted: §07 asks the composer to include an "optional reference sl
 
 - **Blueprint v2.1 missing** — every financial number, price and permission is a placeholder. High risk if the preview is mistaken for real terms; mitigated by persistent "Design preview / Sample data" labelling and `noindex`.
 - **Public repository** — the repo is public, so the supplied logo masters and this handoff are publicly visible. Make it private if that is not intended.
-- **Concept media** — procedural artwork, not model output; must be replaced before launch.
+- **Placeholder media** — procedural renders, not model output; must be replaced before launch. The client's Drive media could not be fetched here (REQ-063).
 
 ## 10. Immediate recommendation
 

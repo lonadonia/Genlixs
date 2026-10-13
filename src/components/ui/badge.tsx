@@ -5,20 +5,20 @@ import { cn } from "@/lib/format";
 export type Tone = "success" | "info" | "violet" | "attention" | "warning" | "error" | "neutral";
 
 const dark: Record<Tone, string> = {
-  success: "bg-[rgb(173_219_90/0.12)] text-brand-lime border-[rgb(173_219_90/0.28)]",
-  info: "bg-[rgb(28_93_255/0.16)] text-link border-[rgb(28_93_255/0.4)]",
-  violet: "bg-[rgb(118_61_255/0.16)] text-violet-on-dark border-[rgb(118_61_255/0.4)]",
-  attention: "bg-[rgb(254_85_17/0.12)] text-orange-on-dark border-[rgb(254_85_17/0.35)]",
-  warning: "bg-[rgb(254_85_17/0.12)] text-orange-on-dark border-[rgb(254_85_17/0.35)]",
-  error: "bg-[rgb(214_54_82/0.14)] text-error-on-dark border-[rgb(214_54_82/0.4)]",
+  success: "bg-[rgb(225_255_1/0.1)] text-brand-lime border-[rgb(225_255_1/0.3)]",
+  info: "bg-[rgb(37_63_246/0.2)] text-link border-[rgb(37_63_246/0.5)]",
+  violet: "bg-[rgb(37_63_246/0.2)] text-link border-[rgb(37_63_246/0.5)]",
+  attention: "bg-[rgb(255_181_71/0.1)] text-orange-on-dark border-[rgb(255_181_71/0.35)]",
+  warning: "bg-[rgb(255_181_71/0.1)] text-orange-on-dark border-[rgb(255_181_71/0.35)]",
+  error: "bg-[rgb(239_68_68/0.12)] text-error-on-dark border-[rgb(239_68_68/0.4)]",
   neutral: "bg-raised text-muted border-line",
 };
 
 const light: Record<Tone, string> = {
-  success: "bg-success-tint text-success-text border-[#cfe6a8]",
-  info: "bg-info-tint text-info-text border-[#c9d8ff]",
-  violet: "bg-violet-tint text-violet-text border-[#dccdff]",
-  attention: "bg-orange-tint text-orange-text border-[#ffd4bf]",
+  success: "bg-success-tint text-success-text border-[#dceb8f]",
+  info: "bg-info-tint text-info-text border-[#c7cefd]",
+  violet: "bg-violet-tint text-violet-text border-[#c7cefd]",
+  attention: "bg-orange-tint text-orange-text border-[#f3d9a8]",
   warning: "bg-warning-tint text-warning border-[#f3d9a8]",
   error: "bg-error-tint text-error-text border-[#f6c4c4]",
   neutral: "bg-neutral-tint text-muted-dark border-rule",
@@ -65,16 +65,17 @@ export function Badge({
   );
 }
 
-export function ConceptTag({ className }: { className?: string }) {
+export function ConceptTag({ className, label = "Placeholder" }: { className?: string; label?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-full bg-[rgb(11_15_26/0.78)] px-2.5 text-[11px] font-semibold tracking-wide text-ink uppercase backdrop-blur-sm",
+        "inline-flex h-6 items-center gap-1.5 rounded-full bg-[rgb(15_18_18/0.72)] px-2.5 text-[11px] font-semibold tracking-wide text-ink uppercase backdrop-blur-md",
         className,
       )}
-      title="Temporary concept media — replace with validated Genlixs output before launch"
+      title="Temporary placeholder media — replace with approved Genlixs examples before launch"
     >
-      Concept media
+      <span aria-hidden className="size-1.5 rounded-full bg-brand-lime" />
+      {label}
     </span>
   );
 }

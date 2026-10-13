@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { MEDIA, type MediaKey } from "@/lib/media";
+import { MEDIA, stillOf, type MediaKey } from "@/lib/media";
 import { cn } from "@/lib/format";
 import { ConceptTag } from "./badge";
 
@@ -12,6 +12,7 @@ const ratioClass: Record<string, string> = {
   "4:5": "aspect-[4/5]",
   "9:16": "aspect-[9/16]",
   "4:3": "aspect-[4/3]",
+  "3:4": "aspect-[3/4]",
 };
 
 /** Fixed-ratio media frame: space is reserved before the file arrives (guide §08). */
@@ -20,7 +21,7 @@ export function MediaFrame({
   ratio = "3:2",
   sizes = "(min-width: 1024px) 50vw, 100vw",
   priority,
-  concept = true,
+  concept,
   className,
   imgClassName,
   children,
@@ -30,6 +31,7 @@ export function MediaFrame({
   ratio?: string;
   sizes?: string;
   priority?: boolean;
+  /** Show the placeholder tag; defaults to the manifest's `placeholder` flag. */
   concept?: boolean;
   className?: string;
   imgClassName?: string;
@@ -37,17 +39,11 @@ export function MediaFrame({
   alt?: string;
 }) {
   const m = MEDIA[media];
-  const src = m.kind === "video" ? m.poster! : m.src;
+  const showTag = concept ?? m.placeholder;
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-[var(--radius-media)] border border-line bg-raised",
-        ratioClass[ratio] ?? "aspect-[3/2]",
-        className,
-      )}
-    >
-      <Image src={src} alt={alt ?? m.alt} fill sizes={sizes} priority={priority} className={cn("object-cover", imgClassName)} />
-      {concept ? <ConceptTag className="absolute top-3 left-3" /> : null}
+    <div className={cn("relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-raised", ratioClass[ratio] ?? "aspect-[3/2]", className)}>
+      <Image src={stillOf(media)} alt={alt ?? m.alt} fill sizes={sizes} loading={priority ? "eager" : undefined} className={cn("object-cover", imgClassName)} />
+      {showTag ? <ConceptTag className="absolute top-3 left-3" /> : null}
       {children}
     </div>
   );

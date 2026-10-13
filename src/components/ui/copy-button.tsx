@@ -45,14 +45,14 @@ export function CopyButton({
       type="button"
       onClick={copy}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold whitespace-nowrap transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition-colors",
         variant === "inline" && "h-8 px-2 text-xs",
         variant === "button" && "h-11 px-4 text-sm",
-        variant === "primary" && "h-11 bg-brand-blue px-4 text-sm text-white hover:bg-brand-blue-hover",
+        variant === "primary" && "btn-primary h-11 bg-brand-blue px-5 text-sm text-white hover:bg-brand-blue-hover",
         variant !== "primary" &&
           (surface === "dark"
-            ? "border border-line-strong bg-raised text-ink hover:bg-[#222d40]"
-            : "border border-rule bg-sheet text-ink-dark hover:bg-paper"),
+            ? "border border-white/25 bg-white/[0.04] text-ink hover:bg-white/[0.08]"
+            : "border border-[#cfd4cd] bg-sheet text-ink-dark hover:bg-paper"),
         className,
       )}
     >

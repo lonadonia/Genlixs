@@ -1,165 +1,191 @@
-# 02 · Creative design blueprint — Genlixs
+# 02 · Creative design blueprint — Genlixs (brand v2)
+
+v2 supersedes the v1 palette, typography and decoration rules. Behaviour, journeys and data shapes are unchanged from v1. **Client note: the primary colour is Electric Blue `#253FF6`.**
 
 ## 1. Experience thesis
 
-> For creators and small businesses who need a usable image, edit or short clip, Genlixs should feel **ready, honest and calm** by putting a creation console first, showing every cost before it is spent, and letting real examples carry the visual weight — so a visitor reaches a first result without guessing what it will cost or what happened to their credits.
+> For creators and small businesses who need a usable image, edit or short clip, Genlixs should feel **ready, honest and electric**: a creation console first, every cost shown before it is spent, and bold artwork carrying the visual weight. A visitor should reach a first result without guessing what it will cost or what happened to their credits.
 
-Core tension: an expressive creative product vs. financial clarity. Resolution: the dark creative surfaces stay quiet (neutral canvas, one accent per screen) so artwork and the cost/action pair are the loudest elements; operational surfaces switch to a light, dense data canvas with the same type, controls and brand rail.
+Core tension: the client's reference-led, high-energy look against financial clarity. Resolution:
+- Expression lives in typography, glows and media. Every control, cost, status and financial surface keeps quiet, high-contrast styling.
+- Electric blue `#253FF6` is the primary colour: every main action, selected state, current-navigation marker and brand field. Lime is a sparing secondary accent: the hero underline, signal dots, success states and the focus ring.
 
-## 2. Three territories (brand-locked execution variants)
+## 2. Direction: "Electric Night"
 
-The logo, four colours and Inter are fixed by the brief, so the territories vary composition, motif and density rather than identity.
+Built from the client's three reference screenshots (patterns only, see 01 §7) and the v2 brand:
 
-| | A · Console & Gallery | B · Darkroom contact sheet | C · Layer stack |
-| --- | --- | --- | --- |
-| Proposition | Creation console on top, editorial gallery beneath — the guide's chosen composition | Results treated like prints on a lightbox: dense contact-sheet grids, film-strip timelines | The symbol's offset lime/orange edges become the system's motif for versions and featured areas |
-| Layout DNA | Centered composer, asymmetric 7/5 gallery, varied section forms | Uniform tight grids, horizontal strips | Stacked offset planes, layered cards |
-| Strength | Fastest path to Create; matches §02 | Strong for library/history | Ownable, derived from the supplied mark |
-| Risk | Can look generic without a motif | Monotonous; weak for first-time visitors; masonry-like grids conflict with §05 | Overuse becomes decoration (§04 limits accents) |
-| Score (fit 30 / task 25 / craft 20 / a11y 15 / feasibility 10) | 4.6 | 3.3 | 3.9 |
+| Layer | Decision |
+| --- | --- |
+| Canvas | Night `#0F1212` with faint dot field, electric-blue radial glow behind creation areas |
+| Type | Archivo Variable at 112 % width, extra-bold, −2 % tracking for display; Inter Variable for UI/body |
+| Primary | Electric blue for buttons, selected pill tabs, active navigation, announcement bar, brand band and glows; `#5165F8` tint for accent phrases in headlines and icons on dark |
+| Secondary accent | Lime for the hero's drawn underline, eyebrow/status dots, success states and the focus ring |
+| Shape | Pill controls (`rounded-full`), 20–32 px panels, capsule media in the hero |
+| Media | Placeholder renders in the palette (glossy torus, capsules, orbs, orbit loop) beside the v1 landscapes; all tagged "Placeholder" |
+| Motion | Scroll-driven section reveal, capsule columns drifting in opposite directions, underline draw-on; all stop under reduced motion; pause control on every moving region |
 
-**Chosen:** A with C's motif used once per screen. Specific decisions:
-
-1. The **layer-stack accent** (lime then orange edge offset behind the card, echoing the symbol) marks only the featured creation area: the public composer and the studio "Continue draft" card.
-2. The only glow is a blurred blue→violet field behind the public composer (§04 allows exactly one).
-3. A 4-colour **brand rule** (short stacked bars) appears once, in the footer.
-4. Step numerals use the symbol's **octagonal** silhouette (clip-path), not a new icon.
-5. Blue is reserved for primary actions and current navigation; violet only identifies video; lime only marks positive/eligible states; orange only for "Preview", attention and cost warnings.
+Alternatives considered:
+- (a) A light editorial site: rejected because the client references are all dark and electric.
+- (b) Lime as the primary action colour (an earlier v2 iteration): replaced at the client's request; lime also fails on white (1.1 : 1).
 
 ## 3. Colour tokens and tested contrast
 
-Core colours are fixed inputs. Derived tints exist only so small text never uses base blue/violet on dark (§04).
+Core colours are client inputs. Neutrals are tinted towards Night, and derived tints exist only for accessibility.
 
 | Token | Value | Role |
 | --- | --- | --- |
-| `brand-blue` / hover | `#1C5DFF` / `#174ED9` | Primary action, active nav |
-| `brand-lime` | `#ADDB5A` | Positive / eligible marker, dark text on it |
-| `brand-violet` | `#763DFF` | Video identity, avatar |
-| `brand-orange` | `#FE5511` | Attention, preview marker, favourite |
-| `canvas` / `surface` / `raised` | `#0B0F1A` / `#131A27` / `#1A2333` | Dark layers |
-| `line` / `line-strong` | `#2A3548` / `#6B7A94` | Structural divider / form-control boundary |
-| `ink` / `muted` | `#F6F8FC` / `#AAB6C8` | Text on dark |
-| `link` (derived) | `#A9C1FF` | Small links and info text on dark |
-| `violet-on-dark` / `orange-on-dark` / `error-on-dark` (derived) | `#C4A6FF` / `#FF7A45` / `#FF8FA0` | Small coloured text on dark |
-| `paper` / `sheet` / `rule` / `rule-strong` | `#F5F7FB` / `#FFFFFF` / `#DCE3EE` / `#7E8BA0` | Light data surfaces; `rule-strong` for form fields |
-| `ink-dark` / `muted-dark` | `#172234` / `#52627A` | Text on light |
-| Semantic light pairs | success `#2F6A12/#EEF8DD`, info `#1E4FD0/#E8EFFF`, violet `#5B2BD9/#F1EBFF`, attention `#B23C0A/#FFF0E8`, warning `#8A4B00/#FFF4E0`, error `#B42318/#FDECEC` | Badges and notices |
+| `brand-night` | `#0F1212` | Canvas, text on lime |
+| `brand-lime` / hover | `#E1FF01` / `#ECFF5C` | Secondary accent: hero underline, signal dots, success, focus ring on dark |
+| `brand-blue` / hover | `#253FF6` / `#1E33D6` | **Primary**: buttons, selected tabs, active nav, bands, glows (white text on it); never text on dark |
+| `brand-blue-bright` | `#5165F8` | Accent phrases in display headlines and icons on dark (large text / graphics only) |
+| `brand-white` | `#FFFFFF` | Text, selected pill tabs |
+| `canvas` / `surface` / `raised` / `elevated` | `#0F1212` / `#151919` / `#1B2020` / `#232929` | Dark layers |
+| `line` / `line-strong` | `#262C2C` / `#6E7B7B` | Divider / form-control boundary |
+| `ink` / `muted` / `subtle` | `#FFFFFF` / `#A3ABAB` / `#7E8888` | Text on dark |
+| `link` (derived) | `#A9B4FF` | Small links and info text on dark |
+| `orange-on-dark` / `error-on-dark` | `#FFB547` / `#FF7A7A` | Attention / error text on dark |
+| `paper` / `sheet` / `rule` / `rule-strong` | `#F4F5F2` / `#FFFFFF` / `#E3E6E1` / `#7A8383` | Light data surfaces |
+| `ink-dark` / `muted-dark` | `#0F1212` / `#59615F` | Text on light |
+| Semantic light pairs | success `#3F4700/#EFF8C2`, info `#253FF6/#E9ECFE`, warning `#8A4B00/#FFF4E0`, error `#B42318/#FDECEC` | Badges and notices |
 
-Computed WCAG 2.x ratios (this run, exact opaque pairs):
+Computed WCAG 2.x ratios (this run, opaque pairs; script output kept in QA notes):
 
 | Pair | Ratio | Use |
 | --- | --- | --- |
-| White / `#1C5DFF` | 5.17 | Primary button label |
-| White / `#174ED9` | 6.71 | Primary hover |
-| `#0B0F1A` / lime | 11.90 | Text on lime |
-| `#F6F8FC` / `#131A27` | 16.39 | Body on panels |
-| `#AAB6C8` / `#131A27` · `#1A2333` | 8.50 · 7.68 | Secondary text |
-| `#A9C1FF` / `#0B0F1A` · `#131A27` | 10.71 · 9.76 | Links on dark |
-| `#FF7A45` / `#131A27` | 6.74 | Attention text on dark |
-| `#FF8FA0` / `#131A27` | 8.04 | Error text on dark |
-| `#C4A6FF` / `#131A27` | 8.50 | Violet text on dark |
-| `#6B7A94` / `#1A2333` · `#131A27` | 3.63 · 4.01 | Input boundary (≥ 3:1) |
-| `#7E8BA0` / white · `#F5F7FB` | 3.45 · 3.22 | Light input boundary (≥ 3:1) |
-| `#172234` / `#F5F7FB` | 14.89 | Data text |
-| `#52627A` / white | 6.20 | Data labels |
-| `#1C5DFF` / white | 5.17 | Bars and active marks on light |
-| Light semantic pairs | 5.33 – 6.47 | Badges |
+| White / electric blue | 6.73 | Primary button label, announcement bar, selected tabs |
+| White / blue hover `#1E33D6` | 8.40 | Primary hover |
+| Blue-bright `#5165F8` / night · surface · raised | 4.09 · 3.85 · 3.58 | Display accents, icons (≥ 3 : 1) |
+| Blue-bright / blue-glow area (`#161D3A`) | 3.59 | Accent headline over the composer glow |
+| Night / lime | 16.59 | Text on lime (badges) |
+| White / canvas · surface · raised | 18.82 · 17.72 · 16.48 | Body text |
+| Muted / canvas · surface · raised | 8.04 · 7.57 · 7.04 | Secondary text |
+| Subtle / canvas · surface · raised | 5.17 · 4.86 · 4.52 | Tertiary text |
+| Link tint / canvas · surface | 9.56 · 9.00 | Links on dark |
+| Lime / canvas · surface | 16.59 · 15.62 | Focus ring, success text |
+| Lime focus ring / electric blue | 5.93 | Focus ring around blue buttons |
+| Electric blue / canvas | **2.80** | Never text — fills and glows only |
+| Blue / white | 6.73 | Inverse button on the blue band |
+| Line-strong / canvas · surface · raised | 4.29 · 4.04 · 3.75 | Input boundaries (≥ 3 : 1) |
+| Orange-on-dark / surface | 10.09 | Attention text |
+| Error-on-dark / surface | 7.02 | Error text |
+| Subtle / elevated | 4.06 | Disabled primary (distinguishable) |
+| Ink-dark / paper · white | 17.20 · 18.82 | Data text |
+| Muted-dark / white · paper | 6.36 · 5.82 | Data labels |
+| Rule-strong / white · paper | 3.89 · 3.55 | Light input boundaries |
+| Blue / white · info tint | 6.73 · 5.73 | Links and info badges on light |
+| Success · warning · error light pairs | 8.93 · 6.24 · 5.76 | Badges |
 | White / `#D63652` | 4.66 | Destructive button |
-| `#C3CCDB` / `#33405A` | 6.42 | Disabled primary on dark (distinguishable) |
+| Lime / white | **1.13** | Never used on light surfaces |
+
+Text over media (worst case: a pure-white pixel under the overlay):
+- 72 % night overlay with white text gives 7.62; this covers tags, closing band and the gallery "Use prompt" chip.
+- 95 % caption gradient with white text gives 16.79.
 
 ## 4. Typography, spacing, shape
 
-- **Inter Variable**, self-hosted (`@fontsource-variable/inter`, OFL 1.1). `cv11`, `ss01` features on.
-- Scale: home h1 32 → 44 → 56 px (`leading-[1.08]`), section h2 26 → 30 → 36 px, app titles 26–32 px, panel titles 16–18 px, body 15–17 px, labels 12–14 px, metrics 30–32 px. Body line-height 1.55.
-- Tabular numerals only in tables, ledgers and axes; large stat values use proportional figures.
-- Spacing: Tailwind 4-px scale; public gutters 16 / 24 / 40 px; public sections 64 / 96 px; app groups 16–24 px.
-- Containers: public 1360 px; studio 1200–1400 px; composer 880 px.
-- Radii: controls 11 px, media 16 px, dialogs 20 px. Shadows only on dialogs, dropdowns and light cards.
+- **Display:** Archivo Variable (`@fontsource-variable/archivo/wdth.css`, OFL 1.1), `font-stretch: 112%`, extra-bold, −0.02em.
+  - Hero h1: 40 → 52 → 60 → 48 (1024) → 60 (1280) → 68 px (≥ 1400). The breakpoints keep "Turn your ideas into" on one line, with the accent phrase on its own line from 640 px up.
+  - Section h2: 30 → 40 → 48 px, line-height 1.05.
+- **UI/body:** Inter Variable, `cv11` `ss01`, body 15–18 px, line-height 1.55. Tabular numerals in tables, ledgers, balances.
+- **Spacing:**
+  - Public gutters 16 / 24 / 40 px; sections 64–96 px.
+  - Containers: hero 1440, sections 1360, composer 880, studio Home 1180.
+- **Radii:**
+  - Pills for buttons, tabs and chips.
+  - Cards 20–24 px, feature panels 28–32 px, console 28 px.
+- **Shadows:** an electric-blue under-glow on primary buttons and console actions; pop shadows on menus and dialogs only.
 
 ## 5. Component library and states
 
-| Component | File | States implemented |
+| Component | File | States |
 | --- | --- | --- |
-| Button / ButtonLink | `ui/button.tsx` | primary, secondary, ghost, danger, light variants; hover, focus ring, busy (spinner + `aria-busy`), disabled with visible reason via `aria-describedby` |
-| Badge / ConceptTag | `ui/badge.tsx` | success, info, violet, attention, warning, error, neutral, busy, pending — always icon + text |
-| Dialog | `ui/dialog.tsx` | native `<dialog>`: focus contained, Escape, backdrop click, focus return, dark/light |
-| CopyButton | `ui/copy-button.tsx` | idle, copied, failed (live region) |
-| MediaFrame | `ui/media-frame.tsx` | fixed ratios, reserved space, concept tag |
-| CompareSlider | `compare-slider.tsx` | drag, arrow keys, three discrete buttons, focus ring |
-| Composer | `public/composer.tsx` | tabs (arrow keys), example-loaded notice, limit counter, edit-tab sign-in reference slot |
-| ModelPicker / RatioChips / Segmented / Toggle | `studio/controls.tsx` | available, experimental, maintenance (disabled with note), selected, focus |
-| ReferenceUploader | `studio/reference-uploader.tsx` | empty, drag-over, validating, failed (type/size), accepted, replace, remove, sample |
-| Quote + Generate | `studio/workspace.tsx` | updating quote, valid with countdown, expired (refresh), insufficient (top-up link), busy |
-| JobStatus | `studio/job-status.tsx` | waiting (cancel), submitting, confirming (no resubmit), generating, delayed, saving, ready, failed, cancelled |
-| ResultMedia / Actions / Details | `studio/result-view.tsx` | zoom, compare, video, download, reuse, favourite, share (create/revoke), delete (keeps record) |
-| Library card | `studio/library.tsx` | ready, running, failed, expired, favourite, shared |
-| Jobs table | `admin/jobs-table.tsx` | filtered, sorted, paginated, empty, phone cards |
-| ColumnChart | `partner/column-chart.tsx` | hover/focus tooltip, partial-period colour, table view |
-| ConsoleShell / StudioShell | `console/`, `studio/` | full rail, collapsed rail with tooltips, mobile drawer |
+| Button / ButtonLink | `ui/button.tsx` | primary (electric blue on every surface), secondary, ghost, danger, light variants, `outline-on-color`, `inverse`; sizes sm–xl; busy, disabled |
+| Badge / ConceptTag | `ui/badge.tsx` | tones with icon + text; "Placeholder" tag with lime dot |
+| Dialog, CopyButton, MediaFrame | `ui/` | as v1, restyled |
+| AutoplayVideo | `ui/autoplay-video.tsx` | muted loop; plays only when visible, motion allowed, not save-data and region not paused; `decorative` mode is hidden from assistive tech |
+| HoverVideo | `ui/hover-video.tsx` | poster → plays on card hover/focus → explicit Play/Pause button for touch/keyboard; pauses offscreen and when the tab is hidden |
+| MotionRegion | `motion-region.tsx` | visible Pause/Play for any moving region (WCAG 2.2.2); hover/focus pause |
+| Hero | `public/hero.tsx` | headline + underline draw, CTAs, features, capsule columns (desktop) / strip (phones) |
+| Composer (public) | `public/composer.tsx` | pill tabs (arrow keys), example-loaded notice, "+" reference tile (Edit), chip selects, counter, guest/authed action, prompt ideas |
+| QuickCreate (studio Home) | `studio/overview.tsx` | same draft; quality/length chips; exact cost + round Generate; edit routes to the edit studio; prompt error; insufficient credits with top-up link |
+| StudioShell | `studio/studio-shell.tsx` | floating rail (236 / 72 px), tooltips, groups, New creation, balance card, icon row; header switch, credits, Top up, notifications, account; drawer < 1024 |
+| Workspace, controls, JobStatus, results, uploader, library, credits | `studio/*` | as v1 behaviour; blue selection, blue pill segments, blue switch, rounded panels |
+| ConsoleShell (admin/partner) | `console/console-shell.tsx` | night rail with blue active tint and marker, light canvas, white panels, blue primary |
 
 ## 6. Site map and page specs
 
-**Public** — `/` in the guide's order:
-1. Header (72 px): wordmark 168 px, nav ≥ 1024, Sign in / Create; drawer < 1024 listing the three tools by name.
-2. Creation stage: eyebrow, h1, sentence (verbatim), composer (layer-stack + glow), curated rail (spheres output · noon→dusk comparison · aurora clip).
-3. Featured gallery: 7/5 asymmetric grid — 3:2 lead, two 1:1, one 9:16; every card has "Use this prompt".
-4. Prompt-to-result: three tabs; input recipe (prompt, settings table, Use/Copy) beside the output.
-5. Use cases: Social, Product, Concepts — scroll-snap row on phones, three columns on desktop, "Start with this idea".
-6. Before/after + motion: wide comparison (7 cols) and click-to-play clip (5 cols).
-7. Four steps: joined strip with octagonal numerals.
-8. Tools and models: three tool columns with capability-named models and availability badges.
-9. Pricing: contained split block — how credits work (quote, reserve, settle) + sample packs, flagged "not approved pricing".
-10. Partner invitation: proposition without rates; Apply / Preview portal.
-11. FAQ: native `<details>` accordion covering cost, delays, failure, privacy, rights.
-12. Footer: Create / Company / Policies, status link, preview disclaimer.
+**Public `/`** (guide order kept; v2 additions in italics):
+1. Header 76 px under a blue announcement bar: wordmark 150 px, pill nav ≥ 1024, Sign in, blue Create; drawer < 1024.
+2. Creation stage:
+   - Hero: eyebrow pill, h1 + underline, sentence, two CTAs, three features, capsule columns.
+   - Composer section `#create`: "What will you make today?", lit composer, prompt ideas, curated rail (torus output, noon→dusk comparison, orbit loop).
+3. Featured gallery `#examples`: 4-column dense bento (two tall, several wide), hover/touch "Use prompt", video card hover preview.
+4. Prompt-to-result: pill tabs (orbs image, dune edit, orbit loop), input recipe beside the output.
+5. Use cases: three tall cards with starter prompts (scroll-snap row on phones).
+6. Before/after + motion: blue-handled comparison slider + native clip.
+7. Four steps: outlined numerals, blue final step.
+8. *Electric band: blue panel, "Your next post starts with one sentence.", white inverse CTA + outline.*
+9. Tools and models `#tools`: three tool cards with media headers and model rows.
+10. Pricing: split — quote/reserve/settle steps + sample packs (flagged).
+11. Partner invitation: split panel with four facts.
+12. FAQ: card accordions with a blue plus/close.
+13. *Closing band: muted orbit loop under a 72 % overlay, "Start with a sentence.", CTAs, pause control.*
+14. Footer with brand rule and oversized mono wordmark watermark.
 
-**Customer** — rail shell; Overview; Image/Edit/Video studio (360 px settings + canvas; Input/Status/Result tabs < 1024); Library; Credits; Billing; Support.
-**Admin** — dark rail + light canvas; Overview; Jobs; Job detail; Payouts. Other §09 screens are listed as "Later".
-**Partner** — dark rail + light canvas; Overview; Links; Referrals; Commissions; Payouts; Resources; Settings; public `/partners/apply`.
+**Info pages** (help, status, terms/privacy/acceptable use, partner application): eyebrow pill, display h1, glow header, rounded panels. **Sign-in:** split layout with a placeholder brand panel on desktop.
+
+**Customer studio:** floating rail; Home (reference dashboard layout) → tool studios (380 px settings panel + canvas) → Library, Credits, Billing, Support.
+
+**Admin / partner:** night rail + light data canvas (unchanged behaviour).
 
 ## 7. Responsive behaviour
 
 | Width | Public | Customer | Admin / partner |
 | --- | --- | --- | --- |
-| 1440 | Full nav, 3-up rail, 7/5 gallery | 232 px rail, 360 px settings, large canvas | 232 px rail, full tables |
-| 1024 | Full nav; gallery keeps columns | 72 px icon rail with tooltips | Rail; tables scroll inside their region |
-| 768 | Menu drawer, composer full width, 3-up rail | Drawer; Input/Status/Result tabs | Drawer; filters wrap |
-| 390 / 360 | Title, sentence, composer, one featured card | Tabs; sticky Generate above safe area (released while a field is focused) | Record cards; stacked balances; Copy link first |
+| 1440 | Two-column hero with capsule columns; 4-col bento | 236 px floating rail, 380 px settings, canvas | 232 px rail, full tables |
+| 1024 | Hero columns narrower (h1 48 px) | 72 px icon rail with tooltips | Rail; tables scroll in region |
+| 768 | Single-column hero, capsule strip, menu drawer | Drawer; Input/Status/Result pill tabs | Drawer; filters wrap |
+| 390 / 360 | h1 40 px, accent wraps with underline under "videos.", 2-col gallery with caption action | Tabs; sticky Generate above safe area | Record cards; stacked balances |
 
 ## 8. Motion storyboard
 
 | Element | Trigger | Property / timing | Reduced motion | Purpose |
 | --- | --- | --- | --- | --- |
-| Controls | hover / focus | colour, border 150 ms | unchanged (no movement) | affordance |
-| Sections (public) | scroll into view | opacity + 14 px translate, CSS scroll-driven (`animation-timeline: view()`) ≈ first 22 % of entry | disabled; content always visible where unsupported | gentle reveal without JS |
-| Media cards | hover | 1.03 scale on image 300 ms (library/overview) | disabled | feedback |
-| Job phase strip | phase change | colour change; current phase pulses | pulse disabled | real state, no fake % |
-| Spinners | busy | rotation | reduced to one iteration | busy feedback |
-| Dialogs / drawers | open | native dialog | — | focus-safe |
+| Controls | hover / focus | colour, border 150 ms | unchanged | affordance |
+| Sections | scroll | opacity + 14 px, CSS `animation-timeline: view()` | disabled | reveal without JS |
+| Hero underline | load | stroke draw 900 ms after 250 ms | shown static | signature accent |
+| Capsule columns / phone strip | continuous | translateY / translateX loop 38–64 s | stopped | living gallery |
+| Media cards | hover | image scale 1.04 over 500–700 ms | disabled | feedback |
+| Gallery clip | hover / focus / button | muted playback | play only via button | preview |
+| Closing band loop | in view | muted playback | poster only | atmosphere |
+| Job phases, spinners, dialogs | as v1 | as v1 | as v1 | real state |
 
-No count-ups on money, no parallax, no pinned sections, no autoplay.
+Every moving region has a visible Pause control. There are no count-ups, parallax or sound.
 
 ## 9. Accessibility and performance rules
 
-- Skip link, landmarks, one visible h1 per view, labelled tablists with arrow keys, visible 2 px focus ring (`#A9C1FF` dark / `#1C5DFF` light).
-- Status always icon + text; disabled actions explain why next to the control.
-- Every chart has values in text or a table view; the column chart has a focusable tooltip per bar.
-- Images via `next/image` with fixed ratios; video `preload="none"` + poster; logo exports ≤ 46 KB; concept clip 320 KB; Inter self-hosted.
-- `robots: noindex` while the site carries sample data.
+- Skip link, landmarks, one h1 per view, labelled tablists with arrow keys, 2 px focus ring (lime on dark, electric blue on light).
+- Borderless text areas inside the lit console are identified by a visible label. The console frame turns blue-bright `#5165F8` on focus (≥ 3.5 : 1) with a stronger glow.
+- Selects and chips show a pill-shaped focus ring via `:has(:focus-visible)`.
+- Decorative video is `aria-hidden`; meaningful clips keep native controls.
+- Media budget:
+  - The hero uses one 61 KB loop; v2 stills are 125–151 KB JPEGs; videos use `preload="none"`.
+  - Logo exports are ≤ 53 KB; the display font is subset by `@fontsource`.
+- `robots: noindex` stays while the site carries sample data and placeholders.
 
 ## 10. Asset inventory
 
 | Asset | Status | Location |
 | --- | --- | --- |
-| Logo masters (4) | Supplied | `brand/source/` (not served) |
-| Wordmark exports white/dark 480/960 px PNG + WebP | Derived (trim + resize only) | `public/brand/` |
-| Symbol 64/512 px, favicon, apple icon | Derived (crop of supplied symbol) | `public/brand/`, `src/app/` |
-| Open Graph image | Composed: supplied white logo on `#0B0F1A` + palette bars | `src/app/opengraph-image.png` |
-| Concept media (6 stills, 1 clip) | Temporary, procedural (`brand/concept_media.py`) | `public/media/concept/` — replace before launch |
-| Validated Genlixs outputs, rights records | Missing | — |
-| Legal copy, support contact, pricing, partner terms | Missing | — |
+| Logo v2 masters (4) | Supplied | `brand/source/` (not served) |
+| Logo exports: header / color / dark / mono at 480/960 px (PNG + WebP); symbols (tile, color); favicon, icon, apple icon, OG | Derived (colour-to-alpha, trim, resize) | `public/brand/`, `src/app/` |
+| v2 placeholder stills (torus 1200×1500, capsules 900×1600, orbs 1600×1067) and orbit loop (960×540, 5 s, 61 KB) + poster | Temporary, procedural (`brand/placeholder_renders.py`) | `public/media/concept/v2-*` |
+| v1 concept media (dunes, spheres, product, aurora still + clip) | Temporary, procedural (`brand/concept_media.py`) | `public/media/concept/` |
+| Client Drive images/videos | **Not fetched** (network policy) | — swap in via `src/lib/media.ts` |
+| Validated outputs, rights records, legal copy, pricing, partner terms | Missing | — |
 
 ## 11. Handoff decisions
 
-- Figma was not available; the coded components, tokens and screenshots in `screenshots/` are the design source. A Figma rebuild should mirror `src/components` names.
-- The single data seam for production is `src/lib/*` — components consume plain props/state, so services can replace the demo store without redesign.
+- Media now flows through one manifest, `src/lib/media.ts`. Replacing a file means changing `src`/`poster`, setting `placeholder: false` and adding `credit`; components need no edits.
+- The data seam for production is still `src/lib/*`.
+- Figma was not available; the coded components, tokens and `screenshots/` are the design source.

@@ -63,7 +63,7 @@ export function Dialog({
         if (e.target === ref.current) ref.current?.close();
       }}
       className={cn(
-        "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius-dialog)] border p-0 shadow-[var(--shadow-pop)] backdrop:bg-[rgb(4_10_25/0.72)] backdrop:backdrop-blur-[2px]",
+        "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius-dialog)] border p-0 shadow-[var(--shadow-pop)] backdrop:bg-[rgb(8_10_10/0.75)] backdrop:backdrop-blur-[3px]",
         size === "md" && "max-w-lg",
         size === "lg" && "max-w-2xl",
         size === "xl" && "max-w-5xl",
@@ -87,7 +87,7 @@ export function Dialog({
               type="button"
               onClick={() => ref.current?.close()}
               className={cn(
-                "-mr-2 grid size-10 shrink-0 place-items-center rounded-[var(--radius-control)]",
+                "-mr-2 grid size-10 shrink-0 place-items-center rounded-full",
                 surface === "dark" ? "text-muted hover:bg-raised hover:text-ink" : "text-muted-dark hover:bg-neutral-tint",
               )}
             >

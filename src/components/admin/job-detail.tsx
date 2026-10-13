@@ -98,7 +98,7 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
             {TOOLS[job.tool].label} · {job.model} · {job.customerId}
           </p>
         </div>
-        <div className={cn("flex items-center gap-3 rounded-[var(--radius-control)] border px-3 py-2 text-sm", stale ? "border-[#f3d9a8] bg-warning-tint text-warning" : "border-[#cfe6a8] bg-success-tint text-success-text")}>
+        <div className={cn("flex items-center gap-3 rounded-[var(--radius-control)] border px-3 py-2 text-sm", stale ? "border-[#f3d9a8] bg-warning-tint text-warning" : "border-[#dceb8f] bg-success-tint text-success-text")}>
           {stale ? <CircleAlert aria-hidden className="size-4" /> : <CircleCheck aria-hidden className="size-4" />}
           <span role="status">{stale ? "Data may be stale — last refreshed 13 Oct, 09:00 UTC" : "Refreshed just now"}</span>
           <Button variant="secondary-light" size="sm" busy={refreshing} onClick={refresh} icon={<RefreshCw aria-hidden className="size-3.5" />}>
@@ -124,11 +124,19 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
             <ol className="relative space-y-5 border-l border-rule pl-6">
               {[...events, ...(action ? [{ at: action.at, title: "Credits returned by adjustment", detail: `${action.credits} credits · ${action.reason} · “${action.note}” · ${ROLE_LABEL[action.actor]} · ${action.id}`, tone: "success" as const }] : [])].map((e, i) => (
                 <li key={i} className="relative">
+                  {/* Status dots mirror the light badges: tone tint inside a tone ring that clears 3:1 on white
+                      (success olive 9.9, warning 6.8, error 4.7, neutral 3.9) — lime itself would be 1.1:1. */}
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute top-1 -left-[31px] grid size-4 place-items-center rounded-full ring-4 ring-sheet",
-                      e.tone === "error" ? "bg-error" : e.tone === "warning" ? "bg-[#d98a1f]" : e.tone === "success" ? "bg-[#5c9a1d]" : "bg-[#9aa8bd]",
+                      "absolute top-1 -left-[31px] grid size-4 place-items-center rounded-full border-2 ring-4 ring-sheet",
+                      e.tone === "error"
+                        ? "border-error bg-error-tint"
+                        : e.tone === "warning"
+                          ? "border-warning bg-warning-tint"
+                          : e.tone === "success"
+                            ? "border-success-text bg-success-tint"
+                            : "border-rule-strong bg-sheet",
                     )}
                   />
                   <p className="text-sm font-semibold text-ink-dark">{e.title}</p>
@@ -218,7 +226,8 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
               onChange={(e) => setAmount(e.target.value)}
               aria-invalid={Boolean(errors.amount)}
               aria-describedby={errors.amount ? `${ids}-amt-e` : undefined}
-              className="mt-1.5 h-11 w-40 rounded-[var(--radius-control)] border border-rule px-3 text-ink-dark tabular aria-invalid:border-error"
+              // `!`: globals.css's light-field border rule (unlayered, higher specificity) otherwise hides the error border on text inputs.
+              className="mt-1.5 block h-11 w-40 rounded-[var(--radius-control)] border border-rule-strong px-3 text-ink-dark tabular aria-invalid:border-error!"
             />
             {errors.amount ? <p id={`${ids}-amt-e`} className="mt-1 text-sm text-error-text">{errors.amount}</p> : null}
           </div>
@@ -232,7 +241,7 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
               onChange={(e) => setReason(e.target.value)}
               aria-invalid={Boolean(errors.reason)}
               aria-describedby={errors.reason ? `${ids}-reason-e` : undefined}
-              className="mt-1.5 block h-11 w-full rounded-[var(--radius-control)] border border-rule bg-sheet px-3 text-ink-dark aria-invalid:border-error"
+              className="mt-1.5 block h-11 w-full rounded-[var(--radius-control)] border border-rule-strong bg-sheet px-3 text-ink-dark aria-invalid:border-error"
             >
               <option value="">Choose a reason</option>
               {REASONS.map((r) => (
@@ -252,11 +261,11 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
               onChange={(e) => setNote(e.target.value)}
               aria-invalid={Boolean(errors.note)}
               aria-describedby={errors.note ? `${ids}-note-e` : undefined}
-              className="mt-1.5 block w-full rounded-[var(--radius-control)] border border-rule px-3 py-2 text-ink-dark aria-invalid:border-error"
+              className="mt-1.5 block w-full rounded-[var(--radius-control)] border border-rule-strong px-3 py-2 text-ink-dark aria-invalid:border-error"
             />
             {errors.note ? <p id={`${ids}-note-e`} className="mt-1 text-sm text-error-text">{errors.note}</p> : null}
           </div>
-          <div className="rounded-[var(--radius-control)] border border-[#c9d8ff] bg-info-tint p-3 text-sm text-info-text">
+          <div className="rounded-[var(--radius-control)] border border-[#c7cefd] bg-info-tint p-3 text-sm text-info-text">
             <p className="font-semibold">Preview of effect</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-5">
               <li>
@@ -268,7 +277,7 @@ export function JobDetail({ job, back }: { job: AdminJob; back: string | null })
             </ul>
           </div>
           <label className="flex items-start gap-2 text-sm text-ink-dark">
-            <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="mt-0.5 size-4 accent-[#1c5dff]" aria-describedby={errors.confirm ? `${ids}-c-e` : undefined} />
+            <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="mt-0.5 size-4 accent-[#253ff6]" aria-describedby={errors.confirm ? `${ids}-c-e` : undefined} />
             I checked the event timeline and this adjustment is correct.
           </label>
           {errors.confirm ? (

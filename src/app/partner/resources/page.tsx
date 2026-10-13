@@ -5,10 +5,12 @@ import { PageHead, Panel } from "@/components/console/parts";
 
 export const metadata: Metadata = { title: "Resources" };
 
+// Brand v2 exports (public/brand): the header logo is the supplied white wordmark for dark backgrounds;
+// the electric-blue symbol is the one that stays visible on light backgrounds.
 const LOGOS = [
-  { file: "/brand/genlixs-logo-white-960.png", name: "Logo — white wordmark (PNG, 960 px)", bg: "bg-canvas", use: "Dark backgrounds" },
+  { file: "/brand/genlixs-header-white-960.png", name: "Logo — white wordmark (PNG, 960 px)", bg: "bg-canvas", use: "Dark backgrounds" },
   { file: "/brand/genlixs-logo-dark-960.png", name: "Logo — dark wordmark (PNG, 960 px)", bg: "bg-paper", use: "Light backgrounds" },
-  { file: "/brand/genlixs-symbol-512.png", name: "Symbol only (PNG, 512 px)", bg: "bg-paper", use: "Avatars and small spaces" },
+  { file: "/brand/genlixs-symbol-color-512.png", name: "Symbol only (PNG, 512 px)", bg: "bg-paper", use: "Avatars and small spaces" },
 ];
 
 export default function ResourcesPage() {
@@ -20,7 +22,7 @@ export default function ResourcesPage() {
           {LOGOS.map((l) => (
             <li key={l.file} className="overflow-hidden rounded-[var(--radius-media)] border border-rule">
               <div className={`grid h-32 place-items-center p-6 ${l.bg}`}>
-                <Image src={l.file} alt="" width={l.file.includes("symbol") ? 64 : 200} height={l.file.includes("symbol") ? 64 : 31} className="h-auto max-h-16 w-auto" />
+                <Image src={l.file} alt="" width={l.file.includes("symbol") ? 64 : 200} height={l.file.includes("symbol") ? 64 : 41} className="h-auto max-h-16 w-auto" />
               </div>
               <div className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">

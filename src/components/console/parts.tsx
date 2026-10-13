@@ -6,7 +6,7 @@ export function PageHead({ title, sub, actions }: { title: string; sub?: ReactNo
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-[1.625rem] leading-tight font-semibold tracking-tight text-ink-dark sm:text-[1.875rem]">{title}</h1>
+        <h1 className="font-display text-[1.625rem] leading-tight font-extrabold text-ink-dark sm:text-[1.875rem]">{title}</h1>
         {sub ? <div className="mt-1 text-sm text-muted-dark">{sub}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -40,7 +40,7 @@ export function StatTile({ label, value, sub, href, def }: { label: string; valu
     </>
   );
   return href ? (
-    <Link href={href} className="block rounded-[var(--radius-media)] border border-rule bg-sheet p-5 shadow-[var(--shadow-lift)] transition-colors hover:border-[#b9c4d6]">
+    <Link href={href} className="block rounded-[var(--radius-media)] border border-rule bg-sheet p-5 shadow-[var(--shadow-lift)] transition-colors hover:border-brand-blue">
       {body}
       <span className="sr-only"> — open the underlying records</span>
     </Link>

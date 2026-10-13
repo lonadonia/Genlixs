@@ -7,6 +7,8 @@ import { cn } from "@/lib/format";
  * Single-series column chart (dataviz skill): one hue, ≤24px columns with a
  * 4px rounded data-end and square baseline, hairline grid, value on the
  * latest/peak column only, per-column hover + focus tooltip, and a table view.
+ * Brand v2 on white: columns electric blue (#253FF6, 6.7:1), the partial current
+ * week night (#0F1212, 18.8:1); lime is never used on this light surface.
  */
 export function ColumnChart({ data, label, unit }: { data: { x: string; y: number }[]; label: string; unit: string }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -46,7 +48,7 @@ export function ColumnChart({ data, label, unit }: { data: { x: string; y: numbe
           {/* Hairline grid + y ticks */}
           <div className="absolute inset-y-0 right-0 left-8" style={{ height: H }} aria-hidden>
             {ticks.map((t) => (
-              <div key={t} className="absolute right-0 left-0 border-t border-[#e8edf5]" style={{ bottom: (t / top) * H }}>
+              <div key={t} className={cn("absolute right-0 left-0 border-t", t === 0 ? "border-[#cfd4cd]" : "border-rule")} style={{ bottom: (t / top) * H }}>
                 <span className="absolute -top-2 -left-8 w-6 text-right text-[11px] text-muted-dark tabular">{t}</span>
               </div>
             ))}
@@ -54,7 +56,8 @@ export function ColumnChart({ data, label, unit }: { data: { x: string; y: numbe
           <ul className="relative flex items-end justify-between gap-1" style={{ height: H }}>
             {data.map((d, i) => {
               const h = Math.max(2, (d.y / top) * H);
-              const showLabel = i === peak || i === data.length - 1;
+              const current = i === data.length - 1;
+              const showLabel = i === peak || current;
               return (
                 <li key={d.x} className="relative flex h-full flex-1 items-end justify-center">
                   <button
@@ -67,7 +70,10 @@ export function ColumnChart({ data, label, unit }: { data: { x: string; y: numbe
                     className="group flex h-full w-full items-end justify-center rounded-[6px] focus-visible:outline-2"
                   >
                     <span
-                      className={cn("block w-full max-w-6 rounded-t-[4px] transition-colors", hover === i ? "bg-[#174ed9]" : i === data.length - 1 ? "bg-[#7fa2ff]" : "bg-brand-blue")}
+                      className={cn(
+                        "block w-full max-w-6 rounded-t-[4px] transition-colors",
+                        current ? (hover === i ? "bg-elevated" : "bg-brand-night") : hover === i ? "bg-brand-blue-hover" : "bg-brand-blue",
+                      )}
                       style={{ height: h }}
                     />
                   </button>
@@ -97,7 +103,7 @@ export function ColumnChart({ data, label, unit }: { data: { x: string; y: numbe
       )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-dark">
         <span>
-          <span aria-hidden className="mr-1.5 inline-block size-2.5 rounded-[2px] bg-[#7fa2ff] align-middle" />
+          <span aria-hidden className="mr-1.5 inline-block size-2.5 rounded-[2px] bg-brand-night align-middle" />
           Current week is partial
         </span>
         <button type="button" onClick={() => setTable((t) => !t)} className="font-semibold text-info-text hover:underline">

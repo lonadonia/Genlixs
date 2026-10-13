@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/inter";
+import "@fontsource-variable/archivo/wdth.css";
 import "./globals.css";
 import { DemoRuntime } from "@/components/demo-runtime";
 
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f1a",
+  themeColor: "#0f1212",
   colorScheme: "dark",
 };
 
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <a
           href="#main"
-          className="sr-only-focusable fixed top-2 left-2 z-[100] rounded-[var(--radius-control)] bg-brand-blue px-4 py-2 text-sm font-semibold text-white"
+          className="sr-only-focusable fixed top-2 left-2 z-[100] rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white"
         >
           Skip to content
         </a>

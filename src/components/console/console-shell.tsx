@@ -15,6 +15,8 @@ export type NavGroup = { title?: string; items: NavItem[] };
 /**
  * Data-surface shell (guide §09/§10): dark brand rail with the white logo,
  * light data canvas, white panels. Shared by the admin console and partner portal.
+ * Brand v2 rail: night background; electric blue (the primary colour) marks the current item;
+ * group titles and "Later" items use `subtle` (#7E8888, 5.2:1 on night) so they stay legible.
  */
 export function ConsoleShell({ groups, label, badge, topbar, children }: { groups: NavGroup[]; label: string; badge: ReactNode; topbar: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
@@ -35,15 +37,15 @@ export function ConsoleShell({ groups, label, badge, topbar, children }: { group
     <nav aria-label={label} className="space-y-5">
       {groups.map((g, gi) => (
         <div key={gi}>
-          {g.title ? <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-wider text-[#8794ab] uppercase">{g.title}</p> : null}
+          {g.title ? <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-subtle uppercase">{g.title}</p> : null}
           <ul className="space-y-0.5">
             {g.items.map((i) => {
               const Icon = i.icon;
               if (!i.href || i.later)
                 return (
                   <li key={i.label}>
-                    <span aria-disabled="true" className="flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm text-[#7d8ba3]">
-                      <Icon aria-hidden className="size-[18px]" />
+                    <span aria-disabled="true" className="flex h-10 cursor-not-allowed items-center gap-3 rounded-xl px-3 text-sm text-subtle">
+                      <Icon aria-hidden className="size-[18px] shrink-0 opacity-60" />
                       <span className="flex-1">{i.label}</span>
                       <span className="text-[10px] font-semibold tracking-wide uppercase">Later</span>
                     </span>
@@ -57,12 +59,12 @@ export function ConsoleShell({ groups, label, badge, topbar, children }: { group
                     onClick={onNavigate}
                     aria-current={on ? "page" : undefined}
                     className={cn(
-                      "relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors",
-                      on ? "bg-[rgb(28_93_255/0.22)] text-white" : "text-muted hover:bg-raised hover:text-ink",
+                      "relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
+                      on ? "bg-[rgb(37_63_246/0.2)] text-white" : "text-muted hover:bg-white/[0.05] hover:text-ink",
                     )}
                   >
                     {on ? <span aria-hidden className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-brand-blue" /> : null}
-                    <Icon aria-hidden className={cn("size-[18px]", on && "text-link")} />
+                    <Icon aria-hidden className={cn("size-[18px] shrink-0", on && "text-brand-blue-bright")} />
                     {i.label}
                   </Link>
                 </li>
@@ -91,7 +93,7 @@ export function ConsoleShell({ groups, label, badge, topbar, children }: { group
             type="button"
             onClick={() => setOpen(true)}
             aria-haspopup="dialog"
-            className="grid size-11 place-items-center rounded-[var(--radius-control)] border border-rule lg:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-[#cfd4cd] text-ink-dark hover:border-[#9aa29f] hover:bg-paper lg:hidden"
           >
             <Menu aria-hidden className="size-5" />
             <span className="sr-only">Open {label} menu</span>
@@ -117,12 +119,12 @@ export function ConsoleShell({ groups, label, badge, topbar, children }: { group
         onClick={(e) => {
           if (e.target === dlg.current) dlg.current?.close();
         }}
-        className="rail-dark mr-auto ml-0 h-dvh max-h-dvh w-[min(20rem,100vw)] max-w-none bg-canvas p-0 text-ink backdrop:bg-[rgb(4_10_25/0.6)]"
+        className="rail-dark mr-auto ml-0 h-dvh max-h-dvh w-[min(20rem,100vw)] max-w-none bg-canvas p-0 text-ink backdrop:bg-[rgb(8_10_10/0.6)]"
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-line px-3">
             <Logo width={136} />
-            <button type="button" onClick={() => setOpen(false)} className="grid size-11 place-items-center rounded-[var(--radius-control)] text-muted hover:bg-raised">
+            <button type="button" onClick={() => setOpen(false)} className="grid size-11 place-items-center rounded-full text-muted hover:bg-white/[0.07] hover:text-ink">
               <X aria-hidden className="size-5" />
               <span className="sr-only">Close menu</span>
             </button>

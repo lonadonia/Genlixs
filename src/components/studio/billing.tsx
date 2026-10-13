@@ -22,19 +22,19 @@ export function Billing() {
   return (
     <div className="mx-auto max-w-[1100px] space-y-6 p-4 sm:p-6 lg:p-8">
       <div>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight">Billing</h1>
+        <h1 className="font-display text-[1.875rem] leading-tight font-extrabold sm:text-[2.25rem]">Billing</h1>
         <p className="text-muted">Plan, invoices and payment method. Sample records for layout review.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section aria-labelledby="plan-h" className="rounded-[var(--radius-media)] border border-line bg-surface p-5">
+        <section aria-labelledby="plan-h" className="rounded-[24px] border border-white/[0.08] bg-surface p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="plan-h" className="font-semibold">
               Plan
             </h2>
             {cancelling ? <Badge tone="warning">Cancels 1 Nov 2026</Badge> : <Badge tone="success">Active</Badge>}
           </div>
-          <p className="mt-3 text-2xl font-semibold">Creator monthly</p>
+          <p className="font-display mt-3 text-2xl font-extrabold">Creator monthly</p>
           <p className="text-sm text-muted">Sample plan · $12.00 per month · cycle 1–31 Oct 2026</p>
           <p className="mt-3 text-sm text-muted">
             {cancelling ? "Your plan stays active until 1 Nov 2026 and won't renew." : "Renews on 1 Nov 2026."}
@@ -52,7 +52,7 @@ export function Billing() {
           </div>
         </section>
 
-        <section aria-labelledby="pm-h" className="rounded-[var(--radius-media)] border border-line bg-surface p-5">
+        <section aria-labelledby="pm-h" className="rounded-[24px] border border-white/[0.08] bg-surface p-5">
           <h2 id="pm-h" className="font-semibold">
             Payment method
           </h2>
@@ -71,15 +71,15 @@ export function Billing() {
         </section>
       </div>
 
-      <section aria-labelledby="inv-h" className="rounded-[var(--radius-media)] border border-line bg-surface">
-        <h2 id="inv-h" className="border-b border-line p-5 font-semibold">
+      <section aria-labelledby="inv-h" className="rounded-[24px] border border-white/[0.08] bg-surface">
+        <h2 id="inv-h" className="border-b border-white/[0.07] p-5 font-semibold">
           Invoices
         </h2>
         <div className="scroll-thin relative overflow-x-auto" role="region" aria-label="Invoices table" tabIndex={0}>
           <table className="w-full min-w-[620px] text-sm">
             <caption className="sr-only">Invoices with payment and refund status</caption>
             <thead>
-              <tr className="border-b border-line text-left text-muted">
+              <tr className="border-b border-white/[0.07] text-left text-muted">
                 <th scope="col" className="px-5 py-3 font-semibold">Invoice</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Date</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Item</th>

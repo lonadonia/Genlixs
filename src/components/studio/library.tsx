@@ -9,7 +9,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { MODELS, TOOLS, type ToolId } from "@/lib/catalog";
 import { PHASE_LABEL, SEED_TIME, isTerminal, jobPhase, saveDraft, useDemo, useNow, type Job } from "@/lib/demo-store";
 import { fmtCredits, fmtDate } from "@/lib/format";
-import { MEDIA } from "@/lib/media";
+import { MEDIA, stillOf } from "@/lib/media";
 import { ResultActions, ResultDetails, ResultMedia } from "./result-view";
 
 type Status = "all" | "ready" | "running" | "failed" | "expired";
@@ -52,18 +52,18 @@ export function Library() {
 
   const filtered = type !== "all" || model !== "all" || period !== "any" || status !== "all" || favorites;
 
-  const select = "h-10 rounded-[var(--radius-control)] border border-line-strong bg-raised px-3 text-sm text-ink";
+  const select = "h-10 rounded-full border border-line-strong bg-raised px-4 text-sm text-ink";
 
   return (
     <div className="mx-auto max-w-[1400px] p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight">Library</h1>
+          <h1 className="font-display text-[1.875rem] leading-tight font-extrabold sm:text-[2.25rem]">Library</h1>
           <p className="text-muted">Every result keeps its prompt, settings and credit record. Files are private unless you share them.</p>
         </div>
       </div>
 
-      <form aria-label="Filter results" className="mt-6 flex flex-wrap items-end gap-3 rounded-[var(--radius-media)] border border-line bg-surface p-3" onSubmit={(e) => e.preventDefault()}>
+      <form aria-label="Filter results" className="mt-6 flex flex-wrap items-end gap-3 rounded-[24px] border border-white/[0.08] bg-surface p-4" onSubmit={(e) => e.preventDefault()}>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${ids}-type`} className="text-xs font-semibold text-muted">
             Type
@@ -110,8 +110,8 @@ export function Library() {
             <option value="expired">Expired</option>
           </select>
         </div>
-        <label className="flex h-10 cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border border-line-strong bg-raised px-3 text-sm text-ink">
-          <input type="checkbox" checked={favorites} onChange={(e) => setFavorites(e.target.checked)} className="size-4 accent-[#1c5dff]" />
+        <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-raised px-4 text-sm text-ink">
+          <input type="checkbox" checked={favorites} onChange={(e) => setFavorites(e.target.checked)} className="size-4 accent-brand-blue" />
           Favorites only
         </label>
         {filtered ? (
@@ -143,7 +143,7 @@ export function Library() {
           ))}
         </ul>
       ) : (
-        <div className="mt-6 rounded-[var(--radius-media)] border border-dashed border-line-strong p-10 text-center">
+        <div className="mt-6 rounded-[24px] border border-dashed border-line-strong p-10 text-center">
           <p className="font-semibold text-ink">{filtered ? "No results match these filters" : "Your library is empty"}</p>
           <p className="mt-1 text-sm text-muted">{filtered ? "Try clearing a filter." : "Results you generate appear here with their prompt and settings."}</p>
         </div>
@@ -177,19 +177,19 @@ function DetailBody({ job, status, onClose }: { job: Job; status: Exclude<Status
             <p className="mt-2 font-semibold text-brand-lime">{fmtCredits(job.credits)} returned to your balance.</p>
           </div>
         ) : (
-          <div className="rounded-[var(--radius-media)] border border-line bg-surface p-5 text-sm text-muted">Still running. The file appears here when it&apos;s saved.</div>
+          <div className="rounded-[var(--radius-media)] border border-white/[0.08] bg-surface p-5 text-sm text-muted">Still running. The file appears here when it&apos;s saved.</div>
         )}
       </div>
       <div className="space-y-4 lg:col-span-2">
         {status === "ready" ? <ResultActions job={job} onReuse={reuse} compact /> : null}
         {status !== "ready" ? (
-          <button type="button" onClick={reuse} className="inline-flex h-10 items-center rounded-[var(--radius-control)] border border-line-strong bg-raised px-3.5 text-sm font-semibold text-ink hover:bg-[#222d40]">
+          <button type="button" onClick={reuse} className="inline-flex h-10 items-center rounded-full border border-white/20 bg-white/[0.04] px-4 text-sm font-semibold text-ink hover:border-white/45">
             Reuse prompt and settings
           </button>
         ) : null}
         <ResultDetails job={job} defaultOpen />
         {job.tool === "edit" ? (
-          <div className="rounded-[var(--radius-media)] border border-line bg-surface p-4 text-sm">
+          <div className="rounded-[var(--radius-media)] border border-white/[0.08] bg-surface p-4 text-sm">
             <p className="font-semibold text-ink">Versions</p>
             <ol className="mt-2 space-y-1 text-muted">
               <li>v0 · Original reference (kept unchanged)</li>
@@ -220,13 +220,13 @@ function JobCard({ job, status, phaseLabel, onOpen }: { job: Job; status: Exclud
   const m = MEDIA[job.media];
   return (
     <button type="button" onClick={onOpen} className="group block w-full text-left">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/[0.08] bg-raised">
         {status === "ready" ? (
           <>
-            <Image src={m.kind === "video" ? m.poster! : m.src} alt={m.alt} fill sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 45vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+            <Image src={stillOf(job.media)} alt={m.alt} fill sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 45vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
             {m.kind === "video" ? (
-              <span className="absolute right-2 bottom-2 inline-flex h-7 items-center gap-1 rounded-full bg-[rgb(11_15_26/0.8)] px-2 text-[11px] font-semibold">
-                <Play aria-hidden className="size-3" /> 0:06
+              <span className="absolute right-2 bottom-2 inline-flex h-7 items-center gap-1 rounded-full bg-[rgb(15_18_18/0.8)] px-2 text-[11px] font-semibold tabular">
+                <Play aria-hidden className="size-3" /> 0:{String(m.duration ?? 5).padStart(2, "0")}
               </span>
             ) : null}
           </>
@@ -246,18 +246,18 @@ function JobCard({ job, status, phaseLabel, onOpen }: { job: Job; status: Exclud
           </div>
         ) : (
           <div className="grid h-full place-items-center">
-            <LoaderCircle aria-hidden className="size-6 animate-spin-slow text-link" />
+            <LoaderCircle aria-hidden className="size-6 animate-spin-slow text-brand-blue-bright" />
           </div>
         )}
         <span className="absolute top-2 left-2 flex gap-1">
           {job.favorite ? (
-            <span className="grid size-7 place-items-center rounded-full bg-[rgb(11_15_26/0.8)]" title="Favorite">
-              <Heart aria-hidden className="size-3.5 fill-brand-orange text-brand-orange" />
+            <span className="grid size-7 place-items-center rounded-full bg-[rgb(15_18_18/0.8)]" title="Favorite">
+              <Heart aria-hidden className="size-3.5 fill-brand-blue-bright text-brand-blue-bright" />
               <span className="sr-only">Favorite</span>
             </span>
           ) : null}
           {job.shareUrl ? (
-            <span className="grid size-7 place-items-center rounded-full bg-[rgb(11_15_26/0.8)]" title="Public link on">
+            <span className="grid size-7 place-items-center rounded-full bg-[rgb(15_18_18/0.8)]" title="Public link on">
               <Share2 aria-hidden className="size-3.5 text-orange-on-dark" />
               <span className="sr-only">Public link on</span>
             </span>

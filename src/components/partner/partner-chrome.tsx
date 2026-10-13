@@ -23,9 +23,10 @@ const GROUPS: NavGroup[] = [
 
 export function PartnerChrome({ children }: { children: ReactNode }) {
   const badge = (
-    <div className="rounded-[12px] border border-line bg-surface p-3 text-xs">
+    <div className="rounded-xl border border-line bg-surface p-3 text-xs">
       <p className="font-semibold text-ink">{PARTNER.name}</p>
-      <p className="mt-0.5 flex items-center gap-1.5 text-brand-lime">
+      {/* Lime text on the night rail: 15.6:1. */}
+      <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-brand-lime">
         <span aria-hidden className="size-1.5 rounded-full bg-brand-lime" /> Approved partner
       </p>
     </div>
@@ -33,11 +34,11 @@ export function PartnerChrome({ children }: { children: ReactNode }) {
   const topbar = (
     <>
       <p className="hidden text-base font-semibold text-ink-dark sm:block">Partner portal</p>
-      <div role="group" aria-label="Workspace" className="ml-auto flex items-center rounded-[var(--radius-control)] border border-rule bg-paper p-1 text-sm">
-        <Link href="/studio" className="rounded-[8px] px-3 py-1.5 font-medium text-muted-dark hover:text-ink-dark">
+      <div role="group" aria-label="Workspace" className="ml-auto flex items-center rounded-full border border-rule bg-paper p-1 text-sm">
+        <Link href="/studio" className="rounded-full px-3.5 py-1.5 font-medium text-muted-dark transition-colors hover:text-ink-dark">
           Customer studio
         </Link>
-        <span aria-current="true" className="rounded-[8px] bg-sheet px-3 py-1.5 font-semibold text-ink-dark shadow-[var(--shadow-lift)]">
+        <span aria-current="true" className="rounded-full bg-sheet px-3.5 py-1.5 font-semibold text-ink-dark shadow-[0_1px_2px_rgb(15_18_18/0.08),0_2px_8px_-2px_rgb(15_18_18/0.12)] ring-1 ring-rule">
           Partner portal
         </span>
       </div>

@@ -20,7 +20,7 @@ export default function StatusPage() {
       title="Current service status"
       intro={<>Sample status for layout review. Production reads this from the monitoring service. Last updated 13 Oct 2026, 09:00 UTC.</>}
     >
-      <ul className="max-w-3xl divide-y divide-line overflow-hidden rounded-[var(--radius-media)] border border-line bg-surface">
+      <ul className="max-w-3xl divide-y divide-line overflow-hidden rounded-[24px] border border-white/[0.08] bg-surface">
         {SERVICES.map((s) => (
           <li key={s.name} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>

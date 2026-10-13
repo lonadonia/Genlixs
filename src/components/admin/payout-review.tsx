@@ -186,7 +186,7 @@ export function PayoutReview() {
           </p>
         ) : null}
         <label className="mt-4 flex items-start gap-2 text-sm text-ink-dark">
-          <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 size-4 accent-[#1c5dff]" />I am not the preparer of this batch and I checked every payee and amount.
+          <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 size-4 accent-[#253ff6]" />I am not the preparer of this batch and I checked every payee and amount.
         </label>
       </Dialog>
     </div>

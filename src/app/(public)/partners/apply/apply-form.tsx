@@ -48,7 +48,7 @@ export function ApplyForm() {
     const done = status === "accepted" || status === "rejected" ? 3 : status === "needs-info" ? 2 : 1;
     return (
       <div className="grid max-w-4xl gap-6 lg:grid-cols-5">
-        <section aria-live="polite" className="rounded-[var(--radius-media)] border border-line bg-surface p-6 lg:col-span-3">
+        <section aria-live="polite" className="rounded-[24px] border border-white/[0.08] bg-surface p-6 lg:col-span-3">
           <ol className="space-y-3">
             {steps.map((s, i) => (
               <li key={s.label} className="flex items-center gap-3 text-sm">
@@ -57,7 +57,7 @@ export function ApplyForm() {
               </li>
             ))}
           </ol>
-          <div className="mt-6 border-t border-line pt-5">
+          <div className="mt-6 border-t border-white/[0.07] pt-5">
             {status === "submitted" ? (
               <p className="text-muted">Thanks — we review applications by hand and reply by email, usually within a few working days (sample timing).</p>
             ) : status === "needs-info" ? (
@@ -75,7 +75,7 @@ export function ApplyForm() {
             )}
           </div>
         </section>
-        <details className="h-fit rounded-[var(--radius-media)] border border-dashed border-line-strong lg:col-span-2" open>
+        <details className="h-fit rounded-[24px] border border-dashed border-line-strong lg:col-span-2" open>
           <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-semibold text-muted">
             <FlaskConical aria-hidden className="size-4" /> Prototype: review outcome
           </summary>
@@ -115,7 +115,7 @@ export function ApplyForm() {
     );
   }
 
-  const field = "mt-1.5 block w-full rounded-[var(--radius-control)] border border-line-strong bg-raised px-3.5 text-[15px] text-ink aria-invalid:border-error-on-dark";
+  const field = "mt-1.5 block w-full rounded-2xl border border-line-strong bg-raised px-3.5 text-[15px] text-ink aria-invalid:border-error-on-dark";
   const err = (k: string) =>
     errors[k] ? (
       <p id={`${ids}-${k}-e`} className="mt-1.5 text-sm text-error-on-dark">
@@ -125,7 +125,7 @@ export function ApplyForm() {
   const describe = (k: string, extra?: string) => cn(errors[k] && `${ids}-${k}-e`, extra) || undefined;
 
   return (
-    <form noValidate onSubmit={submit} className="max-w-2xl space-y-5 rounded-[var(--radius-media)] border border-line bg-surface p-6">
+    <form noValidate onSubmit={submit} className="max-w-2xl space-y-5 rounded-[24px] border border-white/[0.08] bg-surface p-6">
       <div>
         <label htmlFor={`${ids}-name`} className="text-sm font-semibold">
           Name or brand
@@ -180,7 +180,7 @@ export function ApplyForm() {
             onChange={(e) => setTerms(e.target.checked)}
             aria-invalid={Boolean(errors.terms)}
             aria-describedby={describe("terms")}
-            className="mt-0.5 size-4 accent-[#1c5dff]"
+            className="mt-0.5 size-4 accent-brand-blue"
           />
           <span>
             I accept the partner program terms, version 1.2 (sample). Commission rates, holding periods and payout minimums are set in those terms.
