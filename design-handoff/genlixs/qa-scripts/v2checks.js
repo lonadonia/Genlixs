@@ -23,9 +23,23 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   const vid = p.locator('#hero-title').locator('xpath=ancestor::section').locator('video').first();
   ok('V2-4', 'Hero loop is decorative (aria-hidden)', (await vid.getAttribute('aria-hidden')) === 'true');
 
+  // hero tiles follow the shown file's own ratio, with moderate corners
+  const tiles = await p.locator('#hero-title').locator('xpath=ancestor::section').locator('.marquee-up > div, .marquee-down > div').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      const m = el.querySelector('img, video');
+      const nat = m.tagName === 'IMG' ? (m.naturalWidth ? m.naturalWidth / m.naturalHeight : null) : m.videoWidth ? m.videoWidth / m.videoHeight : null;
+      return { box: r.width / r.height, nat, radius: getComputedStyle(el).borderTopLeftRadius };
+    }),
+  );
+  const measured = tiles.filter((t) => t.nat);
+  const worst = Math.max(...measured.map((t) => Math.abs(t.box - t.nat) / t.nat));
+  ok('V2-15', 'Hero tiles match the aspect ratio of their loaded image/video (within 2%)', measured.length >= 8 && worst < 0.02, `${measured.length}/${tiles.length} tiles measured, worst ${(worst * 100).toFixed(2)}%`);
+  ok('V2-16', 'Hero tiles use moderate 18 px corners (not pills)', tiles.every((t) => t.radius === '18px'), [...new Set(tiles.map((t) => t.radius))].join(','));
+
   // gallery hover preview
   await p.locator('#examples').scrollIntoViewIfNeeded();
-  const card = p.locator('#examples article', { hasText: 'Orbit loop' });
+  const card = p.locator('#examples article', { hasText: 'Pup knight in the fog' });
   await card.hover();
   await p.waitForTimeout(1200);
   const playing = await card.locator('video').evaluate((v) => !v.paused);
@@ -39,13 +53,13 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   const p2 = await ctx2.newPage();
   await p2.goto(base + '/', { waitUntil: 'networkidle' });
   const anim = await p2.locator('.marquee-up').first().evaluate((el) => getComputedStyle(el).animationName);
-  ok('V2-7', 'Reduced motion disables the capsule marquee', anim === 'none', anim);
+  ok('V2-7', 'Reduced motion disables the hero marquee', anim === 'none', anim);
   const vplay = await p2.locator('#hero-title').locator('xpath=ancestor::section').locator('video').first().evaluate((v) => v.paused);
   ok('V2-8', 'Reduced motion keeps the loop on its poster', vplay);
 
   // studio Home quick create
   await p.goto(base + '/help', { waitUntil: 'networkidle' });
-  await p.evaluate(() => localStorage.setItem('genlixs-preview-v2', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
+  await p.evaluate(() => localStorage.setItem('genlixs-preview-v3', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
   await p.goto(base + '/studio', { waitUntil: 'networkidle' });
   ok('V2-9', 'Studio Home title', await p.getByRole('heading', { level: 1, name: /What would you like to create\?/ }).isVisible());
   const gen = p.getByRole('button', { name: /Generate for 4 credits/ });
@@ -68,7 +82,7 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   const ctx3 = await b.newContext({ viewport: { width: 1100, height: 900 } });
   const p3 = await ctx3.newPage();
   await p3.goto(base + '/help', { waitUntil: 'networkidle' });
-  await p3.evaluate(() => localStorage.setItem('genlixs-preview-v2', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
+  await p3.evaluate(() => localStorage.setItem('genlixs-preview-v3', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
   await p3.goto(base + '/studio/library', { waitUntil: 'networkidle' });
   ok('V2-14', 'Collapsed rail links keep accessible names', await p3.getByRole('link', { name: 'Library' }).first().isVisible());
 

@@ -4,6 +4,7 @@
 | --- | --- | --- | --- |
 | v1 | 13 Oct 2026 | Design Guide v1.0 (MD + PDF), `Logo.zip` (v1 masters) | First working preview of the four surfaces |
 | **v2** | 13–14 Oct 2026 | New logo package (`logo.zip`), new 4-colour palette (follow-up note: **the primary colour must be `#253FF6`**), three reference screenshots (a full-page AI-video-site capture, the "REDNIT" NFT hero, an AI-creation dashboard), a Google Drive media folder | Brand v2 across all surfaces, reference-led homepage hero, lit composer, reference-led customer dashboard, refreshed admin/partner rail. Rows changed by v2 are marked **v2** below |
+| **v2.1** | 14 Oct 2026 | Client follow-up (Arabic, with a screenshot of the hero columns): retry the Drive media; hero cards should follow the size of the image or video they hold, with corners that are neither sharp nor very round | 14 client images + 1 clip added (`CLIENT_MEDIA.md`); hero tiles now use each file's own ratio with 18 px corners |
 
 ## 1. Project snapshot
 
@@ -26,7 +27,7 @@
 | `logo.zip` (**v2**, current) | Extracted and inspected | `Website-header-logo.png`, `white-logo.png`, `Full white-logo.png` (RGB, baked near-black `#101211`), `dark-logo.png` (RGBA), all 20,171 × 4,487 px (90.5 MP). Exported by colour-to-alpha against the baked background, trim and resize only (`brand/export_logo.py`) |
 | Palette image (**v2**) | Read from the attachment | Night `#0F1212` (swatch labelled "Lime" in the image — treated as a labelling slip), Lime `#E1FF01`, White `#FFFFFF`, Electric Blue `#253FF6`. Replaces the guide's §04 colours by client instruction |
 | Reference screenshots (**v2**) | Viewed as attachments | (1) full-page capture of an AI video/image site — section rhythm, lit composer, bento tool cards, FAQ, closing video band; (2) "REDNIT" NFT hero — huge headline with one accent word and a hand-drawn underline, pill CTAs, capsule portrait columns, three icon features under a hairline; (3) AI-creation dashboard — floating rounded sidebar with groups and a bottom icon row, top-right upgrade/credits/account, centred title, tool pill tabs, large glowing composer with upload tile, settings chips, cost and round submit, promo cards. Used for layout and interaction patterns only — no assets, copy, logos or brand names reproduced |
-| Google Drive folder (**v2**) | **BLOCKED_EXTERNAL** — not downloaded | The build environment's network policy denies `drive.google.com` (HTTP 403 from the egress proxy); the Drive connector caps downloads at 10 MB and the folder's archives are far larger. Placeholder media in the v2 palette were rendered instead (`brand/placeholder_renders.py`) and every frame is tagged "Placeholder" |
+| Google Drive folder (**v2**) | **PARTIAL** — 25 files of 10 MB or less fetched through the Drive connector; 14 images + 1 clip used (see `CLIENT_MEDIA.md`) | Direct `drive.google.com` access is still denied by the egress proxy (HTTP 403), and that was not worked around. The connector returns files of 10 MB or less, so 26 of the 27 videos (12–43 MB) and 9 large PNGs could not be fetched. Files with watermarks or third-party brand marks were excluded |
 | `Genlixs_Project_Blueprint_v2.md` (v2.1) | **NOT SUPPLIED** | Governs capabilities, pricing, financial algorithms, permissions. Every dependent value is a labelled placeholder |
 | `image.png` (v1 palette) | NOT SUPPLIED in v1 | v1 used guide §04 values; superseded by the v2 palette image |
 
@@ -37,6 +38,7 @@
 - **Principles:** next action beside the information needed to take it; artwork gets space while settings, pricing and status stay readable; one brand and component system with role-specific density.
 - **Success definition:** "a usable creation journey and a coherent visual identity. A striking hero alone does not satisfy this brief."
 - **v2 follow-up (client note, Arabic):** "the primary colour must be 253FF6" — electric blue is the main brand and action colour; lime stays only as a small secondary accent.
+- **v2.1 follow-up (client note, Arabic, paraphrased):** "Try again now [the Drive media], plus this small change: these [hero cards] should follow the size of the video or image placed in them, with edges that are not sharp and not too rounded, like in the screenshot."
 - **v2 request (client message, Arabic, paraphrased):** use the new logo package and palette; make the whole site more professional and beautiful, inspired by the attached site capture; model the hero on the attached hero image and the customer dashboard on the attached dashboard; use the images and videos in the Drive folder as visual inspiration for visitors.
 
 ## 4. Scope boundary
@@ -118,9 +120,10 @@ Classification: `EXPLICIT` (stated in guide), `CONSTRAINT`, `DEPENDENCY`, `PROPO
 | REQ-060 | EXPLICIT | **v2** client | Make the whole site more professional and beautiful, inspired by the attached site capture | MUST | Display typography, section eyebrows, bento gallery, lit composer, numeral steps, electric band, closing video band, rounded 24–32 px panels, refreshed info pages and sign-in | Verified (visual review) |
 | REQ-061 | EXPLICIT | **v2** client | Hero modelled on the attached hero image | MUST | `public/hero.tsx`: oversized headline with an electric-blue accent phrase + drawn lime underline, blue "Start creating ↗" + outline "See examples ▷", three icon features under a hairline, three capsule columns scrolling in alternate directions (horizontal strip on phones) | Verified |
 | REQ-062 | EXPLICIT | **v2** client | Customer dashboard modelled on the attached dashboard | MUST | `studio-shell.tsx` + `overview.tsx` (see REQ-013, 014, 026) | Verified |
-| REQ-063 | EXPLICIT | **v2** client | Use the images and videos in the shared Drive folder as visual inspiration | SHOULD | Not reachable from the build environment (proxy 403 on `drive.google.com`; connector 10 MB cap). Brand-palette placeholders rendered instead; media manifest `src/lib/media.ts` has a `placeholder` flag so approved files can replace them without component changes | BLOCKED_EXTERNAL |
+| REQ-063 | EXPLICIT | **v2** client | Use the images and videos in the shared Drive folder as visual inspiration | SHOULD | 14 client images and 1 muted clip (`public/media/client/`) are used in the hero, gallery, story tabs, use cases, electric and closing bands, tool cards, sign-in panel and studio. The hero tiles follow each file's own aspect ratio, with 18 px corners (client follow-up). Excluded and unfetched files are listed in `CLIENT_MEDIA.md`. Still open: 26 videos over 10 MB; rights and model records | PARTIAL |
 | REQ-064 | CONSTRAINT | WCAG 2.2.2 | Auto-moving content (> 5 s) needs a pause control | MUST | `MotionRegion` adds a visible Pause/Play button to the hero columns, phone strip and closing band; hover/focus also pause; reduced motion stops them | Verified |
 | REQ-065 | EXPLICIT | **v2** client note | "The primary colour must be `#253FF6`" | MUST | See REQ-005; no lime primary buttons remain (grep); screenshots `01`, `07`, `11`, `18`, `23` | Verified |
+| REQ-066 | EXPLICIT | **v2.1** client note | Hero media cards follow the aspect ratio of the image/video they hold; corners neither sharp nor pill-shaped | MUST | `MediaTile` in `hero.tsx` sets `aspect-ratio` from the manifest's width/height (desktop columns) or a fixed 176 px height with the width derived from it (phone strip); `rounded-[18px]` / `rounded-2xl`. Margins replace gaps so the −50 % marquee loop stays seamless | Verified (V2-15, V2-16) |
 
 ## 6. Current experience audit
 
@@ -158,7 +161,7 @@ Contradiction noted: §07 asks the composer to include an "optional reference sl
 
 - **Blueprint v2.1 missing** — every financial number, price and permission is a placeholder. High risk if the preview is mistaken for real terms; mitigated by persistent "Design preview / Sample data" labelling and `noindex`.
 - **Public repository** — the repo is public, so the supplied logo masters and this handoff are publicly visible. Make it private if that is not intended.
-- **Placeholder media** — procedural renders, not model output; must be replaced before launch. The client's Drive media could not be fetched here (REQ-063).
+- **Client media** — supplied by Genlixs; rights, tool licence and model/settings still need confirming (`CLIENT_MEDIA.md`). **Placeholder media** (abstract loop, dune edit pair) are procedural renders, not model output, and must be replaced before launch.
 
 ## 10. Immediate recommendation
 

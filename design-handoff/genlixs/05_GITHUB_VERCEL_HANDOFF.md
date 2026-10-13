@@ -10,13 +10,13 @@ GitHub status: PUSHED
 GitHub repo URL: https://github.com/lonadonia/Genlixs
 Visibility: PUBLIC (verified via GitHub API, 13 Oct 2026)
 Branch: claude/nice-curie-ispn6l
-Commit SHA: 98b2763c81419da858c74aeebb07e7fb19c6fac0 (brand v2 application + docs); this file is updated in the follow-up docs commit on the same branch
+Commit SHA: branch head — v2.1 commit (client Drive media + hero tiles at media ratio) on top of 98b2763c81419da858c74aeebb07e7fb19c6fac0 (brand v2)
 Vercel readiness: VERIFIED_READY — default Next.js settings, no vercel.json needed, no required env vars, no secrets
 Vercel preview: PREVIEW_NOT_DEPLOYED
 Vercel URL: NOT_AVAILABLE
 Environment keys (names only): NEXT_PUBLIC_SITE_URL (optional)
-Unresolved blockers: Vercel account ownership not confirmed (below); client Drive media unreachable from this environment; blueprint, approved media, pricing, legal copy not supplied
-Next user action: (1) confirm which Vercel account should host the preview; (2) allow Google Drive in the environment's network access or upload the media files directly
+Unresolved blockers: Vercel account ownership not confirmed (below); 26 client Drive videos over the connector's 10 MB limit; rights/model record for client media; blueprint, pricing, legal copy not supplied
+Next user action: (1) confirm which Vercel account should host the preview; (2) compress the Drive videos under 10 MB, or allow Google Drive in the environment's network access; (3) confirm usage rights for the client media
 ```
 
 ## Why no Vercel preview was created
@@ -35,15 +35,15 @@ If you confirm that `mbanaoui147-4280` is your account, a Claude session with th
 
 ## Client Drive media (REQ-063)
 
-The shared Drive folder could not be used:
-- The environment's egress proxy returns HTTP 403 for `drive.google.com`. This is a network-policy denial, and it was not worked around.
-- The Google Drive connector refuses files over 10 MB, and the folder's archives are far larger.
+**Partly done.** The Drive connector returns files of 10 MB or less. From the folder's `IMAGES` and `VIDEOS` subfolders, 25 files came through. 14 images and the one clip under 10 MB (muted) are now on the site, in `public/media/client/`. `CLIENT_MEDIA.md` lists every file used, excluded (watermark or third-party brand marks) or not fetched.
 
-To unblock either:
-- allow `drive.google.com`, `drive.usercontent.google.com` and `*.googleusercontent.com` in the cloud environment's **Network access** setting (https://code.claude.com/docs/en/cloud-environments#network-access), or
-- share the chosen images and videos directly in the chat, each under 10 MB.
+Still open:
+- **26 of 27 videos** are 12–43 MB, over the connector's limit. Direct `drive.google.com` access still returns HTTP 403 from the egress proxy, and that denial was not worked around. To unblock them, do one of the following:
+  - compress them under 10 MB (for example 720p H.264 at about 2–3 Mb/s, no audio) in the same folder; or
+  - allow `drive.google.com`, `drive.usercontent.google.com` and `*.googleusercontent.com` in the cloud environment's **Network access** setting (https://code.claude.com/docs/en/cloud-environments#network-access).
+- **Rights:** the file names carry an `hf_` prefix. Confirm the generating tool's licence allows commercial use, and record the model and settings for each file before launch.
 
-Each file then replaces a placeholder entry in `src/lib/media.ts` (`src`/`poster`, `placeholder: false`, `credit`).
+Each new file becomes one entry in `src/lib/media.ts`. Components need no changes.
 
 ## Scope delivered on the branch
 
@@ -51,6 +51,7 @@ Each file then replaces a placeholder entry in `src/lib/media.ts` (`src`/`poster
 - `public/brand/`, `src/app/{icon,apple-icon,opengraph-image}.png`, `favicon.ico` — web exports of the supplied v2 logo.
 - `brand/source/` — the four supplied v2 logo masters (5.4 MB, not served).
 - `brand/export_logo.py`, `brand/placeholder_renders.py` — the export and placeholder-render scripts.
+- `public/media/client/` — client-supplied images and muted clip (record: `CLIENT_MEDIA.md`); `brand/client_media.py` resizes them.
 - `public/media/concept/` — temporary placeholder media (replace before launch).
 - `design-handoff/genlixs/` — 01–05 docs, 24 QA screenshots, QA scripts.
 
@@ -60,7 +61,7 @@ Each file then replaces a placeholder entry in `src/lib/media.ts` (`src`/`poster
 | --- | --- |
 | Lint / typecheck / build | Pass / pass / pass |
 | Journeys (36 assertions incl. all §15 prototypes, simulated) | 36 / 36 pass, 0 console errors |
-| Brand v2 interaction checks (motion pause, hover preview, studio Home quick create) | 14 / 14 pass |
+| Brand v2 interaction checks (motion pause, hover preview, studio Home quick create, hero tile ratio + corners) | 16 / 16 pass |
 | Keyboard, focus, reduced motion | 8 / 8 pass |
 | axe-core WCAG 2.x A/AA, 27 routes | 0 violations |
 | Overflow + console, 27 routes × 5 widths | 0 / 135 overflow, 0 errors |

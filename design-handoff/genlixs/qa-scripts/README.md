@@ -6,7 +6,7 @@ They expect Playwright at `/opt/node-tools/node_modules/playwright` (the Claude 
 ```bash
 npm run build && npx next start -p 3200 &
 node flows.js http://localhost:3200 ./out                 # 36 journey assertions
-node v2checks.js http://localhost:3200                     # 14 brand-v2 interaction checks (motion pause, hover preview, studio Home)
+node v2checks.js http://localhost:3200                     # 16 brand-v2 interaction checks (motion pause, hover preview, studio Home, hero tile ratio + corners)
 node ovpage.js http://localhost:3200 /,/studio 1440,1024,768,390,360   # page overflow + console errors per width
 node final-shots.js http://localhost:3200 ./shots          # the 24-image screenshot set (flow states come from flows.js)
 node kbd.js                                                # keyboard / focus / reduced motion (uses port 3200)

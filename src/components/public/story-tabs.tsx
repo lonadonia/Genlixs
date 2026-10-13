@@ -10,7 +10,7 @@ import { ConceptTag } from "@/components/ui/badge";
 import { MediaFrame } from "@/components/ui/media-frame";
 import { UsePromptButton } from "./prompt-buttons";
 
-const STORY_IDS = ["ex-orbs", "ex-edit-dusk", "ex-loop"];
+const STORY_IDS = ["ex-drive-thru", "ex-edit-dusk", "ex-knight-clip"];
 
 function settingRows(ex: Example): [string, string][] {
   const m = modelById(ex.settings.modelId);
@@ -101,13 +101,21 @@ export function StoryTabs() {
           <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">Output · {ex.title}</p>
           {ex.tool === "video" ? (
             <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
-              <video controls playsInline preload="none" poster={stillOf(ex.media)} className="block aspect-video w-full" aria-label={MEDIA[ex.media].alt}>
+              <video
+                controls
+                playsInline
+                preload="none"
+                poster={stillOf(ex.media)}
+                className="block w-full"
+                style={{ aspectRatio: `${MEDIA[ex.media].width} / ${MEDIA[ex.media].height}` }}
+                aria-label={MEDIA[ex.media].alt}
+              >
                 <source src={MEDIA[ex.media].src} type="video/mp4" />
               </video>
-              <ConceptTag className="pointer-events-none absolute top-3 left-3" />
+              {MEDIA[ex.media].placeholder ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
             </div>
           ) : (
-            <MediaFrame media={ex.media} ratio="3:2" sizes="(min-width: 1024px) 55vw, 100vw" />
+            <MediaFrame media={ex.media} ratio={ex.settings.ratio === "16:9" ? "16:9" : "3:2"} sizes="(min-width: 1024px) 55vw, 100vw" />
           )}
         </div>
       </div>

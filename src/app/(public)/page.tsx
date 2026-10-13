@@ -78,12 +78,15 @@ function ExampleCard({
   className,
   frame,
   sizes,
+  pos,
   level = "h3",
 }: {
   e: Example;
   className?: string;
   frame: string;
   sizes: string;
+  /** object-position for the crop, so faces and products stay in frame. */
+  pos?: string;
   level?: "h3" | "h4";
 }) {
   const m = MEDIA[e.media];
@@ -96,7 +99,7 @@ function ExampleCard({
         ) : m.kind === "video" ? (
           <HoverVideo media={e.media} label={e.title} className="absolute inset-0" controlClassName="right-3 bottom-3 sm:top-3 sm:bottom-auto" />
         ) : (
-          <Image src={m.src} alt={m.alt} fill sizes={sizes} className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
+          <Image src={m.src} alt={m.alt} fill sizes={sizes} className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" style={pos ? { objectPosition: pos } : undefined} />
         )}
         {m.placeholder ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
         <UsePromptButton
@@ -125,24 +128,23 @@ function ExampleCard({
 const TOOL_ICON: Record<ToolId, typeof ImagePlus> = { image: ImagePlus, edit: WandSparkles, video: Clapperboard };
 
 export default function HomePage() {
-  const featured = ex("ex-torus");
+  const featured = ex("ex-drive-thru");
   const edit = ex("ex-edit-dusk");
-  const loop = ex("ex-loop");
-  const clip = ex("ex-aurora-clip");
+  const clip = ex("ex-knight-clip");
 
   /* Bento order is chosen so grid-flow-dense leaves no holes at 2 and 4 columns. */
   const one = "(min-width: 1024px) 23vw, 50vw";
   const wide = "(min-width: 1024px) 46vw, 50vw";
-  const gallery: { e: Example; cell: string; frame: string; sizes: string }[] = [
-    { e: ex("ex-torus"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
-    { e: ex("ex-orbs"), cell: "col-span-2", frame: "aspect-[16/9]", sizes: "(min-width: 1024px) 46vw, 100vw" },
-    { e: ex("ex-pills"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
-    { e: loop, cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide },
-    { e: ex("ex-product"), cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
-    { e: ex("ex-dunes"), cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide },
-    { e: ex("ex-aurora-still"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
+  const gallery: { e: Example; cell: string; frame: string; sizes: string; pos?: string }[] = [
+    { e: ex("ex-forest-flare"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 55%" },
+    { e: ex("ex-warrior-sheet"), cell: "col-span-2", frame: "aspect-[16/9]", sizes: "(min-width: 1024px) 46vw, 100vw", pos: "50% 12%" },
+    { e: ex("ex-sea-gown"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 40%" },
+    { e: featured, cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide, pos: "50% 50%" },
+    { e: clip, cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
+    { e: ex("ex-earring"), cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide, pos: "45% 40%" },
+    { e: ex("ex-garden"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 28%" },
     { e: edit, cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: "(min-width: 1024px) 23vw, 25vw" },
-    { e: ex("ex-spheres"), cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
+    { e: ex("ex-milky-tent"), cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 55%" },
   ];
 
   return (
@@ -180,7 +182,7 @@ export default function HomePage() {
             <div className="grid gap-x-4 gap-y-6 sm:grid-cols-3">
               <ExampleCard e={featured} level="h4" frame="aspect-[4/3]" sizes="(min-width: 640px) 33vw, 100vw" />
               <ExampleCard e={edit} level="h4" frame="aspect-[4/3]" sizes="(min-width: 640px) 17vw, 50vw" className="hidden sm:flex" />
-              <ExampleCard e={loop} level="h4" frame="aspect-[4/3]" sizes="(min-width: 640px) 33vw, 100vw" className="hidden sm:flex" />
+              <ExampleCard e={clip} level="h4" frame="aspect-[4/3]" sizes="(min-width: 640px) 33vw, 100vw" className="hidden sm:flex" />
             </div>
           </div>
         </div>
@@ -205,16 +207,20 @@ export default function HomePage() {
             }
           />
           <div className="mt-10 grid grid-flow-dense grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 lg:grid-cols-4 lg:auto-rows-[300px]">
-            {gallery.map(({ e, cell, frame, sizes }) => (
+            {gallery.map(({ e, cell, frame, sizes, pos }) => (
               <ExampleCard
                 key={e.id}
                 e={e}
+                pos={pos}
                 className={cn(cell, "lg:[&>div:first-child]:min-h-0 lg:[&>div:first-child]:flex-1")}
                 frame={cn(frame, "lg:aspect-auto")}
                 sizes={sizes}
               />
             ))}
           </div>
+          <p className="mt-8 max-w-3xl text-[13px] text-muted">
+            Images and the clip are supplied by Genlixs for this preview. Prompts and settings are written to match them; they are not the recorded prompt of each file. Items marked “Placeholder” are temporary.
+          </p>
         </div>
       </section>
 
@@ -248,9 +254,9 @@ export default function HomePage() {
               <li key={u.title} className="w-[80vw] max-w-sm shrink-0 snap-start md:w-auto md:max-w-none">
                 <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-surface">
                   <div className="relative aspect-[4/5] overflow-hidden">
-                    <Image src={stillOf(u.media)} alt={MEDIA[u.media].alt} fill sizes="(min-width: 768px) 30vw, 80vw" className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
+                    <Image src={stillOf(u.media)} alt={MEDIA[u.media].alt} fill sizes="(min-width: 768px) 30vw, 80vw" className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" style={{ objectPosition: u.pos }} />
                     <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-surface to-transparent" />
-                    <ConceptTag className="absolute top-4 left-4" />
+                    {MEDIA[u.media].placeholder ? <ConceptTag className="absolute top-4 left-4" /> : null}
                   </div>
                   <div className="-mt-6 flex flex-1 flex-col px-6 pb-6">
                     <h3 className="font-display relative text-[1.375rem] leading-tight font-bold text-ink">{u.title}</h3>
@@ -299,10 +305,17 @@ export default function HomePage() {
             </figure>
             <figure className="lg:col-span-5">
               <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
-                <video controls playsInline preload="none" poster={MEDIA.auroraClip.poster} className="block aspect-video w-full" aria-label={MEDIA.auroraClip.alt}>
-                  <source src={MEDIA.auroraClip.src} type="video/mp4" />
+                <video
+                  controls
+                  playsInline
+                  preload="none"
+                  poster={MEDIA.knightClip.poster}
+                  className="block w-full"
+                  style={{ aspectRatio: `${MEDIA.knightClip.width} / ${MEDIA.knightClip.height}` }}
+                  aria-label={MEDIA.knightClip.alt}
+                >
+                  <source src={MEDIA.knightClip.src} type="video/mp4" />
                 </video>
-                <ConceptTag className="pointer-events-none absolute top-3 left-3" />
               </div>
               <figcaption className="mt-3 text-sm text-muted">
                 “{clip.prompt}” · {meta(clip)} · no audio
@@ -348,7 +361,7 @@ export default function HomePage() {
             <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
               <div className="absolute -top-1/2 -right-1/4 h-[160%] w-[70%] rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.22),transparent)]" />
               <div className="absolute right-0 bottom-0 hidden h-full w-[42%] md:block">
-                <Image src={MEDIA.pills.src} alt="" fill sizes="40vw" className="object-cover object-[50%_60%] mix-blend-luminosity opacity-40 [mask-image:linear-gradient(to_left,#000_30%,transparent)]" />
+                <Image src={MEDIA.trench.src} alt="" fill sizes="40vw" className="object-cover object-[50%_30%] mix-blend-luminosity opacity-45 [mask-image:linear-gradient(to_left,#000_30%,transparent)]" />
               </div>
             </div>
             <div className="max-w-2xl">
@@ -520,11 +533,10 @@ export default function HomePage() {
         <div className={wrap}>
           <MotionRegion className="isolate overflow-hidden rounded-[32px] border border-white/10" label="closing background loop" controlClassName="right-4 bottom-4">
             <div aria-hidden className="absolute inset-0 -z-10">
-              <AutoplayVideo media="loop" decorative className="absolute inset-0" />
+              <AutoplayVideo media="knightClip" decorative className="absolute inset-0" />
               <div className="absolute inset-0 bg-[rgb(15_18_18/0.72)]" />
               <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_50%_100%,rgb(37_63_246/0.35),transparent)]" />
             </div>
-            <ConceptTag className="absolute top-4 left-4" />
             <div className="flex flex-col items-center px-6 py-20 text-center sm:py-24 lg:py-32">
               <h2 id="closing-title" className="font-display max-w-3xl text-[2.5rem] leading-[1] font-extrabold text-balance text-white sm:text-6xl lg:text-7xl">
                 Start with a <span className="rounded-2xl bg-brand-blue px-3 text-white [box-decoration-break:clone] sm:rounded-3xl">sentence.</span>
@@ -555,8 +567,8 @@ function ToolCard({ tool }: { tool: ToolId }) {
           <SplitPreview before="dunesNoon" after="dunesDusk" sizes="(min-width: 1024px) 15vw, 50vw" />
         ) : (
           <Image
-            src={stillOf(tool === "image" ? "orbs" : "loop")}
-            alt={tool === "image" ? MEDIA.orbs.alt : MEDIA.loop.alt}
+            src={stillOf(tool === "image" ? "driveThru" : "knightClip")}
+            alt={tool === "image" ? MEDIA.driveThru.alt : MEDIA.knightClip.alt}
             fill
             sizes="(min-width: 1024px) 30vw, 100vw"
             className="object-cover"
@@ -569,7 +581,7 @@ function ToolCard({ tool }: { tool: ToolId }) {
             </span>
           </span>
         ) : null}
-        <ConceptTag className="pointer-events-none absolute top-3 left-3" />
+        {tool === "edit" ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
       </div>
       <div className="flex flex-1 flex-col p-6">
         <div className="flex items-center gap-3">
@@ -615,29 +627,32 @@ const USE_CASES = [
   {
     title: "Social posts and stories",
     body: "Vertical and square frames sized for feeds and stories, with a short clip when a still is not enough.",
-    media: "pills" as const,
+    media: "sofa" as const,
+    pos: "50% 40%",
     tool: "image" as const,
-    starter: "Vertical story background, three glossy capsules on a dark floor, space for a headline at the top",
+    starter: "Candid vertical of a creator scrolling their phone on a leather sofa by a window, autumn light, space for a caption at the top",
     settings: { ratio: "9:16" },
     tags: ["9:16", "1:1", "Short video"],
   },
   {
     title: "Product imagery",
-    body: "Clean studio scenes for product listings and launches. Use edit to change a background on your own photo.",
-    media: "product" as const,
+    body: "Product scenes for listings and launches, in the studio or out in the world. Use edit to change a background on your own photo.",
+    media: "summitBag" as const,
+    pos: "50% 60%",
     tool: "image" as const,
-    starter: "Product on a cream pedestal, soft warm studio light, plain backdrop, square crop",
-    settings: { modelId: "img-detail", ratio: "1:1" },
-    tags: ["1:1", "4:5", "High detail"],
+    starter: "Outdoor product shot: a down sleeping bag on a foam mat at a snowy summit at sunrise, no logos, soft morning light",
+    settings: { modelId: "img-detail", ratio: "4:5" },
+    tags: ["4:5", "1:1", "High detail"],
   },
   {
-    title: "Creative concepts",
-    body: "Explore moods, palettes and compositions quickly before committing to a direction.",
-    media: "torus" as const,
+    title: "Characters and concepts",
+    body: "Explore characters, moods and compositions quickly before committing to a direction.",
+    media: "horned" as const,
+    pos: "50% 30%",
     tool: "image" as const,
-    starter: "Abstract still life, glossy torus and sphere on a dark floor, electric-blue glow, calm palette",
-    settings: { ratio: "3:2" },
-    tags: ["3:2", "16:9", "Variations"],
+    starter: "Studio portrait of an original fantasy character with horns and a glossy collar on a deep blue backdrop, film grain",
+    settings: { ratio: "2:3" },
+    tags: ["2:3", "16:9", "Variations"],
   },
 ];
 

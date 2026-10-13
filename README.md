@@ -4,12 +4,12 @@ A coded, responsive design preview of the Genlixs AI image / edit / short-video 
 
 | Surface | Routes | What it shows |
 | --- | --- | --- |
-| Public website | `/`, `/help`, `/status`, `/terms`, `/privacy`, `/acceptable-use`, `/partners/apply`, `/sign-in` | Headline hero with capsule media columns, lit composer, bento gallery and the guide's section order; guest draft → sign-in → studio hand-off; partner application |
+| Public website | `/`, `/help`, `/status`, `/terms`, `/privacy`, `/acceptable-use`, `/partners/apply`, `/sign-in` | Headline hero with client-media columns (each tile at its file's ratio), lit composer, bento gallery and the guide's section order; guest draft → sign-in → studio hand-off; partner application |
 | Customer studio | `/studio`, `/studio/image`, `/studio/edit`, `/studio/video`, `/studio/library`, `/studio/credits`, `/studio/billing`, `/studio/support` | Floating rail, Home with tool tabs and a glowing composer (exact cost beside a round Generate), capability-driven settings, credit reservation, real job phases, delayed / failed / unconfirmed states, results, library, top-up with payment verification |
 | Admin console | `/admin`, `/admin/jobs`, `/admin/jobs/[id]`, `/admin/payouts` | Operations overview, filterable jobs table, job investigation with a guarded credit-return dialog, payout batch approval with role separation |
 | Partner portal | `/partner`, `/partner/links`, `/partner/referrals`, `/partner/commissions`, `/partner/payouts`, `/partner/resources`, `/partner/settings` | Main link first, separate performance counts and money balances, link builder, payout readiness, uncertain transfers kept reserved |
 
-> **This is a design preview, not the platform.** Sign-in, generation, payments, sharing and payouts are simulated in the browser (`src/lib/demo-store.ts`). Examples are procedurally rendered **placeholder media** (`brand/placeholder_renders.py`, `brand/concept_media.py`), not model output — the client's Drive media could not be fetched from the build environment and can be swapped in through `src/lib/media.ts`. Model names, prices and program terms are sample values pending the approved catalog and price version from `Genlixs_Project_Blueprint_v2.md`, which was not supplied. Every surface says so in the UI.
+> **This is a design preview, not the platform.** Sign-in, generation, payments, sharing and payouts are simulated in the browser (`src/lib/demo-store.ts`). Most examples now use **client-supplied media** from the Genlixs Drive folder: 14 images and one muted clip in `public/media/client/`, recorded in `design-handoff/genlixs/CLIENT_MEDIA.md`. Their prompts and settings are prompt ideas written to match each file, not recorded prompts. The abstract loop and the dune edit pair are still procedural **placeholders**, tagged "Placeholder" in the UI. Model names, prices and program terms are sample values pending the approved catalog and price version from `Genlixs_Project_Blueprint_v2.md`, which was not supplied. Every surface says so in the UI.
 
 ## Stack
 
@@ -65,9 +65,10 @@ src/lib/media.ts         media manifest (every image/clip; `placeholder` flag + 
 src/lib/demo-store.ts    browser-only demo state: drafts, quotes, jobs, credits, payments
 src/lib/admin-data.ts    sample operational and financial records
 public/brand/            web exports of the supplied v2 logo (no redraw)
+public/media/client/     client-supplied images + muted clip (Genlixs Drive; rights/model record to confirm)
 public/media/concept/    temporary placeholder media (replace before launch)
 brand/source/            the four supplied v2 logo masters, 20,171 × 4,487 px (not served)
-brand/*.py               scripts that produced the logo exports and placeholder media
+brand/*.py               scripts that produced the logo exports, placeholder media and client-media resizes
 design-handoff/genlixs/  brief analysis, design blueprint, master prompt, QA evidence, delivery status
 ```
 
@@ -75,7 +76,8 @@ design-handoff/genlixs/  brief analysis, design blueprint, master prompt, QA evi
 
 - Replace `src/lib/demo-store.ts` and `src/lib/admin-data.ts` with the blueprint's authenticated services (auth, quotes, jobs, ledger, payments, payouts).
 - Replace the model catalog, prices, pack values and partner terms with approved, data-driven values.
-- Replace all placeholder media with validated Genlixs outputs (for example from the client's Drive folder) and record rights/settings for each in `src/lib/media.ts`.
+- Confirm rights, tool licence, model and settings for each client file (`CLIENT_MEDIA.md`), and replace the remaining placeholders (abstract loop, dune edit pair) with validated outputs.
+- Bring in the 26 Drive videos over 10 MB once they are compressed under 10 MB, or once Drive access is allowed in the environment's network settings.
 - Supply approved legal text for the policy pages and a public support contact.
 
 See `design-handoff/genlixs/` for the full requirement matrix, design system and QA evidence.

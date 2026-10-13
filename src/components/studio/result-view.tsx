@@ -32,7 +32,7 @@ export function ResultMedia({ job, uploadedRef, sizes = "(min-width: 1024px) 60v
         <video controls playsInline preload="metadata" poster={stillOf(clip)} className={cn("mx-auto block w-full", maxH)} aria-label={`Your clip: ${job.title}`}>
           <source src={MEDIA[clip].src} type="video/mp4" />
         </video>
-        <ConceptTag className="pointer-events-none absolute top-3 left-3" />
+        <ConceptTag className="pointer-events-none absolute top-3 left-3" label={MEDIA[clip].placeholder ? undefined : "Sample"} />
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function ResultMedia({ job, uploadedRef, sizes = "(min-width: 1024px) 60v
     <>
       <div className={cn("relative mx-auto overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-raised", outputRatioClass(job), job.settings.ratio === "9:16" || job.settings.ratio === "2:3" ? "max-w-[min(100%,26rem)]" : "w-full")}>
         <Image src={m.src} alt={`Your result: ${m.alt}`} fill sizes={sizes} className="object-cover" />
-        <ConceptTag className="absolute top-3 left-3" />
+        <ConceptTag className="absolute top-3 left-3" label={m.placeholder ? undefined : "Sample"} />
         <button
           type="button"
           onClick={() => setZoom(true)}

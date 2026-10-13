@@ -12,7 +12,7 @@ const { chromium } = require('/opt/node-tools/node_modules/playwright');
     p.on('pageerror', (e) => errs.push(`${w} ${p.url()} pageerror ${e.message}`));
     p.on('console', (m) => { if (m.type() === 'error') errs.push(`${w} ${p.url()} ${m.text()}`); });
     await p.goto(base + '/help', { waitUntil: 'networkidle' });
-    await p.evaluate(() => localStorage.setItem('genlixs-preview-v2', JSON.stringify({ v: 2, signedIn: true, email: 'x@y.z' })));
+    await p.evaluate(() => localStorage.setItem('genlixs-preview-v3', JSON.stringify({ v: 2, signedIn: true, email: 'x@y.z' })));
     for (const path of paths.split(',')) {
       await p.goto(base + path, { waitUntil: 'networkidle' });
       const o = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

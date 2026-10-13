@@ -19,7 +19,7 @@ export function PreviewBanner({ surface = "dark" }: { surface?: "dark" | "light"
         <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase", surface === "dark" ? "bg-white text-brand-blue" : "bg-neutral-tint text-ink-dark")}>
           Design preview
         </span>
-        <span className="font-medium">Placeholder media and sample data — nothing is generated, charged or paid out.</span>
+        <span className="font-medium">Sample media and simulated data — nothing is generated, charged or paid out.</span>
         <Link href="/help#about-preview" className="inline-flex items-center gap-1 font-bold underline underline-offset-2">
           About this preview <ArrowRight aria-hidden className="size-3.5" />
         </Link>
@@ -33,7 +33,7 @@ export function PreviewPill({ surface = "dark" }: { surface?: "dark" | "light" }
   return (
     <Link
       href="/help#about-preview"
-      title="Design preview: placeholder media and sample data. Nothing real is generated, charged or paid out."
+      title="Design preview: sample media and simulated data. Nothing real is generated, charged or paid out."
       className={cn(
         "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold whitespace-nowrap",
         surface === "dark" ? "border-[rgb(37_63_246/0.6)] bg-[rgb(37_63_246/0.18)] text-link" : "border-[#c7cefd] bg-info-tint text-info-text",

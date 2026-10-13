@@ -1,12 +1,16 @@
 /**
  * Media manifest — the single place visuals come from.
  *
- * Every entry below is a TEMPORARY placeholder rendered procedurally for the design
- * preview (brand/concept_media.py, brand/placeholder_renders.py). None of it is model
- * output. When the client's approved images and videos are available (the shared
- * Drive folder could not be fetched from the build environment), replace `src`
- * (and `poster` for video), set `placeholder: false`, and fill `credit` with the
- * rights / model / settings record required by the design guide §14.
+ * Two sources:
+ * - `client*` entries: images and one clip supplied by Genlixs in the shared Drive folder,
+ *   resized/re-encoded for the web (`public/media/client/`, clip muted). Files carrying a
+ *   watermark or a third-party brand mark were left out. Their rights record, generating
+ *   model and settings still need confirming before launch (design guide §14).
+ * - the remaining entries: TEMPORARY placeholders rendered procedurally for the preview
+ *   (brand/concept_media.py, brand/placeholder_renders.py). None of it is model output; they
+ *   stay only where no client file fits (the abstract brand loop, the same-scene edit pair).
+ *   Replace `src` (and `poster`), set `placeholder: false` and fill `credit` when approved
+ *   media arrive.
  */
 export type MediaItem = {
   id: string;
@@ -21,6 +25,8 @@ export type MediaItem = {
   placeholder: boolean;
   credit?: string;
 };
+
+const CLIENT_CREDIT = "Client-supplied (Genlixs Drive) — rights and model record to confirm";
 
 export const MEDIA = {
   torus: {
@@ -116,6 +122,160 @@ export const MEDIA = {
     kind: "video",
     duration: 6,
     placeholder: true,
+  },
+
+  /* Client-supplied media (Genlixs Drive) */
+  forestFlare: {
+    id: "client-forest-flare",
+    src: "/media/client/forest-flare.webp",
+    width: 1195,
+    height: 1600,
+    alt: "Two hooded figures face each other in a misty forest at dusk, one holding a burning red flare",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  seaGown: {
+    id: "client-sea-gown",
+    src: "/media/client/sea-gown.webp",
+    width: 1289,
+    height: 1600,
+    alt: "A woman in a silver sequin gown with a long train stands on a dark beach at blue hour, an island on the horizon",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  milkyTent: {
+    id: "client-milky-tent",
+    src: "/media/client/milky-tent.webp",
+    width: 1289,
+    height: 1600,
+    alt: "A glowing tent pitched on frosty rocks beneath the Milky Way",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  summitBag: {
+    id: "client-summit-bag",
+    src: "/media/client/summit-bag.webp",
+    width: 1289,
+    height: 1600,
+    alt: "A red and green down sleeping bag on a foam mat at a snowy mountain summit at sunrise",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  library: {
+    id: "client-library",
+    src: "/media/client/library.webp",
+    width: 1195,
+    height: 1600,
+    alt: "A dark wood-panelled study with painted wallpaper, a leather armchair and soft window light",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  boardwalk: {
+    id: "client-boardwalk",
+    src: "/media/client/boardwalk.webp",
+    width: 1197,
+    height: 1600,
+    alt: "A woman in sunglasses and a black lace top looks back over her shoulder on a beach boardwalk under a clear sky",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  garden: {
+    id: "client-garden",
+    src: "/media/client/garden.webp",
+    width: 900,
+    height: 1600,
+    alt: "A red-haired woman in a white cotton dress with a leather crossbody bag stands in a rose garden",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  stoneHall: {
+    id: "client-stone-hall",
+    src: "/media/client/stone-hall.webp",
+    width: 893,
+    height: 1600,
+    alt: "A woman in a pale yellow slip dress stands by a stone column in a warm, lamp-lit interior",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  horned: {
+    id: "client-horned",
+    src: "/media/client/horned.webp",
+    width: 1067,
+    height: 1600,
+    alt: "Studio portrait of a pale character with four green eyes, red horns and a glossy black collar on deep blue",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  trench: {
+    id: "client-trench",
+    src: "/media/client/trench.webp",
+    width: 1067,
+    height: 1600,
+    alt: "A young woman in an olive trench coat, hair blowing across her face, against a muted green wall",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  earring: {
+    id: "client-earring",
+    src: "/media/client/earring.webp",
+    width: 1600,
+    height: 1280,
+    alt: "Close-up of a woman with tousled dark hair wearing a sculptural gold earring and a black turtleneck",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  warriorSheet: {
+    id: "client-warrior-sheet",
+    src: "/media/client/warrior-sheet.webp",
+    width: 1600,
+    height: 884,
+    alt: "Character sheet of an armoured warrior with a spear and quiver, shown from the front, side and back",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  driveThru: {
+    id: "client-drive-thru",
+    src: "/media/client/drive-thru.webp",
+    width: 1600,
+    height: 900,
+    alt: "A witch-themed drive-thru at night under a neon cauldron sign; a server in a navy uniform hands a green drink to a driver",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  sofa: {
+    id: "client-sofa",
+    src: "/media/client/sofa.webp",
+    width: 900,
+    height: 1600,
+    alt: "A man with glasses and an olive overshirt scrolls his phone on a brown leather sofa by a window",
+    kind: "image",
+    placeholder: false,
+    credit: CLIENT_CREDIT,
+  },
+  knightClip: {
+    id: "client-knight-clip",
+    src: "/media/client/knight-clip.mp4",
+    poster: "/media/client/knight-clip-poster.webp",
+    width: 752,
+    height: 560,
+    alt: "Nine-second clip: a wolf pup in silver armour holds a sword in a foggy meadow, then an armoured knight appears behind it",
+    kind: "video",
+    duration: 9,
+    placeholder: false,
+    credit: CLIENT_CREDIT,
   },
 } satisfies Record<string, MediaItem>;
 

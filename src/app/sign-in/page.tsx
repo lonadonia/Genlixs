@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Logo } from "@/components/brand/logo";
 import { PreviewBanner } from "@/components/preview-banner";
-import { ConceptTag } from "@/components/ui/badge";
 import { MEDIA } from "@/lib/media";
 import { SignInForm } from "./sign-in-form";
 
@@ -28,12 +27,11 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           </main>
         </div>
 
-        {/* Brand panel (desktop): placeholder render in the v2 palette, never presented as model output. */}
+        {/* Brand panel (desktop): client-supplied image (Genlixs Drive), decorative. */}
         <aside aria-hidden className="relative hidden overflow-hidden p-3 lg:block">
           <div className="relative h-full overflow-hidden rounded-[28px] border border-white/[0.08] bg-raised">
-            <Image src={MEDIA.torus.src} alt="" fill sizes="50vw" className="object-cover object-[50%_40%]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_top,rgb(15_18_18/0.92)_8%,rgb(15_18_18/0.2)_55%,transparent)]" />
-            <ConceptTag className="absolute top-5 left-5" />
+            <Image src={MEDIA.seaGown.src} alt="" fill sizes="50vw" className="object-cover object-[50%_30%]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_top,rgb(15_18_18/0.95)_24%,rgb(15_18_18/0.35)_60%,transparent)]" />
             <div className="absolute inset-x-0 bottom-0 p-10">
               <p className="font-display max-w-md text-[2.25rem] leading-[1.05] font-extrabold text-white">
                 Your drafts wait for you. <span className="text-brand-blue-bright">Nothing runs until you say so.</span>

@@ -20,9 +20,9 @@ Built from the client's three reference screenshots (patterns only, see 01 §7) 
 | Type | Archivo Variable at 112 % width, extra-bold, −2 % tracking for display; Inter Variable for UI/body |
 | Primary | Electric blue for buttons, selected pill tabs, active navigation, announcement bar, brand band and glows; `#5165F8` tint for accent phrases in headlines and icons on dark |
 | Secondary accent | Lime for the hero's drawn underline, eyebrow/status dots, success states and the focus ring |
-| Shape | Pill controls (`rounded-full`), 20–32 px panels, capsule media in the hero |
-| Media | Placeholder renders in the palette (glossy torus, capsules, orbs, orbit loop) beside the v1 landscapes; all tagged "Placeholder" |
-| Motion | Scroll-driven section reveal, capsule columns drifting in opposite directions, underline draw-on; all stop under reduced motion; pause control on every moving region |
+| Shape | Pill controls (`rounded-full`), 20–32 px panels; hero media tiles keep each file's own ratio with 18 px corners (v2.1 client note: not sharp, not pill-shaped) |
+| Media | Client-supplied images and one muted clip (Genlixs Drive, `public/media/client/`, see `CLIENT_MEDIA.md`) across the site; the abstract orbit loop and the dune edit pair remain procedural placeholders, tagged "Placeholder"; studio results built from client files are tagged "Sample" |
+| Motion | Scroll-driven section reveal, media columns drifting in opposite directions, underline draw-on; all stop under reduced motion; pause control on every moving region |
 
 Alternatives considered:
 - (a) A light editorial site: rejected because the client references are all dark and electric.
@@ -105,7 +105,7 @@ Text over media (worst case: a pure-white pixel under the overlay):
 | AutoplayVideo | `ui/autoplay-video.tsx` | muted loop; plays only when visible, motion allowed, not save-data and region not paused; `decorative` mode is hidden from assistive tech |
 | HoverVideo | `ui/hover-video.tsx` | poster → plays on card hover/focus → explicit Play/Pause button for touch/keyboard; pauses offscreen and when the tab is hidden |
 | MotionRegion | `motion-region.tsx` | visible Pause/Play for any moving region (WCAG 2.2.2); hover/focus pause |
-| Hero | `public/hero.tsx` | headline + underline draw, CTAs, features, capsule columns (desktop) / strip (phones) |
+| Hero | `public/hero.tsx` | headline + underline draw, CTAs, features, `MediaTile` columns (desktop: `aspect-ratio` from the manifest) / strip (phones: 176 px tall, width from the ratio) |
 | Composer (public) | `public/composer.tsx` | pill tabs (arrow keys), example-loaded notice, "+" reference tile (Edit), chip selects, counter, guest/authed action, prompt ideas |
 | QuickCreate (studio Home) | `studio/overview.tsx` | same draft; quality/length chips; exact cost + round Generate; edit routes to the edit studio; prompt error; insufficient credits with top-up link |
 | StudioShell | `studio/studio-shell.tsx` | floating rail (236 / 72 px), tooltips, groups, New creation, balance card, icon row; header switch, credits, Top up, notifications, account; drawer < 1024 |
@@ -117,7 +117,7 @@ Text over media (worst case: a pure-white pixel under the overlay):
 **Public `/`** (guide order kept; v2 additions in italics):
 1. Header 76 px under a blue announcement bar: wordmark 150 px, pill nav ≥ 1024, Sign in, blue Create; drawer < 1024.
 2. Creation stage:
-   - Hero: eyebrow pill, h1 + underline, sentence, two CTAs, three features, capsule columns.
+   - Hero: eyebrow pill, h1 + underline, sentence, two CTAs, three features, media columns (each tile at its file's ratio, 18 px corners).
    - Composer section `#create`: "What will you make today?", lit composer, prompt ideas, curated rail (torus output, noon→dusk comparison, orbit loop).
 3. Featured gallery `#examples`: 4-column dense bento (two tall, several wide), hover/touch "Use prompt", video card hover preview.
 4. Prompt-to-result: pill tabs (orbs image, dune edit, orbit loop), input recipe beside the output.
@@ -142,9 +142,9 @@ Text over media (worst case: a pure-white pixel under the overlay):
 
 | Width | Public | Customer | Admin / partner |
 | --- | --- | --- | --- |
-| 1440 | Two-column hero with capsule columns; 4-col bento | 236 px floating rail, 380 px settings, canvas | 232 px rail, full tables |
+| 1440 | Two-column hero with media columns; 4-col bento | 236 px floating rail, 380 px settings, canvas | 232 px rail, full tables |
 | 1024 | Hero columns narrower (h1 48 px) | 72 px icon rail with tooltips | Rail; tables scroll in region |
-| 768 | Single-column hero, capsule strip, menu drawer | Drawer; Input/Status/Result pill tabs | Drawer; filters wrap |
+| 768 | Single-column hero, media strip, menu drawer | Drawer; Input/Status/Result pill tabs | Drawer; filters wrap |
 | 390 / 360 | h1 40 px, accent wraps with underline under "videos.", 2-col gallery with caption action | Tabs; sticky Generate above safe area | Record cards; stacked balances |
 
 ## 8. Motion storyboard
@@ -154,7 +154,7 @@ Text over media (worst case: a pure-white pixel under the overlay):
 | Controls | hover / focus | colour, border 150 ms | unchanged | affordance |
 | Sections | scroll | opacity + 14 px, CSS `animation-timeline: view()` | disabled | reveal without JS |
 | Hero underline | load | stroke draw 900 ms after 250 ms | shown static | signature accent |
-| Capsule columns / phone strip | continuous | translateY / translateX loop 38–64 s | stopped | living gallery |
+| Media columns / phone strip | continuous | translateY / translateX loop 54–68 s (margins, not gaps, so the −50 % loop is seamless) | stopped | living gallery |
 | Media cards | hover | image scale 1.04 over 500–700 ms | disabled | feedback |
 | Gallery clip | hover / focus / button | muted playback | play only via button | preview |
 | Closing band loop | in view | muted playback | poster only | atmosphere |
@@ -181,7 +181,8 @@ Every moving region has a visible Pause control. There are no count-ups, paralla
 | Logo exports: header / color / dark / mono at 480/960 px (PNG + WebP); symbols (tile, color); favicon, icon, apple icon, OG | Derived (colour-to-alpha, trim, resize) | `public/brand/`, `src/app/` |
 | v2 placeholder stills (torus 1200×1500, capsules 900×1600, orbs 1600×1067) and orbit loop (960×540, 5 s, 61 KB) + poster | Temporary, procedural (`brand/placeholder_renders.py`) | `public/media/concept/v2-*` |
 | v1 concept media (dunes, spheres, product, aurora still + clip) | Temporary, procedural (`brand/concept_media.py`) | `public/media/concept/` |
-| Client Drive images/videos | **Not fetched** (network policy) | — swap in via `src/lib/media.ts` |
+| Client Drive images (14 used) + 1 clip (752×560, 9 s, muted, 470 KB) + poster | Client-supplied; resized to 1600 px WebP (`brand/client_media.py`); rights/model record to confirm | `public/media/client/`, record in `CLIENT_MEDIA.md` |
+| 26 Drive videos (12–43 MB) and 9 large PNGs | **Not fetched** (connector 10 MB cap; direct Drive access denied) | — compress under 10 MB or allow Drive in network access |
 | Validated outputs, rights records, legal copy, pricing, partner terms | Missing | — |
 
 ## 11. Handoff decisions

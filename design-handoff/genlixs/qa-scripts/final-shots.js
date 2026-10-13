@@ -12,7 +12,7 @@ const SIGNED = { v: 2, signedIn: true, email: 'demo.creator@example.com' };
     const p = await ctx.newPage();
     if (signed) {
       await p.goto(base + '/help', { waitUntil: 'networkidle' });
-      await p.evaluate((s) => localStorage.setItem('genlixs-preview-v2', JSON.stringify(s)), SIGNED);
+      await p.evaluate((s) => localStorage.setItem('genlixs-preview-v3', JSON.stringify(s)), SIGNED);
     }
     await p.goto(base + url, { waitUntil: 'networkidle' });
     if (full) {

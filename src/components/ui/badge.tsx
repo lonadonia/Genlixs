@@ -72,7 +72,11 @@ export function ConceptTag({ className, label = "Placeholder" }: { className?: s
         "inline-flex h-6 items-center gap-1.5 rounded-full bg-[rgb(15_18_18/0.72)] px-2.5 text-[11px] font-semibold tracking-wide text-ink uppercase backdrop-blur-md",
         className,
       )}
-      title="Temporary placeholder media — replace with approved Genlixs examples before launch"
+      title={
+        label === "Placeholder"
+          ? "Temporary placeholder media — replace with approved Genlixs examples before launch"
+          : "Sample file supplied by Genlixs — stands in for a real result in this preview"
+      }
     >
       <span aria-hidden className="size-1.5 rounded-full bg-brand-lime" />
       {label}

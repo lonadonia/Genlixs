@@ -6,45 +6,43 @@ import { MotionRegion } from "@/components/motion-region";
 import { MEDIA, stillOf, type MediaKey } from "@/lib/media";
 import { cn } from "@/lib/format";
 
-type Capsule = { media: MediaKey; pos?: string; video?: boolean; tint?: "lime" | "blue" | "white" };
+type Tile = { media: MediaKey; video?: boolean };
 
-/* Three staggered capsule columns (reference hero), each looping vertically in alternate directions. */
-const COLUMNS: { items: Capsule[]; dir: "up" | "down"; duration: string; offset: string }[] = [
-  {
-    dir: "up",
-    duration: "56s",
-    offset: "mt-10",
-    items: [{ media: "torus", pos: "50% 45%" }, { media: "dunesDusk", pos: "62% 50%" }, { media: "product", pos: "50% 40%" }, { media: "auroraVertical", pos: "50% 30%" }],
-  },
+/*
+ * Three staggered columns of client media (reference hero), each looping vertically in alternate
+ * directions. Every tile keeps the aspect ratio of the file it shows, so nothing is cropped.
+ */
+const COLUMNS: { items: Tile[]; dir: "up" | "down"; duration: string; offset: string }[] = [
+  { dir: "up", duration: "60s", offset: "mt-10", items: [{ media: "forestFlare" }, { media: "earring" }, { media: "garden" }, { media: "summitBag" }] },
   {
     dir: "down",
-    duration: "64s",
+    duration: "68s",
     offset: "-mt-24",
-    items: [{ media: "loop", video: true }, { media: "pills", pos: "45% 55%" }, { media: "spheres", pos: "40% 55%" }, { media: "orbs", pos: "30% 50%" }],
+    items: [{ media: "knightClip", video: true }, { media: "seaGown" }, { media: "driveThru" }, { media: "horned" }, { media: "library" }],
   },
-  {
-    dir: "up",
-    duration: "50s",
-    offset: "mt-24",
-    items: [{ media: "pills", pos: "20% 55%" }, { media: "dunesNoon", pos: "35% 60%" }, { media: "torus", pos: "60% 50%" }, { media: "auroraClip", pos: "50% 40%" }],
-  },
+  { dir: "up", duration: "54s", offset: "mt-24", items: [{ media: "boardwalk" }, { media: "warriorSheet" }, { media: "stoneHall" }, { media: "milkyTent" }, { media: "trench" }] },
 ];
 
-function CapsuleCard({ c, size = "lg" }: { c: Capsule; size?: "lg" | "sm" }) {
-  const m = MEDIA[c.media];
+/** Strip tiles (below lg) share one height, so their width follows the media's ratio. */
+const STRIP_H = 176;
+
+function MediaTile({ t, size = "lg" }: { t: Tile; size?: "lg" | "sm" }) {
+  const m = MEDIA[t.media];
+  const ratio = m.width / m.height;
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-raised shadow-[0_20px_50px_-20px_rgb(0_0_0/0.8)]",
-        size === "lg" ? "aspect-[10/17] w-full" : "aspect-[10/17] w-28 sm:w-32",
+        "relative shrink-0 overflow-hidden border border-white/10 bg-raised shadow-[0_20px_50px_-20px_rgb(0_0_0/0.8)]",
+        size === "lg" ? "mb-4 w-full rounded-[18px]" : "mr-3 rounded-2xl",
       )}
+      style={size === "lg" ? { aspectRatio: `${m.width} / ${m.height}` } : { height: STRIP_H, width: Math.round(STRIP_H * ratio) }}
     >
-      {c.video && m.kind === "video" ? (
-        <AutoplayVideo media={c.media} decorative className="absolute inset-0" />
+      {t.video && m.kind === "video" ? (
+        <AutoplayVideo media={t.media} decorative className="absolute inset-0" />
       ) : (
-        <Image src={stillOf(c.media)} alt="" fill sizes={size === "lg" ? "(min-width: 1024px) 15vw, 30vw" : "128px"} className="object-cover" style={{ objectPosition: c.pos ?? "50% 50%" }} />
+        <Image src={stillOf(t.media)} alt="" fill sizes={size === "lg" ? "(min-width: 1024px) 15vw, 30vw" : `${Math.ceil(STRIP_H * ratio)}px`} className="object-cover" />
       )}
-      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10 ring-inset" />
+      <span aria-hidden className={cn("pointer-events-none absolute inset-0 ring-1 ring-white/10 ring-inset", size === "lg" ? "rounded-[18px]" : "rounded-2xl")} />
     </div>
   );
 }
@@ -79,7 +77,7 @@ const FEATURES = [
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">
-      {/* ambient light: electric field behind the capsules, faint dots across the stage */}
+      {/* ambient light: electric field behind the media columns, faint dots across the stage */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="dot-field absolute inset-0 opacity-60" />
         <div className="absolute top-[-10%] right-[-10%] h-[80%] w-[60%] rounded-full bg-[radial-gradient(closest-side,rgb(37_63_246/0.38),transparent)] blur-2xl" />
@@ -120,11 +118,11 @@ export function Hero() {
             </ButtonLink>
           </div>
 
-          {/* Mobile / tablet: a single horizontal capsule strip instead of columns */}
+          {/* Mobile / tablet: a single horizontal strip instead of columns (margins, not gaps, keep the -50% loop seamless) */}
           <MotionRegion className="fade-x -mx-4 mt-10 overflow-hidden sm:-mx-6 lg:hidden" label="hero gallery" controlClassName="right-4 -bottom-1 sm:right-6">
-            <div aria-hidden className="marquee-left flex w-max gap-3 pb-10" style={{ ["--marquee-duration" as string]: "38s" }}>
-              {[...COLUMNS.flatMap((c) => c.items), ...COLUMNS.flatMap((c) => c.items)].map((c, i) => (
-                <CapsuleCard key={i} c={{ ...c, video: false }} size="sm" />
+            <div aria-hidden className="marquee-left flex w-max items-start pb-10" style={{ ["--marquee-duration" as string]: "56s" }}>
+              {[...COLUMNS.flatMap((c) => c.items), ...COLUMNS.flatMap((c) => c.items)].map((t, i) => (
+                <MediaTile key={i} t={{ ...t, video: false }} size="sm" />
               ))}
             </div>
           </MotionRegion>
@@ -144,17 +142,14 @@ export function Hero() {
           </ul>
         </div>
 
-        {/* Capsule columns (desktop) */}
+        {/* Media columns (desktop) */}
         <MotionRegion className="relative hidden lg:col-span-5 lg:block" label="hero gallery" controlClassName="right-2 bottom-6">
           <div aria-hidden className="fade-y absolute inset-y-0 -right-10 left-0 grid grid-cols-3 gap-4 overflow-hidden xl:-right-16">
             {COLUMNS.map((col, ci) => (
               <div key={ci} className={col.offset}>
-                <div
-                  className={cn("flex flex-col gap-4", col.dir === "up" ? "marquee-up" : "marquee-down")}
-                  style={{ ["--marquee-duration" as string]: col.duration }}
-                >
-                  {[...col.items, ...col.items].map((c, i) => (
-                    <CapsuleCard key={i} c={i < col.items.length ? c : { ...c, video: false }} />
+                <div className={cn("flex flex-col", col.dir === "up" ? "marquee-up" : "marquee-down")} style={{ ["--marquee-duration" as string]: col.duration }}>
+                  {[...col.items, ...col.items].map((t, i) => (
+                    <MediaTile key={i} t={i < col.items.length ? t : { ...t, video: false }} />
                   ))}
                 </div>
               </div>

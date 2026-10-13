@@ -16,7 +16,10 @@ const TOPICS = [
           states and journeys from the Genlixs Design Guide v1.0.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Examples are temporary concept artwork rendered for layout review — not model output.</li>
+          <li>
+            Most images and the knight clip were supplied by Genlixs; their prompts and settings are written to match them, not recorded. Items tagged
+            “Placeholder” are temporary renders for layout review — not model output.
+          </li>
           <li>Model names, prices, program terms and every number are sample values pending the approved catalog and price version.</li>
           <li>Sign-in, generation, payments, sharing and payouts are simulated in your browser. Nothing is sent to a server.</li>
           <li>Prototype controls (marked “Prototype”) let reviewers see delayed, failed and unconfirmed states on demand.</li>

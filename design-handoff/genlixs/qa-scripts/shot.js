@@ -17,9 +17,9 @@ const path = require('path');
     if (signed === '1') {
       await page.goto(base + '/help', { waitUntil: 'networkidle' });
       await page.evaluate(() => {
-        const raw = localStorage.getItem('genlixs-preview-v2');
+        const raw = localStorage.getItem('genlixs-preview-v3');
         const s = raw ? JSON.parse(raw) : { v: 2 };
-        localStorage.setItem('genlixs-preview-v2', JSON.stringify({ ...s, v: 2, signedIn: true, email: 'demo.creator@example.com' }));
+        localStorage.setItem('genlixs-preview-v3', JSON.stringify({ ...s, v: 2, signedIn: true, email: 'demo.creator@example.com' }));
       });
     }
     for (const p of paths.split(',')) {

@@ -19,7 +19,7 @@ const { chromium } = require('/opt/node-tools/node_modules/playwright');
   await p.waitForTimeout(200);
   out.push(['KBD-5 Escape closes menu, focus returns to trigger', await p.evaluate(() => document.activeElement.textContent.includes('Open menu'))]);
   await p.goto('http://localhost:3200/help', { waitUntil: 'networkidle' });
-  await p.evaluate(() => localStorage.setItem('genlixs-preview-v2', JSON.stringify({ v: 2, signedIn: true, email: 'd@e.f' })));
+  await p.evaluate(() => localStorage.setItem('genlixs-preview-v3', JSON.stringify({ v: 2, signedIn: true, email: 'd@e.f' })));
   await p.setViewportSize({ width: 1280, height: 900 });
   await p.goto('http://localhost:3200/studio/credits', { waitUntil: 'networkidle' });
   const topup = p.getByRole('button', { name: 'Top up credits' });

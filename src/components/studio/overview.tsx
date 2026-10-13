@@ -68,6 +68,7 @@ export function Overview() {
               eyebrow="Edit studio"
               title="Change a scene with one sentence"
               icon={WandSparkles}
+              placeholder
               visual={
                 <>
                   <div className="absolute inset-y-0 left-0 w-1/2 overflow-hidden">
@@ -87,7 +88,7 @@ export function Overview() {
               icon={MonitorPlay}
               visual={
                 <>
-                  <Image src={stillOf("loop")} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
+                  <Image src={stillOf("knightClip")} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover object-[50%_45%]" />
                   <span aria-hidden className="absolute top-1/2 left-1/2 grid size-12 -translate-x-1/2 -translate-y-[70%] place-items-center rounded-full bg-[rgb(15_18_18/0.6)] text-white ring-1 ring-white/30 backdrop-blur-md">
                     <Play className="ml-0.5 size-5" />
                   </span>
@@ -99,7 +100,7 @@ export function Overview() {
               eyebrow="Credits"
               title="Failed jobs give reserved credits back"
               icon={Gem}
-              visual={<Image src={MEDIA.pills.src} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover object-[50%_62%]" />}
+              visual={<Image src={MEDIA.milkyTent.src} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover object-[50%_55%]" />}
             />
           </ul>
         </section>
@@ -180,13 +181,28 @@ export function Overview() {
   );
 }
 
-function Promo({ href, eyebrow, title, icon: Icon, visual }: { href: string; eyebrow: string; title: string; icon: ComponentType<{ className?: string }>; visual: React.ReactNode }) {
+function Promo({
+  href,
+  eyebrow,
+  title,
+  icon: Icon,
+  visual,
+  placeholder,
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  visual: React.ReactNode;
+  /** The visual is a temporary placeholder render (tagged). */
+  placeholder?: boolean;
+}) {
   return (
     <li>
       <Link href={href} className="group relative block aspect-[16/10] overflow-hidden rounded-[24px] border border-white/[0.08] bg-raised">
         <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-[1.04]">{visual}</div>
         <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_top,rgb(15_18_18/0.95)_10%,rgb(15_18_18/0.55)_45%,transparent_75%)]" />
-        <ConceptTag className="absolute top-3 left-3" />
+        {placeholder ? <ConceptTag className="absolute top-3 left-3" /> : null}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-link">

@@ -6,7 +6,7 @@ const { chromium } = require('/opt/node-tools/node_modules/playwright');
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const p = await ctx.newPage();
   await p.goto(base + '/help', { waitUntil: 'networkidle' });
-  await p.evaluate(() => localStorage.setItem('genlixs-preview-v2', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
+  await p.evaluate(() => localStorage.setItem('genlixs-preview-v3', JSON.stringify({ v: 2, signedIn: true, email: 'demo@example.com' })));
   const summary = [];
   for (const path of paths.split(',')) {
     await p.goto(base + path, { waitUntil: 'networkidle' });
