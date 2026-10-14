@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LivePartnerReferrals } from "@/components/live/partner/live-partner";
 import { Badge, type Tone } from "@/components/ui/badge";
 import { PageHead } from "@/components/console/parts";
 
@@ -14,6 +16,7 @@ const REFERRALS: { id: string; joined: string; campaign: string; state: string; 
 ];
 
 export default function ReferralsPage() {
+  if (LIVE) return <LivePartnerReferrals />;
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHead

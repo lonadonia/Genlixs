@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LiveAdminOverview } from "@/components/live/admin/live-admin";
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +12,7 @@ import { TOOLS } from "@/lib/catalog";
 export const metadata: Metadata = { title: "Operations overview" };
 
 export default function AdminOverview() {
+  if (LIVE) return <LiveAdminOverview />;
   const queue = [
     { label: "Delayed jobs", detail: "2 video jobs past the p95 duration", href: "/admin/jobs?status=delayed", tone: "warning" as const, count: ADMIN_JOBS.filter((j) => j.status === "delayed").length },
     { label: "Unconfirmed submission", detail: "Provider did not acknowledge; reconcile before any resubmission", href: "/admin/jobs?status=unconfirmed", tone: "warning" as const, count: ADMIN_JOBS.filter((j) => j.status === "unconfirmed").length },

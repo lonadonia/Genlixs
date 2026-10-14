@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/format";
+import { LIVE } from "@/lib/config";
 
 /**
  * Persistent honesty notice styled as the site's announcement bar (white on electric blue, 6.7:1):
  * this deployment is a design preview, not the platform.
  */
 export function PreviewBanner({ surface = "dark" }: { surface?: "dark" | "light" }) {
+  if (LIVE) return null;
   return (
     <div
       role="note"
@@ -30,6 +32,7 @@ export function PreviewBanner({ surface = "dark" }: { surface?: "dark" | "light"
 
 /** Compact honesty marker for app shells (studio, admin, partner) where a full-width bar would break the rail layout. */
 export function PreviewPill({ surface = "dark" }: { surface?: "dark" | "light" }) {
+  if (LIVE) return null;
   return (
     <Link
       href="/help#about-preview"

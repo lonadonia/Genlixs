@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LivePartnerPayouts } from "@/components/live/partner/live-partner";
 import { CircleCheck, CircleDashed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,7 @@ import { fmtUsd } from "@/lib/format";
 export const metadata: Metadata = { title: "Payouts" };
 
 export default function PartnerPayoutsPage() {
+  if (LIVE) return <LivePartnerPayouts />;
   const available = PARTNER_BALANCES.find((b) => b.key === "available")!.value;
   const reserved = PARTNER_BALANCES.find((b) => b.key === "reserved")!.value;
   const short = PAYOUT_RULES.threshold - available;

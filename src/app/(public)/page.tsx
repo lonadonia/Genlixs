@@ -16,6 +16,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { EXAMPLES, MODELS, TOOLS, TOOL_ORDER, modelById, type Example, type ToolId } from "@/lib/catalog";
 import { MEDIA, stillOf, type MediaKey } from "@/lib/media";
 import { PACKS } from "@/lib/packs";
+import { LIVE } from "@/lib/config";
+import { LivePricing } from "@/components/live/public/live-public";
 import { cn } from "@/lib/format";
 
 const ex = (id: string) => EXAMPLES.find((e) => e.id === id)!;
@@ -445,8 +447,11 @@ export default function HomePage() {
           <div className="lg:col-span-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-ink">Credit packs</h3>
-              <Badge tone="attention">Sample values — not approved pricing</Badge>
+              {LIVE ? null : <Badge tone="attention">Sample values — not approved pricing</Badge>}
             </div>
+            {LIVE ? (
+              <LivePricing />
+            ) : (
             <ul className="mt-5 grid gap-4 sm:grid-cols-3">
               {PACKS.map((p, i) => (
                 <li
@@ -464,9 +469,12 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-sm text-muted">
-              Final packs, currencies, taxes and expiry rules publish from the approved price version. Prices shown here are placeholders for layout review.
-            </p>
+            )}
+            {LIVE ? null : (
+              <p className="mt-4 text-sm text-muted">
+                Final packs, currencies, taxes and expiry rules publish from the approved price version. Prices shown here are placeholders for layout review.
+              </p>
+            )}
             <div className="mt-6 flex flex-wrap gap-3">
               <ButtonLink href="/studio/credits">View credit options</ButtonLink>
               <ButtonLink href="/help#credits" variant="secondary">
@@ -494,7 +502,7 @@ export default function HomePage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/partners/apply">Apply to the program</ButtonLink>
                 <ButtonLink href="/partner" variant="secondary">
-                  Preview the partner portal
+                  {LIVE ? "Open the partner portal" : "Preview the partner portal"}
                 </ButtonLink>
               </div>
             </div>

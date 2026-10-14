@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LivePartnerSettings } from "@/components/live/partner/live-partner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHead, Panel } from "@/components/console/parts";
@@ -7,6 +9,7 @@ import { PARTNER } from "@/lib/admin-data";
 export const metadata: Metadata = { title: "Settings" };
 
 export default function PartnerSettingsPage() {
+  if (LIVE) return <LivePartnerSettings />;
   return (
     <div className="mx-auto max-w-[1000px] space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHead title="Settings" sub="Profile details and payout details are managed separately. Payout changes need verification." />

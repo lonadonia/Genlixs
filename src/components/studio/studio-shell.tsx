@@ -28,6 +28,9 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { PHASE_LABEL, isTerminal, jobPhase, setDemo, useDemo, useNow } from "@/lib/demo-store";
 import { TOOLS } from "@/lib/catalog";
 import { cn, fmtNum } from "@/lib/format";
+import { LIVE } from "@/lib/config";
+import { AccountProvider, useAccount } from "@/lib/live/account";
+import { units } from "@/lib/live/types";
 
 type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
 
@@ -102,11 +105,84 @@ function RailLink({ item, active, collapsed, onNavigate }: { item: Item; active:
   );
 }
 
+/** What the frame needs from either the design preview store or the live account. */
+type ShellView = {
+  live: boolean;
+  hydrated: boolean;
+  signedIn: boolean;
+  email: string;
+  available: number;
+  reserved: number;
+  restricted: boolean;
+  bellTitle: string;
+  bellCount: number;
+  bellItems: { key: string; title: string; label: string; href: string }[];
+  onSignOut: () => void | Promise<void>;
+  onDemoSignIn?: () => void;
+};
+
 export function StudioShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  return LIVE ? (
+    <AccountProvider>
+      <LiveShell>{children}</LiveShell>
+    </AccountProvider>
+  ) : (
+    <DemoShell>{children}</DemoShell>
+  );
+}
+
+function DemoShell({ children }: { children: ReactNode }) {
   const demo = useDemo();
   const now = useNow();
+  const active = demo.jobs.filter((j) => !j.settled && !isTerminal(jobPhase(j, now)));
+  const view: ShellView = {
+    live: false,
+    hydrated: demo.hydrated,
+    signedIn: demo.signedIn,
+    email: demo.email || "demo.creator@example.com",
+    available: demo.available,
+    reserved: demo.reserved,
+    restricted: false,
+    bellTitle: "Recent jobs",
+    bellCount: active.length,
+    bellItems: demo.jobs.slice(0, 4).map((j) => ({
+      key: j.id,
+      title: j.title,
+      label: j.expired ? "Expired" : PHASE_LABEL[jobPhase(j, now)],
+      href: j.settled ? `/studio/library?job=${j.id}` : TOOLS[j.tool].href,
+    })),
+    onSignOut: () => setDemo((s) => ({ ...s, signedIn: false })),
+    onDemoSignIn: () => setDemo((s) => ({ ...s, signedIn: true, email: "demo.creator@example.com" })),
+  };
+  return <ShellFrame view={view}>{children}</ShellFrame>;
+}
+
+function LiveShell({ children }: { children: ReactNode }) {
+  const acct = useAccount();
+  const view: ShellView = {
+    live: true,
+    hydrated: acct.hydrated,
+    signedIn: Boolean(acct.me),
+    email: acct.me?.email ?? "",
+    available: units(acct.wallet?.availableUnits),
+    reserved: units(acct.wallet?.reservedUnits),
+    restricted: acct.me?.accountStatus === "suspended",
+    bellTitle: "Notifications",
+    bellCount: acct.unread,
+    bellItems: acct.notifications.slice(0, 6).map((n) => ({
+      key: n.id,
+      title: n.title,
+      label: n.read_at ? "" : "New",
+      href: n.link && n.link.startsWith("/") ? n.link : "/studio",
+    })),
+    onSignOut: acct.signOut,
+  };
+  return <ShellFrame view={view}>{children}</ShellFrame>;
+}
+
+function ShellFrame({ view, children }: { view: ShellView; children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [drawer, setDrawer] = useState(false);
   const [bell, setBell] = useState(false);
   const drawerRef = useRef<HTMLDialogElement>(null);
@@ -138,13 +214,11 @@ export function StudioShell({ children }: { children: ReactNode }) {
 
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(href + "/"));
   const title = TITLES[pathname] ?? "Studio";
-  const active = demo.jobs.filter((j) => !j.settled && !isTerminal(jobPhase(j, now)));
-  const recent = demo.jobs.slice(0, 4);
 
-  if (demo.hydrated && !demo.signedIn) {
+  if (view.hydrated && !view.signedIn) {
     return (
       <>
-        <PreviewBanner />
+        {view.live ? null : <PreviewBanner />}
         <main id="main" className="relative isolate grid min-h-[calc(100dvh-36px)] place-items-center overflow-hidden px-4">
           <div aria-hidden className="glow-electric pointer-events-none absolute top-1/4 left-1/2 -z-10 h-[420px] w-[min(900px,100%)] -translate-x-1/2" />
           <div className="console-frame w-full max-w-md p-8 text-center">
@@ -155,9 +229,15 @@ export function StudioShell({ children }: { children: ReactNode }) {
               <ButtonLink href={`/sign-in?next=${encodeURIComponent(pathname)}`} size="lg">
                 Sign in
               </ButtonLink>
-              <Button variant="secondary" size="lg" onClick={() => setDemo((s) => ({ ...s, signedIn: true, email: "demo.creator@example.com" }))}>
-                Continue with demo account
-              </Button>
+              {view.onDemoSignIn ? (
+                <Button variant="secondary" size="lg" onClick={view.onDemoSignIn}>
+                  Continue with demo account
+                </Button>
+              ) : (
+                <ButtonLink href={`/sign-in?mode=sign-up&next=${encodeURIComponent(pathname)}`} variant="secondary" size="lg">
+                  Create an account
+                </ButtonLink>
+              )}
             </div>
           </div>
         </main>
@@ -186,7 +266,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
     </nav>
   );
 
-  const initial = (demo.email || "D").slice(0, 1).toUpperCase();
+  const initial = (view.email || "D").slice(0, 1).toUpperCase();
 
   return (
     <div className="min-h-dvh">
@@ -220,8 +300,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
           <div className="mt-auto hidden pt-5 xl:block">
             <div className="rounded-2xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_0%_0%,rgb(37_63_246/0.35),transparent_70%)] bg-raised p-4">
               <p className="text-xs font-medium text-muted">Available credits</p>
-              <p className="font-display mt-1 text-2xl font-extrabold text-ink tabular">{fmtNum(demo.available)}</p>
-              {demo.reserved ? <p className="text-xs text-muted tabular">{fmtNum(demo.reserved)} reserved for running jobs</p> : null}
+              <p className="font-display mt-1 text-2xl font-extrabold text-ink tabular">{fmtNum(view.available)}</p>
+              {view.reserved ? <p className="text-xs text-muted tabular">{fmtNum(view.reserved)} reserved for running jobs</p> : null}
               <Link href="/studio/credits" className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-sm font-semibold text-brand-night hover:bg-white/90">
                 <Coins aria-hidden className="size-4" /> Top up
               </Link>
@@ -253,9 +333,11 @@ export function StudioShell({ children }: { children: ReactNode }) {
           </button>
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <p className="min-w-0 truncate text-lg font-semibold">{title}</p>
-            <span className="hidden sm:inline-flex">
-              <PreviewPill />
-            </span>
+            {view.live ? null : (
+              <span className="hidden sm:inline-flex">
+                <PreviewPill />
+              </span>
+            )}
           </div>
 
           <div role="group" aria-label="Workspace" className="hidden items-center rounded-full border border-white/10 bg-white/[0.03] p-1 text-sm md:flex">
@@ -272,7 +354,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
             className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold hover:border-white/25"
           >
             <Coins aria-hidden className="size-4 text-brand-blue-bright" />
-            <span className="tabular">{fmtNum(demo.available)}</span>
+            <span className="tabular">{fmtNum(view.available)}</span>
             <span className="hidden text-muted xl:inline">credits available</span>
             <span className="sr-only xl:hidden">credits available</span>
           </Link>
@@ -291,31 +373,34 @@ export function StudioShell({ children }: { children: ReactNode }) {
               className="relative grid size-10 place-items-center rounded-full text-muted hover:bg-white/[0.06] hover:text-ink"
             >
               <Bell aria-hidden className="size-5" />
-              {active.length ? (
-                <span className="absolute top-1 right-1 grid size-4 place-items-center rounded-full bg-brand-blue text-[10px] font-bold text-white">{active.length}</span>
+              {view.bellCount ? (
+                <span className="absolute top-1 right-1 grid size-4 place-items-center rounded-full bg-brand-blue text-[10px] font-bold text-white">{Math.min(view.bellCount, 9)}</span>
               ) : null}
-              <span className="sr-only">Notifications{active.length ? `, ${active.length} running` : ""}</span>
+              <span className="sr-only">
+                Notifications{view.bellCount ? `, ${view.bellCount} ${view.live ? "unread" : "running"}` : ""}
+              </span>
             </button>
             {bell ? (
               <div id="notif-panel" className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-elevated p-2 shadow-[var(--shadow-pop)]">
-                <p className="px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-muted uppercase">Recent jobs</p>
-                <ul>
-                  {recent.map((j) => {
-                    const p = jobPhase(j, now);
-                    return (
-                      <li key={j.id}>
+                <p className="px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-muted uppercase">{view.bellTitle}</p>
+                {view.bellItems.length ? (
+                  <ul>
+                    {view.bellItems.map((j) => (
+                      <li key={j.key}>
                         <Link
-                          href={j.settled ? `/studio/library?job=${j.id}` : TOOLS[j.tool].href}
+                          href={j.href}
                           onClick={() => setBell(false)}
                           className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm hover:bg-white/[0.05]"
                         >
                           <span className="min-w-0 truncate">{j.title}</span>
-                          <span className="shrink-0 text-xs text-muted">{j.expired ? "Expired" : PHASE_LABEL[p]}</span>
+                          {j.label ? <span className="shrink-0 text-xs text-muted">{j.label}</span> : null}
                         </Link>
                       </li>
-                    );
-                  })}
-                </ul>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-2 pb-2 text-sm text-muted">Nothing new yet.</p>
+                )}
               </div>
             ) : null}
           </div>
@@ -328,7 +413,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
               <span className="sr-only">Account menu</span>
             </summary>
             <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-white/10 bg-elevated p-2 shadow-[var(--shadow-pop)]">
-              <p className="truncate px-2 py-1.5 text-sm text-muted">{demo.email || "demo.creator@example.com"}</p>
+              <p className="truncate px-2 py-1.5 text-sm text-muted">{view.email}</p>
               <Link href="/studio/billing" className="flex h-10 items-center rounded-xl px-2 text-sm hover:bg-white/[0.05]">
                 Plan and billing
               </Link>
@@ -337,8 +422,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
               </Link>
               <button
                 type="button"
-                onClick={() => {
-                  setDemo((s) => ({ ...s, signedIn: false }));
+                onClick={async () => {
+                  await view.onSignOut();
                   router.push("/");
                 }}
                 className="flex h-10 w-full items-center gap-2 rounded-xl px-2 text-left text-sm hover:bg-white/[0.05]"
@@ -348,12 +433,19 @@ export function StudioShell({ children }: { children: ReactNode }) {
             </div>
           </details>
         </header>
-        <p className="px-4 pb-2 text-xs text-muted sm:hidden">
-          <PreviewPill /> <span className="ml-1">Nothing here is real.</span>
-        </p>
+        {view.live ? null : (
+          <p className="px-4 pb-2 text-xs text-muted sm:hidden">
+            <PreviewPill /> <span className="ml-1">Nothing here is real.</span>
+          </p>
+        )}
+        {view.restricted ? (
+          <p role="alert" className="mx-4 mb-2 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm text-orange-on-dark sm:mx-6">
+            Your account is restricted. New generations and purchases are paused — contact support for details.
+          </p>
+        ) : null}
 
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
-          {demo.hydrated ? children : <ShellSkeleton />}
+          {view.hydrated ? children : <ShellSkeleton />}
         </main>
       </div>
 
@@ -380,7 +472,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
           <div className="flex flex-1 flex-col overflow-y-auto p-3">
             <div className="mb-4 rounded-2xl border border-white/[0.08] bg-raised p-4">
               <p className="text-xs text-muted">Available credits</p>
-              <p className="font-display text-2xl font-extrabold tabular">{fmtNum(demo.available)}</p>
+              <p className="font-display text-2xl font-extrabold tabular">{fmtNum(view.available)}</p>
             </div>
             {nav(false, () => setDrawer(false))}
             <div className="mt-5 grid gap-0.5 border-t border-white/[0.07] pt-4">
@@ -404,7 +496,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
 
 function ShellSkeleton() {
   return (
-    <div className="p-6" aria-busy="true" aria-label="Loading studio">
+    <div className="p-6" role="status" aria-busy="true" aria-label="Loading studio">
       <div className="mx-auto h-10 w-80 max-w-full animate-pulse-soft rounded-xl bg-raised" />
       <div className="mx-auto mt-8 h-48 max-w-[860px] animate-pulse-soft rounded-[28px] bg-surface" />
     </div>

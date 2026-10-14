@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LivePartnerOverview } from "@/components/live/partner/live-partner";
 import Link from "next/link";
 import { CircleCheck, CircleDashed, ExternalLink, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +15,7 @@ import { COMMISSION_STATUS } from "@/components/partner/status";
 export const metadata: Metadata = { title: "Overview" };
 
 export default function PartnerOverview() {
+  if (LIVE) return <LivePartnerOverview />;
   const available = PARTNER_BALANCES.find((b) => b.key === "available")!.value;
   const readiness = [
     { ok: true, label: "Agreement accepted", detail: PARTNER.agreement },

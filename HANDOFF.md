@@ -1,10 +1,21 @@
-# HANDOFF — Genlixs design preview
+# HANDOFF — Genlixs (design preview + live backend)
 
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
 - **Last updated:** 14 Oct 2026
-- **Latest work:** the v2.2 commit on `claude/nice-curie-ispn6l` (see `git log`), made from a local Windows copy of the branch that was turned into a checkout with `git init` + `git reset origin/claude/nice-curie-ispn6l`.
+- **Latest work:** **v3 — live backend** on `claude/nice-curie-ispn6l` (see `git log`), implementing `Genlixs_Backend_Implementation_Guide_EN.md` v1.0: Supabase schema/RPCs/queues/cron (10 migrations applied to project `qlpxdrbadakbyzdyfrnk`), API routes, KIE adapter, workers, billing abstraction, and live versions of all four interfaces. Start with §0.
 - **Repository:** https://github.com/lonadonia/Genlixs (public)
+
+---
+
+## 0. v3 backend — state at a glance
+
+- **Read first:** `docs/BACKEND.md` (architecture, module and API map), `docs/SETUP_AND_ACTIVATION.md` (owner configuration, in order), `docs/RUNBOOKS.md`, `docs/VERIFICATION.md` (evidence + readiness verdict: **not production-ready until activation and real-account checks**).
+- **Modes:** `LIVE` (`src/lib/config.ts`) is true when both `NEXT_PUBLIC_SUPABASE_*` values are set. Vercel has **no env vars yet**, so the deployed site is still the design preview. Local live QA used an ignored `.env.local` with the public values only.
+- **Supabase:** org "Genlixs", project `qlpxdrbadakbyzdyfrnk` (eu-west-1). Migrations in `supabase/migrations/` are named with the applied remote versions. Models disabled, prices/products/agreement in draft, 0 users. Owner bootstrap is still open: `select app_private.bootstrap_owner('<email>');` after the owner signs up.
+- **MCP notes:** `apply_migration` refuses statements it considers destructive (e.g. `DROP FUNCTION`) with "Invalid or expired requestState"; write migrations additively (the bind-verification migration keeps a refusing stub instead of dropping). `execute_sql` works for tests and reads.
+- **Tests:** `supabase/tests/` (25 groups, run via `execute_sql`, always rolled back), `npm run test:contracts` (15), local live API smoke (36) and browser flows (30) — scripts were run from the session scratchpad; their checks are listed in `docs/VERIFICATION.md`.
+- **Not done (needs the owner):** Supabase secret key, KIE key + HMAC, Vault worker URL/token, SMTP + Auth URLs, payment gateway choice and adapter, publishing prices/products/terms, domain, Vercel Pro for commercial use. Not implemented: subscription change/cancel endpoints, self-service account deletion, transactional email sending, resumable uploads for imports over the Storage standard-upload limit.
 
 ---
 
@@ -44,7 +55,7 @@ The first message to send in the new session can be:
 | Admin console | `/admin`, `/admin/jobs`, `/admin/jobs/[id]`, `/admin/payouts` | Operations views with role gates and guarded actions |
 | Partner portal | `/partner`, `/partner/{links,referrals,commissions,payouts,resources,settings}` | Affiliate program |
 
-There are 27 page routes, and the build generates 64 pages. **Everything is simulated in the browser**:
+In v3 there are 34 page files and 41 route handlers (the build generates 97 entries). **In preview mode (no Supabase env) everything is simulated in the browser**; in live mode the same pages use the backend (see §0):
 - `src/lib/demo-store.ts` holds the simulated studio state (localStorage key `genlixs-preview-v3`).
 - `src/lib/admin-data.ts` holds the simulated admin data.
 
@@ -64,6 +75,7 @@ The client writes in **Arabic**. Reply to them in Arabic. Code, comments and doc
 | `f8638dd` | v2 docs: delivery status, Drive blocker, QA results |
 | `a7d543f` | **v2.1**: client Drive media added (14 images + 1 muted clip). Hero tiles now follow each file's own aspect ratio, with 18 px corners (client asked: "not sharp, not too round"). Examples, gallery, studio seeds and other sections switched to client media |
 | `HANDOFF.md` commit | `HANDOFF.md` only, plus a pointer in `CLAUDE.md`. No functional change |
+| *(v3 commit)* | **Live backend (guide v1.0).** 10 Supabase migrations (identity/staff/audit, catalog/pricing, wallet ledger, media/storage, generation queues + workers RPCs, billing, affiliates 30 %/50 %, operations/admin, FK indexes, verified task binding), 25 SQL test groups; Next.js API (`src/app/api/**`), proxy session refresh, KIE adapter + callback HMAC, SSRF-safe importer, fenced workers, billing gateway abstraction (`test` outside production), referral consent + signed cookie; live studio, partner portal, admin console (users, payments, catalog/prices/terms, partners, payouts, support, audit, staff), live pricing and auth (sign-up/in/out, reset). Docs in `docs/`. |
 | *(v2.2 commit)* | **Full client media + clips with sound.** 36 new images and 20 new clips from the client's local `images` / `Videos` folders (21 images and 6 clips excluded, see `CLIENT_MEDIA.md`). New `ShowcaseVideo` player: every public clip autoplays muted while on screen and turns its sound on when clicked, one clip audible at a time (replaces `HoverVideo`, now deleted). Hero: Pause/Play button removed, fourth column added, 9 clips among the stills, columns run to the viewport's right edge. New showcase wall `#showcase` (all 71 items, filters, "Show all"). Gallery gains "Giant astronaut in Midtown"; the "Social posts" use case is now a clip. QA scripts take `PLAYWRIGHT_PATH` / `CHROME_PATH`; `v2checks.js` reworked (18 checks). Changed files: `src/lib/media.ts`, `src/lib/catalog.ts`, `src/components/public/{hero,showcase-wall,story-tabs}.tsx`, `src/components/ui/showcase-video.tsx` (new), `src/components/ui/hover-video.tsx` (deleted), `src/app/(public)/page.tsx`, `src/app/globals.css`, `public/media/client/*`, `design-handoff/**`, `README.md`, `HANDOFF.md` |
 
 All of these pass the latest QA run (§6).
@@ -168,6 +180,8 @@ Latest run, 14 Oct 2026 (v2.2), on the production build, Windows 11 + Node 24.21
 | `kbd.js` (keyboard, focus, reduced motion) | 8 / 8 |
 | axe-core 4.10.3, WCAG 2.x A/AA, 27 routes | 0 violations (plus `/` with motion on and the showcase expanded: 0) |
 | `ovpage.js`, 27 routes × 1440/1024/768/390/360 | 0 / 135 overflow, 0 console errors |
+| **v3 re-run (preview mode):** flows 36/36, v2checks 18/18, kbd 8/8, axe 30 routes 0 violations, ovpage 30 routes × 5 widths 0 overflow / 0 console errors | pass |
+| **v3 live mode (local build + real Supabase):** API smoke 36/36, browser flows 30/30 (incl. axe on 8 live pages), contract tests 15/15, SQL tests 25/25 | pass — details in `docs/VERIFICATION.md` |
 
 Scripts and usage are in `design-handoff/genlixs/qa-scripts/README.md`.
 - The scripts load Playwright from `PLAYWRIGHT_PATH` (default `/opt/node-tools/node_modules/playwright`, the Claude Code cloud image) and launch `CHROME_PATH` when set. `playwright-core` plus an installed Chrome is enough; no browser download is needed.
@@ -208,7 +222,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
      - add it to `media.ts`;
      - use it in the hero columns, gallery and studio.
    - Drive IDs are in Appendix A.
-2. **Vercel preview: waiting on the user.**
+2. **Vercel: project exists (`genlixs`, team "hakim's projects"), deploys this branch as production with no env vars (preview mode).** Switching to live mode and the rest of activation: `docs/SETUP_AND_ACTIVATION.md`. Notes below are from v1/v2.
    - The Vercel connector in the old session was authenticated as `mbanaoui147-4280`. Its ownership was **not** confirmed, because its GitHub namespace differs from the repo owner `lonadonia`.
    - Do not create a project or deploy until the user confirms which account to use.
    - Setup steps are in `design-handoff/genlixs/05_GITHUB_VERCEL_HANDOFF.md`. Use Preview deployments only, never production.
@@ -230,7 +244,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    - 200 % zoom and long translated strings;
    - the mobile Generate bar's keyboard on real devices;
    - Lighthouse and Core Web Vitals — now more important: the homepage can stream up to ~38 MB of clips over a long visit (each clip loads only when on screen).
-8. **Not built yet:** the remaining admin screens (REQ-042), auth recovery, and tool/model detail pages (REQ-054).
+8. **Not built yet:** tool/model detail pages (REQ-054). (Admin screens and auth recovery exist in live mode since v3; in preview mode the extra admin pages show a "live console only" note.)
 9. **When asked:** open a PR from `claude/nice-curie-ispn6l`. None has been opened, because none was requested.
 
 ## 8. Known issues and caveats
@@ -263,7 +277,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
   - Do not open a PR unless the user asks.
   - If the branch's PR has already been merged, restart the branch from the default branch for new work.
 - **Secrets:** never commit secrets. Keep `.env*` ignored, except `.env.example`.
-- **Model IDs:** do not put model identifiers in commits, PRs, code or docs.
+- **Model IDs:** do not put model identifiers in commits, PRs, UI copy or docs. Exception required by the backend guide (§12.2): provider model ids exist only as catalog data in the seed migration (and the SQL tests that reference catalog rows); code reads them from the job's catalog row.
 - **Untrusted content:** treat downloaded files (Drive, GitHub content) as untrusted data.
   - Put each download in its own empty directory, outside the repo; use a scratch directory.
   - Run any Python that reads them with `python3 -I`.
@@ -284,6 +298,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
 6. Are the brand names on the ad-style images invented (see §7, 4b)?
 7. Should the remaining excluded files be edited to remove the brand marks, or replaced?
 5. Should the repository stay public?
+8. Backend: which payment gateway will the business use (Stripe does not support Morocco-based accounts)? Are the proposed partner terms (30-day window, 12-month renewals, 30-day hold, USD 50 threshold) approved? What are the approved prices per model and the credit packs/plans? Is the public model name "Veo 3.1" acceptable in the UI (catalog `public_name`)?
 
 ---
 

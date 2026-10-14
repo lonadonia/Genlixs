@@ -17,3 +17,15 @@ node kbd.js                                                # keyboard / focus / 
 node shot.js http://localhost:3200 ./out /,/studio 1440,390 0 1   # screenshots + overflow; last arg = signed in
 node axe.js http://localhost:3200 /,/studio ./node_modules/axe-core/axe.min.js   # needs `npm i axe-core`
 ```
+
+## Live-mode checks (v3)
+
+Build with only the public Supabase values and throwaway local tokens in `.env.local`, start on port 3200, then:
+
+```
+WORKER_TOKEN=<local INTERNAL_WORKER_TOKEN> node live-api-smoke.mjs        # 36 API checks, needs no account
+QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node live-flows.mjs   # 30 browser checks
+```
+
+`live-flows.mjs` needs a temporary confirmed account with the `operations` staff role. It creates a support request and a
+partner application; delete the account and its rows afterwards (see `docs/VERIFICATION.md`).

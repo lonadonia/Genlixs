@@ -3,10 +3,18 @@ import { Suspense } from "react";
 import { JobsTable } from "@/components/admin/jobs-table";
 import { PageHead } from "@/components/console/parts";
 import { Badge } from "@/components/ui/badge";
+import { LIVE } from "@/lib/config";
+import { LiveAdminJobs } from "@/components/live/admin/live-admin";
 
 export const metadata: Metadata = { title: "Jobs" };
 
 export default function AdminJobsPage() {
+  if (LIVE)
+    return (
+      <Suspense>
+        <LiveAdminJobs />
+      </Suspense>
+    );
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHead

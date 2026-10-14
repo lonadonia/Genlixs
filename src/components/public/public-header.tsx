@@ -6,6 +6,8 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { ButtonLink } from "@/components/ui/button";
 import { useDemo } from "@/lib/demo-store";
+import { LIVE } from "@/lib/config";
+import { useLiveSignedIn } from "@/components/live/public/live-public";
 
 const NAV = [
   { href: "/#tools", label: "Tools" },
@@ -16,7 +18,9 @@ const NAV = [
 ];
 
 export function PublicHeader() {
-  const { signedIn, hydrated } = useDemo();
+  const demo = useDemo();
+  const live = useLiveSignedIn();
+  const { signedIn, hydrated } = LIVE ? live : demo;
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);

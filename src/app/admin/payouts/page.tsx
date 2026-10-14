@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LiveAdminPayouts } from "@/components/live/admin/live-admin";
 import { PayoutReview } from "@/components/admin/payout-review";
 import { PageHead } from "@/components/console/parts";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 export const metadata: Metadata = { title: "Payouts" };
 
 export default function AdminPayoutsPage() {
+  if (LIVE) return <LiveAdminPayouts />;
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHead

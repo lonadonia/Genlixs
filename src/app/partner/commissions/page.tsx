@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LIVE } from "@/lib/config";
+import { LivePartnerCommissions } from "@/components/live/partner/live-partner";
 import { Badge } from "@/components/ui/badge";
 import { PageHead } from "@/components/console/parts";
 import { COMMISSION_STATUS } from "@/components/partner/status";
@@ -8,6 +10,7 @@ import { fmtUsd } from "@/lib/format";
 export const metadata: Metadata = { title: "Commissions" };
 
 export default function CommissionsPage() {
+  if (LIVE) return <LivePartnerCommissions />;
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHead

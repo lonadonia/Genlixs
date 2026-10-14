@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PreviewPill } from "@/components/preview-banner";
 import { cn } from "@/lib/format";
+import { LIVE } from "@/lib/config";
 
 export type NavItem = { href?: string; label: string; icon: LucideIcon; exact?: boolean; later?: boolean };
 export type NavGroup = { title?: string; items: NavItem[] };
@@ -101,7 +102,7 @@ export function ConsoleShell({ groups, label, badge, topbar, children }: { group
           <span className="lg:hidden">
             <Logo variant="dark" width={120} />
           </span>
-          <PreviewPill surface="light" />
+          {LIVE ? null : <PreviewPill surface="light" />}
           {topbar}
         </header>
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">

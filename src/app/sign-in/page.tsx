@@ -4,6 +4,7 @@ import { Logo } from "@/components/brand/logo";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MEDIA } from "@/lib/media";
 import { SignInForm } from "./sign-in-form";
+import { LIVE } from "@/lib/config";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -13,7 +14,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   const sp = await searchParams;
   return (
     <>
-      <PreviewBanner />
+      {LIVE ? null : <PreviewBanner />}
       <div className="grid min-h-[calc(100dvh-36px)] lg:grid-cols-2">
         <div className="relative isolate flex min-w-0 flex-col">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -23,7 +24,11 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
             <Logo width={150} className="-ml-1.5" priority />
           </header>
           <main id="main" className="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:items-center sm:pt-0">
-            <SignInForm next={safeNext(sp.next)} reason={sp.reason === "reference" ? "reference" : null} />
+            <SignInForm
+              next={safeNext(sp.next)}
+              reason={sp.reason === "reference" ? "reference" : sp.reason === "link" ? "link" : null}
+              initialMode={sp.mode === "sign-up" ? "sign-up" : sp.mode === "reset" ? "reset" : "sign-in"}
+            />
           </main>
         </div>
 

@@ -20,6 +20,38 @@ import {
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/console/console-shell";
 import { setDemo, useDemo, type AdminRole } from "@/lib/demo-store";
+import { LIVE } from "@/lib/config";
+import { AccountProvider } from "@/lib/live/account";
+import { LiveAdminBadge, LiveAdminGate } from "@/components/live/admin/live-admin";
+
+/** Live console navigation: every entry is backed by an allowlisted, capability-checked API. */
+const LIVE_GROUPS: NavGroup[] = [
+  {
+    title: "Operations",
+    items: [
+      { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+      { href: "/admin/jobs", label: "Jobs", icon: Activity },
+      { href: "/admin/users", label: "Customers & credits", icon: Users },
+      { href: "/admin/catalog", label: "Models, prices & terms", icon: Boxes },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      { href: "/admin/payments", label: "Payments & refunds", icon: CreditCard },
+      { href: "/admin/payouts", label: "Payouts", icon: Banknote },
+    ],
+  },
+  { title: "Partners", items: [{ href: "/admin/affiliates", label: "Partners", icon: Briefcase }] },
+  {
+    title: "Governance",
+    items: [
+      { href: "/admin/support", label: "Support", icon: LifeBuoy },
+      { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+      { href: "/admin/staff", label: "Staff", icon: ShieldCheck },
+    ],
+  },
+];
 
 const GROUPS: NavGroup[] = [
   {
@@ -63,6 +95,46 @@ export const ROLE_LABEL: Record<AdminRole, string> = {
 };
 
 export function AdminChrome({ children }: { children: ReactNode }) {
+  return LIVE ? <LiveAdminChrome>{children}</LiveAdminChrome> : <DemoAdminChrome>{children}</DemoAdminChrome>;
+}
+
+function LiveAdminChrome({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const ids = useId();
+  const topbar = (
+    <form
+      role="search"
+      onSubmit={(e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const v = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+        router.push(v ? `/admin/jobs?q=${encodeURIComponent(v)}` : "/admin/jobs");
+      }}
+      className="order-last flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1"
+    >
+      <label htmlFor={`${ids}-q`} className="sr-only">
+        Search jobs by reference, task id or customer email
+      </label>
+      <div className="relative w-full max-w-md">
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-dark" />
+        <input
+          id={`${ids}-q`}
+          name="q"
+          placeholder="Job reference, task id or customer email…"
+          className="h-10 w-full rounded-[var(--radius-control)] border border-rule-strong bg-paper pr-3 pl-9 text-sm text-ink-dark placeholder:text-muted-dark"
+        />
+      </div>
+    </form>
+  );
+  return (
+    <AccountProvider>
+      <ConsoleShell groups={LIVE_GROUPS} label="Admin" badge={<LiveAdminBadge />} topbar={topbar}>
+        <LiveAdminGate>{children}</LiveAdminGate>
+      </ConsoleShell>
+    </AccountProvider>
+  );
+}
+
+function DemoAdminChrome({ children }: { children: ReactNode }) {
   const demo = useDemo();
   const router = useRouter();
   const [q, setQ] = useState("");

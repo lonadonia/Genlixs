@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { LIVE } from "@/lib/config";
 
 const GROUPS = [
   {
@@ -61,8 +62,8 @@ export function PublicFooter() {
       </div>
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10">
         <div className="flex flex-col gap-2 border-t border-white/[0.06] py-6 text-xs text-subtle sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 Genlixs. Design preview build.</p>
-          <p>Images and clips on this preview are temporary placeholders, not model output.</p>
+          <p>© 2026 Genlixs.{LIVE ? "" : " Design preview build."}</p>
+          <p>{LIVE ? "Showcase images and clips are illustrative examples, not customer output." : "Images and clips on this preview are temporary placeholders, not model output."}</p>
         </div>
       </div>
       {/* Oversized wordmark watermark — the supplied mono logo at low opacity, cropped by the footer edge. */}

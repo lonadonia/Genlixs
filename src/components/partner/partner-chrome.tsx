@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
 import { Banknote, FolderDown, LayoutDashboard, Link2, LifeBuoy, Settings, Users, Wallet } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/console/console-shell";
 import { PARTNER } from "@/lib/admin-data";
+import { LIVE } from "@/lib/config";
+import { AccountProvider } from "@/lib/live/account";
+import { LivePartnerBadge, LivePartnerGate } from "@/components/live/partner/live-partner";
 
 const GROUPS: NavGroup[] = [
   {
@@ -44,6 +47,15 @@ export function PartnerChrome({ children }: { children: ReactNode }) {
       </div>
     </>
   );
+  if (LIVE) {
+    return (
+      <AccountProvider>
+        <ConsoleShell groups={GROUPS} label="Partner" badge={<LivePartnerBadge />} topbar={topbar}>
+          <LivePartnerGate>{children}</LivePartnerGate>
+        </ConsoleShell>
+      </AccountProvider>
+    );
+  }
   return (
     <ConsoleShell groups={GROUPS} label="Partner" badge={badge} topbar={topbar}>
       {children}
