@@ -170,7 +170,16 @@ test("balance: only a numeric code-200 reply is a balance; anything else is an e
   assert.deepEqual(parseBalance(200, body({ code: 200, msg: "success", data: 1234.5 })), { ok: true, credits: 1234.5 });
   assert.deepEqual(parseBalance(200, body({ code: 200, msg: "success", data: "100" })), { ok: true, credits: 100 });
   assert.deepEqual(parseBalance(200, body({ code: 401, msg: "unauthorized" })), { ok: false, error: "KIE_401" });
-  assert.deepEqual(parseBalance(200, body({ code: 200, data: null })), { ok: false, error: "MALFORMED" });
-  assert.deepEqual(parseBalance(200, body({ code: 200, data: "n/a" })), { ok: false, error: "MALFORMED" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: "1,234.50" })), { ok: true, credits: 1234.5 });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: { credits: 12.5 } })), { ok: true, credits: 12.5 });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: { balance: "980" } })), { ok: true, credits: 980 });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: 0 })), { ok: true, credits: 0 }, "a real zero reported by KIE is a reading");
+  // Anything else is an error that names the shape only (no values), never a fabricated zero.
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: null })), { ok: false, error: "MALFORMED_NULL" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, msg: "success" })), { ok: false, error: "MALFORMED_MISSING" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: "n/a" })), { ok: false, error: "MALFORMED_STRING" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: -5 })), { ok: false, error: "MALFORMED_NUMBER" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: [1] })), { ok: false, error: "MALFORMED_ARRAY" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: { foo: 7, "user id": "x" } })), { ok: false, error: "MALFORMED_OBJECT:foo,userid" });
   assert.deepEqual(parseBalance(502, "<html>"), { ok: false, error: "HTTP_502" });
 });

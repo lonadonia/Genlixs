@@ -244,13 +244,44 @@ export class KieProvider implements GenerationProvider {
   }
 }
 
-/** Parses the balance reply. Exported for contract tests. A non-numeric or missing value is an error, never zero. */
+/** A credit amount written as a number or as text ("1234.5", "1,234.5", " 100 "); anything else is not a balance. */
+function creditAmount(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v !== "string") return null;
+  const t = v.trim().replace(/,(?=\d{3}(\D|$))/g, "");
+  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Balance fields seen in credit replies besides the documented bare number. */
+const BALANCE_KEYS = ["credits", "credit", "balance", "remainingCredits", "remaining_credits", "remainCredits", "remaining", "availableCredits", "available", "amount"];
+
+/**
+ * Parses the balance reply. Exported for contract tests. The documented shape is {code: 200, data: <number>}; a number
+ * in text or one balance field of an object is accepted too. Anything else is an error, never zero. The error names
+ * only the shape (type and field names, no values) so an unexpected reply can be recognised from the admin page.
+ */
 export function parseBalance(httpStatus: number, body: string): BalanceRead {
   const e = parseEnvelope(body);
   if (!e) return { ok: false, error: `HTTP_${httpStatus}` };
   const code = codeOf(e);
   if (code !== 200) return { ok: false, error: `KIE_${Number.isNaN(code) ? "NO_CODE" : code}` };
-  if (e.data === null || e.data === undefined || e.data === "" || typeof e.data === "boolean") return { ok: false, error: "MALFORMED" };
-  const n = Number(e.data);
-  return Number.isFinite(n) && n >= 0 ? { ok: true, credits: n } : { ok: false, error: "MALFORMED" };
+  const direct = creditAmount(e.data);
+  if (direct !== null) return { ok: true, credits: direct };
+  const data = e.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const record = data as Record<string, unknown>;
+    for (const k of BALANCE_KEYS) {
+      const n = creditAmount(record[k]);
+      if (n !== null) return { ok: true, credits: n };
+    }
+    const keys = Object.keys(record)
+      .map((k) => k.replace(/[^A-Za-z0-9_]/g, "").slice(0, 24))
+      .filter(Boolean)
+      .slice(0, 6);
+    return { ok: false, error: `MALFORMED_OBJECT${keys.length ? `:${keys.join(",")}` : ""}` };
+  }
+  const kind = data === null ? "NULL" : data === undefined ? "MISSING" : Array.isArray(data) ? "ARRAY" : typeof data === "number" ? "NUMBER" : typeof data;
+  return { ok: false, error: `MALFORMED_${String(kind).toUpperCase()}` };
 }

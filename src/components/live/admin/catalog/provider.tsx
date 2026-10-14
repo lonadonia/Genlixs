@@ -118,7 +118,8 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
           <p className="mt-2 text-xs text-muted-dark">Read {when(b.observedAt)}</p>
           {failing ? (
             <p className="mt-1 text-xs font-semibold text-error-text">
-              Last refresh failed ({b.lastError}) {when(b.lastErrorAt)}. The value above is the last real reading.
+              Last refresh failed ({b.lastError}) {when(b.lastErrorAt)}.{" "}
+              {b.credits === null ? "No successful reading yet, so nothing is shown instead of a guess." : "The value above is the last real reading."}
             </p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
