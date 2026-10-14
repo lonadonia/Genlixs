@@ -1,4 +1,88 @@
-# Client media record — Genlixs Drive (REQ-063)
+# Client media record — Genlixs Drive (REQ-063) and local hand-over (REQ-067)
+
+## v2.2 — local hand-over of the full folders (14 Oct 2026)
+
+The client placed the complete `images` (71 files, renamed `Image_1…71`) and `Videos` (27 files, `generation (N).mp4`) folders next to the project. Every file was screened on contact sheets (each image; 4 frames per clip), with zoomed crops on any label, logo or text. The Drive section further down records the earlier v2.1 round; its 14 images and the knight clip are among the 71 / 27 files and stay in use.
+
+**Processing** (sharp and ffmpeg 6.1, run outside the repo):
+- Images: longest side 1600 px, WebP quality 78 (effort 6). Each file keeps its own ratio.
+- Clips: `ffmpeg -i in.mp4 -map 0:v:0 -map 0:a:0? -vf "scale=540:-2:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 26 -maxrate 1600k -bufsize 3200k -profile:v high -pix_fmt yuv420p -g 48 -c:a aac -b:a 96k -ac 2 -movflags +faststart out.mp4`. The knight clip keeps 752×560. **The sound track is kept** (the client wants visitors to be able to turn it on); every clip still starts muted. Posters: frame at 0.8 s, WebP quality 80.
+- Result: 21 clips, 0.6–3.4 MB each (38 MB), 50 images; `public/media/client/` is 45 MB in total.
+
+### Clips used (21)
+
+| Key | File | Source | Length | Sound |
+| --- | --- | --- | --- | --- |
+| `outfitFlatlay` | `outfit-flatlay.mp4` | `generation.mp4` | 13 s | yes |
+| `streetStyle` | `street-style.mp4` | `generation (1).mp4` | 13 s | no track |
+| `studioDuo` | `studio-duo.mp4` | `generation (3).mp4` | 30 s | yes |
+| `arcadeTote` | `arcade-tote.mp4` | `generation (4).mp4` | 15 s | yes |
+| `abayaLookbook` | `abaya-lookbook.mp4` | `generation (7).mp4` | 13 s | no track |
+| `teeDance` | `tee-dance.mp4` | `generation (8).mp4` | 8 s | yes |
+| `goldenHourWalk` | `golden-hour-walk.mp4` | `generation (9).mp4` | 11 s | yes |
+| `shoppingBags` | `shopping-bags.mp4` | `generation (11).mp4` | 8 s | yes |
+| `poodleDance` | `poodle-dance.mp4` | `generation (12).mp4` | 20 s | yes |
+| `cashFan` | `cash-fan.mp4` | `generation (13).mp4` | 15 s | yes |
+| `leatherCoat` | `leather-coat.mp4` | `generation (14).mp4` | 10 s | yes |
+| `catPhotoshoot` | `cat-photoshoot.mp4` | `generation (16).mp4` | 15 s | yes |
+| `streetDuo` | `street-duo.mp4` | `generation (17).mp4` | 13 s | no track |
+| `giantAstronaut` | `giant-astronaut.mp4` | `generation (18).mp4` | 10 s | yes |
+| `knightClip` | `knight-clip.mp4` | `generation (19).mp4` | 9 s | yes (re-encoded with sound) |
+| `hairRollers` | `hair-rollers.mp4` | `generation (20).mp4` | 14 s | yes |
+| `catStandoff` | `cat-standoff.mp4` | `generation (21).mp4` | 25 s | yes |
+| `pinkKnitWalk` | `pink-knit-walk.mp4` | `generation (22).mp4` | 15 s | yes |
+| `glitchDancer` | `glitch-dancer.mp4` | `generation (23).mp4` | 12 s | yes |
+| `alleyCats` | `alley-cats.mp4` | `generation (24).mp4` | 15 s | yes |
+| `patchworkCoat` | `patchwork-coat.mp4` | `generation (26).mp4` | 13 s | no track |
+
+### Clips excluded (6)
+
+| Source | Reason |
+| --- | --- |
+| `generation (2).mp4` | Race car covered in real sponsor logos (oil, tyre and heating brands) and a car maker's design |
+| `generation (5).mp4` | Construction-machine maker's badge on the digger |
+| `generation (6).mp4` | Car maker's grille and badge |
+| `generation (10).mp4` | Car maker's badge on the boot |
+| `generation (15).mp4` | Car maker's badge and model name, plus a promotional wall slogan |
+| `generation (25).mp4` | Car maker's badge (sports car) |
+
+### Images added (36)
+
+`panda-poster` (Image_3), `ski-selfie` (4), `gallery-poster` (5), `corgi-chair-ad` (6), `fitting-room-ui` (7), `goggles-ad` (8), `streetwear-poster` (9), `pug-suitcase` (11), `camper-selfie` (14), `elevator-selfie` (19), `foggy-doorway` (20), `fisheye-grin` (23), `beach-pink` (25), `pottery-couple` (31), `spiked-hand` (34), `knight-sheet` (35), `bomber-sunset` (38), `chaos-chore` (40), `coloring-cat` (42), `fig-perfume` (43), `abandoned-store` (44), `caped-knight` (47), `galley-cafe` (48), `matcha-selfie` (50), `shibuya-halloween` (53), `bedroom-editorial` (57), `leopard-back` (58), `cosmic-sphere` (60), `jellyfish-bed` (61), `rooftop-night` (62), `convertible-night` (64), `birthday-beach` (65), `dressing-room` (66), `emperor-selfie` (67), `gold-balloons` (69), `smashed-cake` (70).
+
+Already in use from v2.1: Image_2 (`forest-flare`), 12 (`sea-gown`), 15 (`milky-tent`), 16 (`summit-bag`), 18 (`library`), 21 (`boardwalk`), 22 (`garden`), 27 (`stone-hall`), 36 (`horned`), 46 (`drive-thru`), 52 (`trench`), 56 (`earring`), 63 (`sofa`), 71 (`warrior-sheet`).
+
+The posters and ads (panda, exhibition, furniture, fitting room, goggles, streetwear, perfume) carry brand names that look invented for the image (for example "M. Atelier", "Apex & Summit", "Loud Kids Club", "Fascent"). No match to a known brand was found on review, but the client should confirm none of them is a real company. The spiked hand and the bedroom editorial were held back in v2.1; they are now used, but only on the showcase wall, because the client asked for the folder's images to be on the site.
+
+### Images excluded (21)
+
+| Source | Reason |
+| --- | --- |
+| Image_1 | Higgsfield watermark |
+| Image_10 | Real hair-care brand on the bottles |
+| Image_13 | Sportswear maker's logo on the shoes |
+| Image_17 | Board maker's logo |
+| Image_24 | Real skincare brand on the bottles |
+| Image_26 | Maker's emblem on the riding helmet |
+| Image_28 | Restaurant chain's storefront sign |
+| Image_29 | Car maker's badge |
+| Image_30 | Comic-character emblem on the phone case; headphone maker's logo |
+| Image_32 | Smoking; film quote and label on the shirt |
+| Image_33 | Club-style crest on the shirt |
+| Image_37 | Fashion house name in the graffiti |
+| Image_39 | Real hair-care brand on the bottle |
+| Image_41 | Sportswear maker's stripes on the shoes |
+| Image_45 | Real convenience-store brand on the cup |
+| Image_49 | Sports team logo on the cap |
+| Image_51 | Smoking; school uniform resembling a TV series costume |
+| Image_54 | Car maker's badge |
+| Image_55 | Car maker's badge |
+| Image_59 | Another creator's credit printed on the image ("AI-креатор … Diana B.") |
+| Image_68 | Sports team logo on the hoodie |
+
+---
+
+## v2.1 — Drive connector round
 
 Source: the shared Drive folder (`IMAGES` and `VIDEOS` subfolders), fetched on 13–14 Oct 2026 through the Google Drive connector. That connector only returns files of 10 MB or less. Direct `drive.google.com` access is still denied by this environment's network policy, and that denial was not worked around.
 

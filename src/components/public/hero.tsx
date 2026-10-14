@@ -1,48 +1,72 @@
 import Image from "next/image";
 import { ArrowUpRight, Download, PenLine, Play, Sparkles } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
-import { AutoplayVideo } from "@/components/ui/autoplay-video";
-import { MotionRegion } from "@/components/motion-region";
+import { ShowcaseVideo } from "@/components/ui/showcase-video";
 import { MEDIA, stillOf, type MediaKey } from "@/lib/media";
 import { cn } from "@/lib/format";
 
-type Tile = { media: MediaKey; video?: boolean };
+type Tile = { media: MediaKey };
 
 /*
- * Three staggered columns of client media (reference hero), each looping vertically in alternate
+ * Four staggered columns of client media (reference hero), each looping vertically in alternate
  * directions. Every tile keeps the aspect ratio of the file it shows, so nothing is cropped.
+ * Clips play muted in place; a click on one turns its sound on.
  */
 const COLUMNS: { items: Tile[]; dir: "up" | "down"; duration: string; offset: string }[] = [
-  { dir: "up", duration: "60s", offset: "mt-10", items: [{ media: "forestFlare" }, { media: "earring" }, { media: "garden" }, { media: "summitBag" }] },
+  {
+    dir: "up",
+    duration: "64s",
+    offset: "mt-10",
+    items: [{ media: "forestFlare" }, { media: "teeDance" }, { media: "earring" }, { media: "garden" }, { media: "goldenHourWalk" }, { media: "summitBag" }],
+  },
+  {
+    dir: "down",
+    duration: "72s",
+    offset: "-mt-24",
+    items: [{ media: "knightClip" }, { media: "seaGown" }, { media: "catPhotoshoot" }, { media: "driveThru" }, { media: "horned" }, { media: "leatherCoat" }],
+  },
+  {
+    dir: "up",
+    duration: "58s",
+    offset: "mt-24",
+    items: [{ media: "boardwalk" }, { media: "giantAstronaut" }, { media: "warriorSheet" }, { media: "stoneHall" }, { media: "hairRollers" }, { media: "milkyTent" }],
+  },
   {
     dir: "down",
     duration: "68s",
-    offset: "-mt-24",
-    items: [{ media: "knightClip", video: true }, { media: "seaGown" }, { media: "driveThru" }, { media: "horned" }, { media: "library" }],
+    offset: "-mt-6",
+    items: [{ media: "poodleDance" }, { media: "cosmicSphere" }, { media: "trench" }, { media: "alleyCats" }, { media: "jellyfishBed" }, { media: "library" }],
   },
-  { dir: "up", duration: "54s", offset: "mt-24", items: [{ media: "boardwalk" }, { media: "warriorSheet" }, { media: "stoneHall" }, { media: "milkyTent" }, { media: "trench" }] },
 ];
+
+/** Phones and tablets: one horizontal strip interleaving the columns, so clips stay spread out. */
+const STRIP: Tile[] = COLUMNS[0].items.flatMap((_, i) => COLUMNS.map((c) => c.items[i]).filter(Boolean));
 
 /** Strip tiles (below lg) share one height, so their width follows the media's ratio. */
 const STRIP_H = 176;
 
-function MediaTile({ t, size = "lg" }: { t: Tile; size?: "lg" | "sm" }) {
+/**
+ * `copy` marks the second half of a marquee loop: hidden from assistive technology and skipped
+ * by the keyboard, but still clickable so a pointer never lands on a dead tile.
+ */
+function MediaTile({ t, size = "lg", copy }: { t: Tile; size?: "lg" | "sm"; copy?: boolean }) {
   const m = MEDIA[t.media];
   const ratio = m.width / m.height;
   return (
     <div
+      aria-hidden={copy || undefined}
       className={cn(
         "relative shrink-0 overflow-hidden border border-white/10 bg-raised shadow-[0_20px_50px_-20px_rgb(0_0_0/0.8)]",
-        size === "lg" ? "mb-4 w-full rounded-[18px]" : "mr-3 rounded-2xl",
+        size === "lg" ? "mb-3 w-full rounded-[18px]" : "mr-3 rounded-2xl",
       )}
       style={size === "lg" ? { aspectRatio: `${m.width} / ${m.height}` } : { height: STRIP_H, width: Math.round(STRIP_H * ratio) }}
     >
-      {t.video && m.kind === "video" ? (
-        <AutoplayVideo media={t.media} decorative className="absolute inset-0" />
+      {m.kind === "video" ? (
+        <ShowcaseVideo media={t.media} compact focusable={!copy} className="absolute inset-0" controlClassName="right-2 bottom-2" />
       ) : (
-        <Image src={stillOf(t.media)} alt="" fill sizes={size === "lg" ? "(min-width: 1024px) 15vw, 30vw" : `${Math.ceil(STRIP_H * ratio)}px`} className="object-cover" />
+        <Image src={stillOf(t.media)} alt="" fill sizes={size === "lg" ? "(min-width: 1440px) 14vw, (min-width: 1024px) 12vw, 30vw" : `${Math.ceil(STRIP_H * ratio)}px`} className="object-cover" />
       )}
-      <span aria-hidden className={cn("pointer-events-none absolute inset-0 ring-1 ring-white/10 ring-inset", size === "lg" ? "rounded-[18px]" : "rounded-2xl")} />
+      <span aria-hidden className={cn("pointer-events-none absolute inset-0 z-[2] ring-1 ring-white/10 ring-inset", size === "lg" ? "rounded-[18px]" : "rounded-2xl")} />
     </div>
   );
 }
@@ -119,13 +143,13 @@ export function Hero() {
           </div>
 
           {/* Mobile / tablet: a single horizontal strip instead of columns (margins, not gaps, keep the -50% loop seamless) */}
-          <MotionRegion className="fade-x -mx-4 mt-10 overflow-hidden sm:-mx-6 lg:hidden" label="hero gallery" controlClassName="right-4 -bottom-1 sm:right-6">
-            <div aria-hidden className="marquee-left flex w-max items-start pb-10" style={{ ["--marquee-duration" as string]: "56s" }}>
-              {[...COLUMNS.flatMap((c) => c.items), ...COLUMNS.flatMap((c) => c.items)].map((t, i) => (
-                <MediaTile key={i} t={{ ...t, video: false }} size="sm" />
+          <div className="marquee-pause fade-x -mx-4 mt-10 overflow-hidden sm:-mx-6 lg:hidden">
+            <div className="marquee-left flex w-max items-start" style={{ ["--marquee-duration" as string]: "80s" }}>
+              {[...STRIP, ...STRIP].map((t, i) => (
+                <MediaTile key={i} t={t} size="sm" copy={i >= STRIP.length} />
               ))}
             </div>
-          </MotionRegion>
+          </div>
 
           <ul className="mt-10 grid gap-6 border-t border-white/10 pt-8 sm:grid-cols-3 lg:mt-14">
             {FEATURES.map((f) => (
@@ -143,19 +167,21 @@ export function Hero() {
         </div>
 
         {/* Media columns (desktop) */}
-        <MotionRegion className="relative hidden lg:col-span-5 lg:block" label="hero gallery" controlClassName="right-2 bottom-6">
-          <div aria-hidden className="fade-y absolute inset-y-0 -right-10 left-0 grid grid-cols-3 gap-4 overflow-hidden xl:-right-16">
+        {/* No pause button here (client request); hover or focus still holds the columns still.
+            The columns run to the viewport's right edge at every width. */}
+        <div className="marquee-pause relative hidden lg:col-span-5 lg:block">
+          <div className="fade-y absolute inset-y-0 -right-10 left-0 grid grid-cols-4 gap-3 overflow-hidden min-[90rem]:-right-[calc(50vw_-_720px_+_2.5rem)]">
             {COLUMNS.map((col, ci) => (
               <div key={ci} className={col.offset}>
                 <div className={cn("flex flex-col", col.dir === "up" ? "marquee-up" : "marquee-down")} style={{ ["--marquee-duration" as string]: col.duration }}>
                   {[...col.items, ...col.items].map((t, i) => (
-                    <MediaTile key={i} t={i < col.items.length ? t : { ...t, video: false }} />
+                    <MediaTile key={i} t={t} copy={i >= col.items.length} />
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        </MotionRegion>
+        </div>
       </div>
     </section>
   );

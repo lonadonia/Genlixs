@@ -21,7 +21,7 @@ Built from the client's three reference screenshots (patterns only, see 01 §7) 
 | Primary | Electric blue for buttons, selected pill tabs, active navigation, announcement bar, brand band and glows; `#5165F8` tint for accent phrases in headlines and icons on dark |
 | Secondary accent | Lime for the hero's drawn underline, eyebrow/status dots, success states and the focus ring |
 | Shape | Pill controls (`rounded-full`), 20–32 px panels; hero media tiles keep each file's own ratio with 18 px corners (v2.1 client note: not sharp, not pill-shaped) |
-| Media | Client-supplied images and one muted clip (Genlixs Drive, `public/media/client/`, see `CLIENT_MEDIA.md`) across the site; the abstract orbit loop and the dune edit pair remain procedural placeholders, tagged "Placeholder"; studio results built from client files are tagged "Sample" |
+| Media | Client-supplied images and clips (50 images, 21 clips with sound off by default; `public/media/client/`, see `CLIENT_MEDIA.md`) across the site; the abstract orbit loop and the dune edit pair remain procedural placeholders, tagged "Placeholder"; studio results built from client files are tagged "Sample" |
 | Motion | Scroll-driven section reveal, media columns drifting in opposite directions, underline draw-on; all stop under reduced motion; pause control on every moving region |
 
 Alternatives considered:
@@ -103,9 +103,10 @@ Text over media (worst case: a pure-white pixel under the overlay):
 | Badge / ConceptTag | `ui/badge.tsx` | tones with icon + text; "Placeholder" tag with lime dot |
 | Dialog, CopyButton, MediaFrame | `ui/` | as v1, restyled |
 | AutoplayVideo | `ui/autoplay-video.tsx` | muted loop; plays only when visible, motion allowed, not save-data and region not paused; `decorative` mode is hidden from assistive tech |
-| HoverVideo | `ui/hover-video.tsx` | poster → plays on card hover/focus → explicit Play/Pause button for touch/keyboard; pauses offscreen and when the tab is hidden |
-| MotionRegion | `motion-region.tsx` | visible Pause/Play for any moving region (WCAG 2.2.2); hover/focus pause |
-| Hero | `public/hero.tsx` | headline + underline draw, CTAs, features, `MediaTile` columns (desktop: `aspect-ratio` from the manifest) / strip (phones: 176 px tall, width from the ratio) |
+| ShowcaseVideo (v2.2) | `ui/showcase-video.tsx` | every public clip: muted loop while on screen → click anywhere on it for sound (pill: "Tap for sound" / "Sound on" with level bars) → one clip audible at a time → offscreen pauses and re-mutes; no sound track = play/pause toggle; reduced motion / Save-Data = poster until pressed; `compact` pill for hero tiles; `focusable={false}` for marquee copies |
+| ShowcaseWall (v2.2) | `public/showcase-wall.tsx` | masonry of all 71 client items at their own ratio; filter pills All / Videos / Images with counts; first 24, then "Show all"; clip duration chip; caption on hover/focus |
+| MotionRegion | `motion-region.tsx` | visible Pause/Play for a moving region (WCAG 2.2.2); hover/focus pause. Used by the closing band; removed from the hero at the client's request (v2.2) |
+| Hero | `public/hero.tsx` | headline + underline draw, CTAs, features, `MediaTile` columns (desktop: four columns, `aspect-ratio` from the manifest, clips via `ShowcaseVideo`, run to the viewport's right edge) / strip (phones: 176 px tall, width from the ratio); no Pause/Play button (v2.2) |
 | Composer (public) | `public/composer.tsx` | pill tabs (arrow keys), example-loaded notice, "+" reference tile (Edit), chip selects, counter, guest/authed action, prompt ideas |
 | QuickCreate (studio Home) | `studio/overview.tsx` | same draft; quality/length chips; exact cost + round Generate; edit routes to the edit studio; prompt error; insufficient credits with top-up link |
 | StudioShell | `studio/studio-shell.tsx` | floating rail (236 / 72 px), tooltips, groups, New creation, balance card, icon row; header switch, credits, Top up, notifications, account; drawer < 1024 |
@@ -117,12 +118,13 @@ Text over media (worst case: a pure-white pixel under the overlay):
 **Public `/`** (guide order kept; v2 additions in italics):
 1. Header 76 px under a blue announcement bar: wordmark 150 px, pill nav ≥ 1024, Sign in, blue Create; drawer < 1024.
 2. Creation stage:
-   - Hero: eyebrow pill, h1 + underline, sentence, two CTAs, three features, media columns (each tile at its file's ratio, 18 px corners).
+   - Hero: eyebrow pill, h1 + underline, sentence, two CTAs, three features, four media columns mixing stills and muted clips (each tile at its file's ratio, 18 px corners; click a clip for sound).
    - Composer section `#create`: "What will you make today?", lit composer, prompt ideas, curated rail (torus output, noon→dusk comparison, orbit loop).
-3. Featured gallery `#examples`: 4-column dense bento (two tall, several wide), hover/touch "Use prompt", video card hover preview.
+3. Featured gallery `#examples`: 4-column dense bento (two tall, several wide), hover/touch "Use prompt", clip cards play muted on screen with click-for-sound.
+3b. Showcase wall `#showcase` (v2.2): "Stills and clips, all in motion.", filter pills, masonry of every client image and clip.
 4. Prompt-to-result: pill tabs (orbs image, dune edit, orbit loop), input recipe beside the output.
 5. Use cases: three tall cards with starter prompts (scroll-snap row on phones).
-6. Before/after + motion: blue-handled comparison slider + native clip.
+6. Before/after + motion: blue-handled comparison slider + autoplaying clip with click-for-sound.
 7. Four steps: outlined numerals, blue final step.
 8. *Electric band: blue panel, "Your next post starts with one sentence.", white inverse CTA + outline.*
 9. Tools and models `#tools`: three tool cards with media headers and model rows.
@@ -156,11 +158,11 @@ Text over media (worst case: a pure-white pixel under the overlay):
 | Hero underline | load | stroke draw 900 ms after 250 ms | shown static | signature accent |
 | Media columns / phone strip | continuous | translateY / translateX loop 54–68 s (margins, not gaps, so the −50 % loop is seamless) | stopped | living gallery |
 | Media cards | hover | image scale 1.04 over 500–700 ms | disabled | feedback |
-| Gallery clip | hover / focus / button | muted playback | play only via button | preview |
+| Clips (site-wide, v2.2) | on screen | muted loop; click turns sound on, one clip audible at a time; offscreen pauses + re-mutes | poster until pressed | showcase |
 | Closing band loop | in view | muted playback | poster only | atmosphere |
 | Job phases, spinners, dialogs | as v1 | as v1 | as v1 | real state |
 
-Every moving region has a visible Pause control. There are no count-ups, parallax or sound.
+Moving regions have a visible Pause control, except the hero columns and phone strip: the client asked for that button to be removed (v2.2), so hover/focus pause them and reduced motion stops them. Sound plays only after a click on a clip. There are no count-ups or parallax.
 
 ## 9. Accessibility and performance rules
 
@@ -181,7 +183,7 @@ Every moving region has a visible Pause control. There are no count-ups, paralla
 | Logo exports: header / color / dark / mono at 480/960 px (PNG + WebP); symbols (tile, color); favicon, icon, apple icon, OG | Derived (colour-to-alpha, trim, resize) | `public/brand/`, `src/app/` |
 | v2 placeholder stills (torus 1200×1500, capsules 900×1600, orbs 1600×1067) and orbit loop (960×540, 5 s, 61 KB) + poster | Temporary, procedural (`brand/placeholder_renders.py`) | `public/media/concept/v2-*` |
 | v1 concept media (dunes, spheres, product, aurora still + clip) | Temporary, procedural (`brand/concept_media.py`) | `public/media/concept/` |
-| Client Drive images (14 used) + 1 clip (752×560, 9 s, muted, 470 KB) + poster | Client-supplied; resized to 1600 px WebP (`brand/client_media.py`); rights/model record to confirm | `public/media/client/`, record in `CLIENT_MEDIA.md` |
+| Client images (50 used) + 21 clips (540×960 H.264 + AAC 96 kb/s, faststart, 8–30 s, 0.6–3.4 MB, 38 MB in total; the knight clip stays 752×560) + WebP posters | Client-supplied; images resized to 1600 px WebP q78, clips re-encoded with sound (commands in `CLIENT_MEDIA.md`); rights/model record to confirm | `public/media/client/`, record in `CLIENT_MEDIA.md` |
 | 26 Drive videos (12–43 MB) and 9 large PNGs | **Not fetched** (connector 10 MB cap; direct Drive access denied) | — compress under 10 MB or allow Drive in network access |
 | Validated outputs, rights records, legal copy, pricing, partner terms | Missing | — |
 

@@ -3,9 +3,10 @@
 import Image from "next/image";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { EXAMPLES, TOOLS, modelById, type Example } from "@/lib/catalog";
-import { MEDIA, stillOf } from "@/lib/media";
+import { MEDIA } from "@/lib/media";
 import { cn } from "@/lib/format";
 import { CopyButton } from "@/components/ui/copy-button";
+import { ShowcaseVideo } from "@/components/ui/showcase-video";
 import { ConceptTag } from "@/components/ui/badge";
 import { MediaFrame } from "@/components/ui/media-frame";
 import { UsePromptButton } from "./prompt-buttons";
@@ -100,19 +101,12 @@ export function StoryTabs() {
         <div className="lg:col-span-7">
           <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">Output · {ex.title}</p>
           {ex.tool === "video" ? (
-            <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
-              <video
-                controls
-                playsInline
-                preload="none"
-                poster={stillOf(ex.media)}
-                className="block w-full"
-                style={{ aspectRatio: `${MEDIA[ex.media].width} / ${MEDIA[ex.media].height}` }}
-                aria-label={MEDIA[ex.media].alt}
-              >
-                <source src={MEDIA[ex.media].src} type="video/mp4" />
-              </video>
-              {MEDIA[ex.media].placeholder ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
+            <div
+              className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black"
+              style={{ aspectRatio: `${MEDIA[ex.media].width} / ${MEDIA[ex.media].height}` }}
+            >
+              <ShowcaseVideo media={ex.media} label={ex.title} className="absolute inset-0" />
+              {MEDIA[ex.media].placeholder ? <ConceptTag className="pointer-events-none absolute top-3 left-3 z-[2]" /> : null}
             </div>
           ) : (
             <MediaFrame media={ex.media} ratio={ex.settings.ratio === "16:9" ? "16:9" : "3:2"} sizes="(min-width: 1024px) 55vw, 100vw" />

@@ -3,7 +3,7 @@
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
 - **Last updated:** 14 Oct 2026
-- **Last commit before this file:** `a7d543f` on `claude/nice-curie-ispn6l`
+- **Latest work:** the v2.2 commit on `claude/nice-curie-ispn6l` (see `git log`), made from a local Windows copy of the branch that was turned into a checkout with `git init` + `git reset origin/claude/nice-curie-ispn6l`.
 - **Repository:** https://github.com/lonadonia/Genlixs (public)
 
 ---
@@ -63,7 +63,8 @@ The client writes in **Arabic**. Reply to them in Arabic. Code, comments and doc
 | `98b2763` | **v2 brand redesign**: new logo package, new palette, REDNIT-style hero, Pollo-style homepage sections and customer dashboard. Client note: **primary colour is `#253FF6`** |
 | `f8638dd` | v2 docs: delivery status, Drive blocker, QA results |
 | `a7d543f` | **v2.1**: client Drive media added (14 images + 1 muted clip). Hero tiles now follow each file's own aspect ratio, with 18 px corners (client asked: "not sharp, not too round"). Examples, gallery, studio seeds and other sections switched to client media |
-| *(this commit)* | `HANDOFF.md` only, plus a pointer in `CLAUDE.md`. No functional change |
+| `HANDOFF.md` commit | `HANDOFF.md` only, plus a pointer in `CLAUDE.md`. No functional change |
+| *(v2.2 commit)* | **Full client media + clips with sound.** 36 new images and 20 new clips from the client's local `images` / `Videos` folders (21 images and 6 clips excluded, see `CLIENT_MEDIA.md`). New `ShowcaseVideo` player: every public clip autoplays muted while on screen and turns its sound on when clicked, one clip audible at a time (replaces `HoverVideo`, now deleted). Hero: Pause/Play button removed, fourth column added, 9 clips among the stills, columns run to the viewport's right edge. New showcase wall `#showcase` (all 71 items, filters, "Show all"). Gallery gains "Giant astronaut in Midtown"; the "Social posts" use case is now a clip. QA scripts take `PLAYWRIGHT_PATH` / `CHROME_PATH`; `v2checks.js` reworked (18 checks). Changed files: `src/lib/media.ts`, `src/lib/catalog.ts`, `src/components/public/{hero,showcase-wall,story-tabs}.tsx`, `src/components/ui/showcase-video.tsx` (new), `src/components/ui/hover-video.tsx` (deleted), `src/app/(public)/page.tsx`, `src/app/globals.css`, `public/media/client/*`, `design-handoff/**`, `README.md`, `HANDOFF.md` |
 
 All of these pass the latest QA run (§6).
 
@@ -77,8 +78,9 @@ All of these pass the latest QA run (§6).
    - Use the Drive folder's images and videos as visual inspiration.
 3. v2 note: "the primary colour must be 253FF6".
 4. v2.1: "retry Drive now". The hero cards must follow the size of the image or video inside them, with corners that are neither sharp nor very rounded.
+5. v2.2 (Arabic): upload the videos and images from the `images` and `Videos` folders to the site. Videos must play on their own, professionally, without sound until the visitor clicks the video to turn the sound on. In the hero, remove the pause/play button of the animation, put the videos among the hero images, and add one more column on the right (REQ-067 … REQ-070).
 
-The full requirement list (REQ-001 … REQ-066) is in `design-handoff/genlixs/01_CLIENT_BRIEF_ANALYSIS.md`.
+The full requirement list (REQ-001 … REQ-070) is in `design-handoff/genlixs/01_CLIENT_BRIEF_ANALYSIS.md`.
 
 ---
 
@@ -100,14 +102,16 @@ The full requirement list (REQ-001 … REQ-066) is in `design-handoff/genlixs/01
   - Studio results built from client files show a "Sample" tag.
   - Client media have `placeholder: false` and a `credit`.
 - **Hero (`src/components/public/hero.tsx`):**
+  - Four columns (v2.2), 6 tiles each, 9 of them clips. The columns run to the viewport's right edge at every width.
+  - **No Pause/Play button** (client request, v2.2). Hover/focus still hold the columns (`.marquee-pause`), and reduced motion stops them. Do not add the button back unless the client asks.
   - `MediaTile` sets `aspect-ratio` from the manifest's width and height, with `rounded-[18px]`.
   - On phones the strip is 176 px tall, the width comes from the ratio, and tiles use `rounded-2xl`.
   - Margins replace gaps so the −50 % marquee loop is seamless.
-  - The hero clip is decorative (`aria-hidden`).
-- **Motion:**
-  - Every moving region sits inside a `MotionRegion`, which has a visible Pause/Play control (WCAG 2.2.2).
-  - `AutoplayVideo` plays only when the video is visible, the visitor allows motion, Save-Data is off and the region is not paused.
-  - `HoverVideo` plays on hover or focus, and has an explicit button.
+  - Hero clips are real buttons (click for sound). The second copy of each marquee loop is `aria-hidden` and its buttons use `tabIndex=-1` (`copy` prop).
+- **Motion and clips:**
+  - Moving regions sit inside a `MotionRegion` with a visible Pause/Play control (WCAG 2.2.2), except the hero, as above.
+  - `ShowcaseVideo` (`ui/showcase-video.tsx`) is the player for every public clip: muted loop while ≥ 25 % on screen; a click anywhere on the clip turns the sound on; every other clip mutes (window event `genlixs:clip-sound`); leaving the screen pauses and re-mutes; clips without a sound track (`audio: false`) toggle play/pause; reduced motion and Save-Data keep the poster until pressed.
+  - `AutoplayVideo` stays only for the decorative closing-band loop.
   - Reduced motion stops the marquees, the squiggle and the reveals.
 - **Honesty rules:**
   - Prompts and settings shown with the client media are *prompt ideas* written to match each file. They are not the recorded prompts. The gallery footnote and the Help page say this.
@@ -129,45 +133,45 @@ The full requirement list (REQ-001 … REQ-066) is in `design-handoff/genlixs/01
 ```
 src/app/(public)/        public routes; page.tsx = homepage (ExampleCard, gallery bento, USE_CASES, ToolCard, FAQ…)
 src/app/studio|admin|partner|sign-in/
-src/components/public/   hero.tsx, composer.tsx, story-tabs.tsx, prompt-buttons, prompt-actions.ts
+src/components/public/   hero.tsx, showcase-wall.tsx, composer.tsx, story-tabs.tsx, prompt-buttons, prompt-actions.ts
 src/components/studio/   studio-shell, overview (Home), workspace, controls, job-status, result-view, library,
                          credits, billing, support, reference-uploader, demo-helpers.ts (pickMedia, titleFrom)
 src/components/console/  console-shell (admin + partner chrome)
-src/components/ui/       button, badge (Badge, ConceptTag), media-frame, hover-video, autoplay-video, copy-button
+src/components/ui/       button, badge (Badge, ConceptTag), media-frame, showcase-video, autoplay-video, copy-button
 src/components/          motion-region.tsx, compare-slider.tsx, preview-banner.tsx, demo-runtime.tsx
-src/lib/media.ts         media manifest (client + placeholder entries)
+src/lib/media.ts         media manifest (client + placeholder entries; `clientImage` / `clientClip` helpers; `SHOWCASE` order)
 src/lib/catalog.ts       TOOLS, MODELS, EXAMPLES (curated examples), demoQuote, settings helpers
 src/lib/demo-store.ts    useSyncExternalStore store: drafts, quotes, jobs, ledger, payments, partner state
 src/lib/admin-data.ts    sample operational/financial records
 public/brand/            web exports of the supplied v2 logo (unaltered: colour-to-alpha, trim, resize)
-public/media/client/     client-supplied images (WebP, ≤1600 px) + knight-clip.mp4 (muted) + poster
+public/media/client/     client-supplied images (WebP, ≤1600 px) + 21 clips (H.264 + AAC, 540×960) + WebP posters
 public/media/concept/    procedural placeholders (orbit loop, dunes pair, etc.)
 brand/                   logo masters (not served) + scripts: export_logo*.py, placeholder_renders.py,
                          concept_media.py, client_media.py
 design-handoff/genlixs/  01–05 docs, CLIENT_MEDIA.md, 24 screenshots, qa-scripts/
 ```
 
-- **To add or replace media**, add one entry in `src/lib/media.ts` with `src`, `poster`, `width`, `height`, `alt`, `kind`, `placeholder` and `credit`. Components need no changes. Use the keys in `EXAMPLES` (`catalog.ts`), in the hero `COLUMNS`, and in `seedJobs` (`demo-store.ts`).
+- **To add or replace media**, add one entry in `src/lib/media.ts` (`clientImage(...)` / `clientClip(...)` for client files; set `audio` for clips), then list it in `SHOWCASE` if it belongs on the wall. Components need no changes. Use the keys in `EXAMPLES` (`catalog.ts`), in the hero `COLUMNS`, and in `seedJobs` (`demo-store.ts`).
 - **Demo state:** if you change the seed data, bump `KEY` in `demo-store.ts` so returning browsers pick up the new seeds. Then update the same key in `design-handoff/genlixs/qa-scripts/*.js`.
 
 ---
 
 ## 6. QA — how it was verified, and how to re-run it
 
-Latest run, 14 Oct 2026, on the production build:
+Latest run, 14 Oct 2026 (v2.2), on the production build, Windows 11 + Node 24.21 + Chrome 155 via playwright-core 1.64:
 
 | Check | Result |
 | --- | --- |
 | lint / typecheck / build | pass / pass / pass |
 | `flows.js` (36 journey assertions) | 36 / 36, 0 console errors |
-| `v2checks.js` (16: motion pause, hover preview, studio Home, hero tile ratio ≤ 2 %, 18 px corners) | 16 / 16 |
+| `v2checks.js` (18: hero motion without a button, 4 columns, muted clips, click-for-sound with one voice, studio Home, hero tile ratio ≤ 2 %, 18 px corners) | 18 / 18 |
 | `kbd.js` (keyboard, focus, reduced motion) | 8 / 8 |
-| axe-core 4.10.3, WCAG 2.x A/AA, 27 routes | 0 violations |
+| axe-core 4.10.3, WCAG 2.x A/AA, 27 routes | 0 violations (plus `/` with motion on and the showcase expanded: 0) |
 | `ovpage.js`, 27 routes × 1440/1024/768/390/360 | 0 / 135 overflow, 0 console errors |
 
 Scripts and usage are in `design-handoff/genlixs/qa-scripts/README.md`.
-- The scripts load Playwright from `/opt/node-tools/node_modules/playwright`, which exists in the Claude Code cloud image. On another machine, change that `require` path.
-- In the cloud image, run them with `NODE_PATH=/opt/node-tools/node_modules`.
+- The scripts load Playwright from `PLAYWRIGHT_PATH` (default `/opt/node-tools/node_modules/playwright`, the Claude Code cloud image) and launch `CHROME_PATH` when set. `playwright-core` plus an installed Chrome is enough; no browser download is needed.
+- On Windows (Git Bash) also set `MSYS_NO_PATHCONV=1`, otherwise route lists like `/,/help` are rewritten into Windows paths.
 - `axe.js` needs `axe-core` installed (`npm i --no-save axe-core`). Pass it the path to `axe.min.js`.
 
 Route list for axe and overflow:
@@ -178,12 +182,12 @@ Route list for axe and overflow:
 
 The QA scripts depend on these strings and selectors. Update the scripts if you change them:
 - the library job title "Pup knight in the fog";
-- the `.marquee-up` class inside the hero section;
-- the button name `/Pause.*hero gallery/`;
+- the `.marquee-up` / `.marquee-down` classes inside the hero section (4 columns);
+- clip button names `Turn sound on: …` / `Mute: …` / `Play with sound: …` (from `ShowcaseVideo`), and `#showcase`;
 - `getByLabel('Status', { exact: true })`;
 - `#home-prompt`, `#composer-prompt` and `#studio-prompt`.
 
-**Gotcha:** never run `pkill -f "next dev"` or `pkill -f next`. It kills the calling shell. Kill by PID instead:
+**Gotcha:** never run `pkill -f "next dev"` or `pkill -f next`. It kills the calling shell. Kill by PID instead (on Windows: `Get-NetTCPConnection -LocalPort 3200 -State Listen` → `Stop-Process -Id <OwningProcess>`):
 
 ```bash
 for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | awk '{print $1}'); do kill $p; done
@@ -193,7 +197,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
 
 ## 7. Pending tasks (in priority order)
 
-1. **Remaining Drive videos (REQ-063, PARTIAL).**
+1. ~~**Remaining Drive videos (REQ-063).**~~ **Done in v2.2:** the client handed the full `images` and `Videos` folders over locally; 50 images and 21 clips are in. The old notes are kept below for reference.
    - 26 of the 27 videos are 12–43 MB. The Google Drive connector returns files of 10 MB or less only.
    - Direct `drive.google.com` access returns HTTP 403 from the cloud egress proxy. **Do not try to work around that proxy denial.**
    - Ways forward, either one:
@@ -212,7 +216,9 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    - The file names carry an `hf_` prefix, which suggests a third-party generator.
    - The user must confirm the licence allows commercial use, plus the model and settings for each file (guide §14).
    - Record the answers in `media.ts` `credit` and in `CLIENT_MEDIA.md`.
-4. **Optional:** about 31 more Drive PNGs of 10 MB or less were not fetched (Appendix A). Add any that improve variety, after screening them for watermarks and brand marks.
+4. ~~**Optional:** more Drive PNGs.~~ **Done in v2.2** (every image in the hand-over was screened; 21 excluded).
+4b. **Confirm the brand names on the ad-style images** ("M. Atelier", "Apex & Summit", "Sonicfit", "Loud Kids Club", "Fascent", "Persone" bags in `shopping-bags`). They look invented, but the client should confirm none is a real company.
+4c. **Hero motion control (REQ-064 vs REQ-068).** The client removed the hero Pause/Play button. If an accessibility audit is required before launch, propose a small, low-key control again.
 5. **Replace the last placeholders:** the orbit loop (`loop`) and the dune edit pair (`dunesNoon` / `dunesDusk`). This needs a real before/after of the same scene.
 6. **Blocked on the client (BLOCKED_EXTERNAL):**
    - `Genlixs_Project_Blueprint_v2.md`, which holds the real catalog, prices, credit rules, partner terms and services;
@@ -223,7 +229,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    - screen readers (VoiceOver and NVDA);
    - 200 % zoom and long translated strings;
    - the mobile Generate bar's keyboard on real devices;
-   - Lighthouse and Core Web Vitals.
+   - Lighthouse and Core Web Vitals — now more important: the homepage can stream up to ~38 MB of clips over a long visit (each clip loads only when on screen).
 8. **Not built yet:** the remaining admin screens (REQ-042), auth recovery, and tool/model detail pages (REQ-054).
 9. **When asked:** open a PR from `claude/nice-curie-ispn6l`. None has been opened, because none was requested.
 
@@ -233,7 +239,7 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
   - Runtime: 0 vulnerabilities.
   - Dev: 5 high, all in the `eslint-config-next` toolchain. The fix needs a breaking downgrade, so it is left for an upstream update.
 - **Unsynced durations:** the knight clip is 9 s, but its example recipe says 10 s / 16:9 and the file is 752×560. The recipe is what "Use prompt" loads; it is not the file's real settings, and the site notes this.
-- **QA script check:** `v2checks.js` V2-15 measures only the hero tiles whose images have loaded (21 of 28 at 1440 px). The others are lazy-loaded.
+- **QA script check:** `v2checks.js` V2-15 measures only the hero tiles whose images have loaded (29 of 48 at 1440 px in v2.2). The others are lazy-loaded.
 - **Visibility:** the repository is **public**, so the logo masters and the client media are visible to anyone. Suggest making it private if that is not intended.
 - **AGENTS.md:** `next dev` re-writes the Next.js block in `AGENTS.md`. Committing it keeps the tree clean.
 
@@ -272,9 +278,11 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
 ## 11. Open questions for the user
 
 1. Which Vercel account should host the preview? Is `mbanaoui147-4280` theirs?
-2. Can they compress the 26 Drive videos to under 10 MB, or allow Google Drive in the environment's network settings?
+2. ~~Drive videos~~ — resolved in v2.2 (local hand-over).
 3. Do they have the rights to use the Drive images and clip commercially? Which tool and model produced them?
-4. Should the three held-back images be used? They are the courtyard portrait (smoking), the bedroom editorial, and the spiked hand.
+4. Held-back images — v2.2 uses the bedroom editorial and the spiked hand on the showcase wall only. The two smoking portraits stay out. Does the client agree?
+6. Are the brand names on the ad-style images invented (see §7, 4b)?
+7. Should the remaining excluded files be edited to remove the brand marks, or replaced?
 5. Should the repository stay public?
 
 ---

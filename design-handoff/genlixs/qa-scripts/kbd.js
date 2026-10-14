@@ -1,6 +1,6 @@
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 (async () => {
-  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}); const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
   const out = [];
   await p.goto('http://localhost:3200/', { waitUntil: 'networkidle' });
   await p.keyboard.press('Tab');

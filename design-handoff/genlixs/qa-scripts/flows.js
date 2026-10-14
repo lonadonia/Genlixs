@@ -1,5 +1,5 @@
 // End-to-end journey checks for the Genlixs preview. Usage: node flows.js <baseUrl> <outDir>
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,7 +9,7 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
 (async () => {
   const [base, out] = process.argv.slice(2);
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
   const page = await ctx.newPage();

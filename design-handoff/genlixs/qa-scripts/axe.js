@@ -1,8 +1,8 @@
 // axe-core WCAG 2.x A/AA scan. Usage: node axe.js <baseUrl> <paths> <axePath>
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 (async () => {
   const [base, paths, axePath] = process.argv.slice(2);
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const p = await ctx.newPage();
   await p.goto(base + '/help', { waitUntil: 'networkidle' });

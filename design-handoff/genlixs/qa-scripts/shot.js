@@ -1,12 +1,12 @@
 // Usage: node shot.js <baseUrl> <outDir> <path1,path2,...> <widths e.g. 1440,390> [full=1] [signedIn=1]
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 const fs = require('fs');
 const path = require('path');
 
 (async () => {
   const [base, out, paths, widths, full = '1', signed = '0'] = process.argv.slice(2);
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const report = [];
   for (const w of widths.split(',').map(Number)) {
     const ctx = await browser.newContext({ viewport: { width: w, height: w < 500 ? 844 : w < 900 ? 1024 : 900 }, deviceScaleFactor: 1, reducedMotion: process.env.MOTION === '1' ? 'no-preference' : 'reduce' });

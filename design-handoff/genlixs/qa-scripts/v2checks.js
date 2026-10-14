@@ -1,10 +1,10 @@
-// v2 interaction checks: motion pause, hover preview, studio Home quick create.
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+// v2 interaction checks: hero motion and clips, click-for-sound clips, studio Home quick create.
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 const results = [];
 const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detail });
 (async () => {
   const base = process.argv[2];
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' });
   const p = await ctx.newPage();
   const errors = [];
@@ -12,16 +12,25 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
   await p.goto(base + '/', { waitUntil: 'networkidle' });
-  const col = p.locator('#hero-title').locator('xpath=ancestor::section').locator('.marquee-up').first();
+  const hero = p.locator('#hero-title').locator('xpath=ancestor::section');
+  const col = hero.locator('.marquee-up').first();
   const st1 = await col.evaluate((el) => getComputedStyle(el).animationPlayState);
-  const pause = p.getByRole('button', { name: /Pause.*hero gallery/ }).last();
   ok('V2-1', 'Hero columns animate by default', st1 === 'running', st1);
-  await pause.click();
+  // v2.2: the client asked for the hero Pause/Play control to be removed; hover still holds the columns.
+  ok('V2-2', 'Hero has no Pause/Play control (client request)', (await p.getByRole('button', { name: /(Pause|Play).*hero gallery/ }).count()) === 0);
+  await col.hover({ force: true });
   const st2 = await col.evaluate((el) => getComputedStyle(el).animationPlayState);
-  ok('V2-2', 'Pause control stops the hero columns', st2 === 'paused', st2);
-  ok('V2-3', 'Control label flips to Play', await p.getByRole('button', { name: /Play.*hero gallery/ }).last().isVisible());
-  const vid = p.locator('#hero-title').locator('xpath=ancestor::section').locator('video').first();
-  ok('V2-4', 'Hero loop is decorative (aria-hidden)', (await vid.getAttribute('aria-hidden')) === 'true');
+  ok('V2-3', 'Hovering the hero columns holds them still', st2 === 'paused', st2);
+  ok('V2-4', 'Hero has four media columns', (await hero.locator('.marquee-up, .marquee-down').count()) === 4);
+  await p.waitForTimeout(2500);
+  const heroClips = await hero.locator('video').evaluateAll((vs) => vs.filter((v) => !v.paused).map((v) => v.muted));
+  ok('V2-17', 'Hero clips play muted on load', heroClips.length >= 2 && heroClips.every(Boolean), `${heroClips.length} playing`);
+  const heroSound = hero.getByRole('button', { name: /^Turn sound on/ }).first();
+  await heroSound.click({ force: true });
+  await p.mouse.move(5, 5);
+  await p.waitForTimeout(400);
+  const audible = await p.evaluate(() => [...document.querySelectorAll('video')].filter((v) => !v.muted && !v.paused).length);
+  ok('V2-18', 'Clicking a hero clip turns its sound on', audible === 1, `${audible} audible`);
 
   // hero tiles follow the shown file's own ratio, with moderate corners
   const tiles = await p.locator('#hero-title').locator('xpath=ancestor::section').locator('.marquee-up > div, .marquee-down > div').evaluateAll((els) =>
@@ -37,16 +46,17 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   ok('V2-15', 'Hero tiles match the aspect ratio of their loaded image/video (within 2%)', measured.length >= 8 && worst < 0.02, `${measured.length}/${tiles.length} tiles measured, worst ${(worst * 100).toFixed(2)}%`);
   ok('V2-16', 'Hero tiles use moderate 18 px corners (not pills)', tiles.every((t) => t.radius === '18px'), [...new Set(tiles.map((t) => t.radius))].join(','));
 
-  // gallery hover preview
-  await p.locator('#examples').scrollIntoViewIfNeeded();
+  // gallery clips: autoplay muted on screen, one click for sound, one voice at a time
   const card = p.locator('#examples article', { hasText: 'Pup knight in the fog' });
-  await card.hover();
-  await p.waitForTimeout(1200);
-  const playing = await card.locator('video').evaluate((v) => !v.paused);
-  ok('V2-5', 'Gallery clip previews on hover', playing);
-  await p.mouse.move(5, 5);
-  await p.waitForTimeout(300);
-  ok('V2-6', 'Gallery clip pauses when the pointer leaves', await card.locator('video').evaluate((v) => v.paused));
+  await card.locator('video').scrollIntoViewIfNeeded();
+  await p.waitForTimeout(1500);
+  const auto = await card.locator('video').evaluate((v) => !v.paused && v.muted);
+  ok('V2-5', 'Gallery clip plays muted once on screen', auto);
+  await card.getByRole('button', { name: /^Turn sound on: Pup knight/ }).click();
+  await p.waitForTimeout(400);
+  const voices = await p.evaluate(() => [...document.querySelectorAll('video')].filter((v) => !v.muted));
+  const solo = await card.locator('video').evaluate((v) => !v.muted && !v.paused);
+  ok('V2-6', 'Click turns that clip\'s sound on and mutes every other clip', solo && voices.length === 1, `${voices.length} unmuted`);
 
   // reduced motion: hero columns not animated
   const ctx2 = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
@@ -55,7 +65,7 @@ const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detai
   const anim = await p2.locator('.marquee-up').first().evaluate((el) => getComputedStyle(el).animationName);
   ok('V2-7', 'Reduced motion disables the hero marquee', anim === 'none', anim);
   const vplay = await p2.locator('#hero-title').locator('xpath=ancestor::section').locator('video').first().evaluate((v) => v.paused);
-  ok('V2-8', 'Reduced motion keeps the loop on its poster', vplay);
+  ok('V2-8', 'Reduced motion keeps hero clips on their posters', vplay);
 
   // studio Home quick create
   await p.goto(base + '/help', { waitUntil: 'networkidle' });

@@ -1,9 +1,9 @@
 // Page-level horizontal overflow check (document scrollWidth vs clientWidth) at several widths.
 // Usage: node ovpage.js <baseUrl> <paths> <widths>
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 (async () => {
   const [base, paths, widths] = process.argv.slice(2);
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const rows = [];
   const errs = [];
   for (const w of widths.split(',').map(Number)) {

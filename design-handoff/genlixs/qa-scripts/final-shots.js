@@ -1,12 +1,12 @@
 // Final v2 screenshot set. Usage: node final-shots.js <baseUrl> <outDir>
-const { chromium } = require('/opt/node-tools/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node-tools/node_modules/playwright');
 const fs = require('fs');
 const path = require('path');
 const SIGNED = { v: 2, signedIn: true, email: 'demo.creator@example.com' };
 (async () => {
   const [base, out] = process.argv.slice(2);
   fs.mkdirSync(out, { recursive: true });
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const shoot = async ({ name, url, w, h, signed, scrollTo, full, motion }) => {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, reducedMotion: motion ? 'no-preference' : 'reduce' });
     const p = await ctx.newPage();
@@ -51,6 +51,8 @@ const SIGNED = { v: 2, signedIn: true, email: 'demo.creator@example.com' };
     { name: '22-admin-jobs-390', url: '/admin/jobs', w: 390, h: 844 },
     { name: '23-partner-overview-1440', url: '/partner', w: 1440, h: 900 },
     { name: '24-partner-overview-390', url: '/partner', w: 390, h: 844 },
+    { name: '25-home-showcase-1440', url: '/', w: 1440, h: 900, scrollTo: '#showcase', motion: true },
+    { name: '26-home-hero-1920', url: '/', w: 1920, h: 1080, motion: true },
   ];
   for (const s of list) await shoot(s);
   await b.close();

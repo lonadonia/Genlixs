@@ -9,7 +9,7 @@ A coded, responsive design preview of the Genlixs AI image / edit / short-video 
 | Admin console | `/admin`, `/admin/jobs`, `/admin/jobs/[id]`, `/admin/payouts` | Operations overview, filterable jobs table, job investigation with a guarded credit-return dialog, payout batch approval with role separation |
 | Partner portal | `/partner`, `/partner/links`, `/partner/referrals`, `/partner/commissions`, `/partner/payouts`, `/partner/resources`, `/partner/settings` | Main link first, separate performance counts and money balances, link builder, payout readiness, uncertain transfers kept reserved |
 
-> **This is a design preview, not the platform.** Sign-in, generation, payments, sharing and payouts are simulated in the browser (`src/lib/demo-store.ts`). Most examples now use **client-supplied media** from the Genlixs Drive folder: 14 images and one muted clip in `public/media/client/`, recorded in `design-handoff/genlixs/CLIENT_MEDIA.md`. Their prompts and settings are prompt ideas written to match each file, not recorded prompts. The abstract loop and the dune edit pair are still procedural **placeholders**, tagged "Placeholder" in the UI. Model names, prices and program terms are sample values pending the approved catalog and price version from `Genlixs_Project_Blueprint_v2.md`, which was not supplied. Every surface says so in the UI.
+> **This is a design preview, not the platform.** Sign-in, generation, payments, sharing and payouts are simulated in the browser (`src/lib/demo-store.ts`). Most examples now use **client-supplied media**: 50 images and 21 clips in `public/media/client/`, recorded in `design-handoff/genlixs/CLIENT_MEDIA.md`. Clips play muted while on screen; a click on a clip turns its sound on. Their prompts and settings are prompt ideas written to match each file, not recorded prompts. The abstract loop and the dune edit pair are still procedural **placeholders**, tagged "Placeholder" in the UI. Model names, prices and program terms are sample values pending the approved catalog and price version from `Genlixs_Project_Blueprint_v2.md`, which was not supplied. Every surface says so in the UI.
 
 ## Stack
 
@@ -65,7 +65,7 @@ src/lib/media.ts         media manifest (every image/clip; `placeholder` flag + 
 src/lib/demo-store.ts    browser-only demo state: drafts, quotes, jobs, credits, payments
 src/lib/admin-data.ts    sample operational and financial records
 public/brand/            web exports of the supplied v2 logo (no redraw)
-public/media/client/     client-supplied images + muted clip (Genlixs Drive; rights/model record to confirm)
+public/media/client/     client-supplied images + clips with sound, muted by default (rights/model record to confirm)
 public/media/concept/    temporary placeholder media (replace before launch)
 brand/source/            the four supplied v2 logo masters, 20,171 × 4,487 px (not served)
 brand/*.py               scripts that produced the logo exports, placeholder media and client-media resizes

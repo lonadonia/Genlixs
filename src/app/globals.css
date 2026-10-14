@@ -304,6 +304,30 @@ body {
 .fade-y {
   mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
 }
+
+/* Sound-on indicator in clip controls (stopped by the reduced-motion rule below). */
+@keyframes eq-bar {
+  0%,
+  100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+.eq-bars > span {
+  width: 2px;
+  height: 30%;
+  border-radius: 1px;
+  background: currentColor;
+  animation: eq-bar 0.9s ease-in-out infinite;
+}
+.eq-bars > span:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.eq-bars > span:nth-child(3) {
+  animation-delay: -0.6s;
+}
 .fade-x {
   mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
 }

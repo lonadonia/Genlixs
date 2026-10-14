@@ -256,6 +256,14 @@ export const EXAMPLES: Example[] = [
     media: "knightClip",
   },
   {
+    id: "ex-giant-astronaut",
+    tool: "video",
+    title: "Giant astronaut in Midtown",
+    prompt: "A giant figure in a yellow spacesuit walks between Manhattan towers as people run below and helicopters circle, handheld street-level shot, cinematic",
+    settings: { modelId: "vid-short", ratio: "9:16", duration: 10, resolution: "720p" },
+    media: "giantAstronaut",
+  },
+  {
     id: "ex-edit-dusk",
     tool: "edit",
     title: "Midday reference → dusk",

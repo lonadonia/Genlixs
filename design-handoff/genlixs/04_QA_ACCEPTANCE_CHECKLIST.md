@@ -1,8 +1,8 @@
 # 04 · QA acceptance checklist — Genlixs design preview (brand v2)
 
-All results below come from commands and scripted browser runs against the **production build** (`next build` + `next start`). The final run was on 14 Oct 2026, after the v2.1 follow-up: client Drive media added, and hero tiles now follow each file's own ratio with 18 px corners.
-- Environment: Linux, Node 22.22, Chromium via Playwright 1.56.
-- Screenshots: `screenshots/01…24`. Scripts: `qa-scripts/`.
+All results below come from commands and scripted browser runs against the **production build** (`next build` + `next start`). The final run was on 14 Oct 2026, after the v2.2 follow-up: the client's full `images` and `Videos` folders added, clips autoplay muted with click-for-sound, hero Pause/Play button removed, fourth hero column added, showcase wall added.
+- Environment (v2.2 run): Windows 11, Node 24.21, Chrome 155 via playwright-core 1.64 (`PLAYWRIGHT_PATH` / `CHROME_PATH`, see `qa-scripts/README.md`). Earlier runs: Linux, Node 22.22, Chromium via Playwright 1.56.
+- Screenshots: `screenshots/01…26` (01, 03–06 refreshed and 25–26 added in v2.2). Scripts: `qa-scripts/`.
 - Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`, `NOT_APPLICABLE`.
 
 ## 1. Build and static checks
@@ -41,16 +41,20 @@ All results below come from commands and scripted browser runs against the **pro
 | FLOW-7a–c | REQ-041 | Payout approval role gate, acknowledgement, uncertain transfer stays reserved | VERIFIED_PASS |
 | FLOW-8a–c | REQ-044–045 | Application validation → acceptance → portal → exact link copied → payout readiness | VERIFIED_PASS |
 
-`v2checks.js` (new in v2, extended in v2.1): 16 assertions — **16 passed, 0 failed, 0 console errors**.
+`v2checks.js` (new in v2, extended in v2.1, reworked in v2.2): 18 assertions — **18 passed, 0 failed, 0 console errors**.
 
 | ID | REQ | Assertion | Result |
 | --- | --- | --- | --- |
-| V2-1–3 | REQ-061, 064 | Hero columns animate; the visible Pause control stops them; label flips to Play | VERIFIED_PASS |
-| V2-4 | REQ-024 | Hero clip is decorative (`aria-hidden`) | VERIFIED_PASS |
-| V2-15 | REQ-066 | Hero tiles match the aspect ratio of the loaded image/video (within 2 %) | VERIFIED_PASS — 21 of 28 tiles loaded and measured at 1440 px; worst deviation 1.12 % (1 px border rounding) |
+| V2-1 | REQ-061 | Hero columns animate by default | VERIFIED_PASS |
+| V2-2 | REQ-068 | Hero has no Pause/Play control (client request) | VERIFIED_PASS |
+| V2-3 | REQ-064 | Hovering the hero columns holds them still | VERIFIED_PASS |
+| V2-4 | REQ-070 | Hero has four media columns | VERIFIED_PASS |
+| V2-17 | REQ-069, 070 | Hero clips play muted on load | VERIFIED_PASS — 5 playing at 1440 px, all muted |
+| V2-18 | REQ-069 | Clicking a hero clip turns its sound on | VERIFIED_PASS — exactly 1 audible clip |
+| V2-15 | REQ-066 | Hero tiles match the aspect ratio of the loaded image/video (within 2 %) | VERIFIED_PASS — v2.2: 29 of 48 tiles loaded and measured at 1440 px; worst deviation 0.33 % |
 | V2-16 | REQ-066 | Hero tiles use 18 px corners, not pills | VERIFIED_PASS — all `18px` |
-| V2-5–6 | REQ-024 | Gallery clip (client "Pup knight in the fog") previews on hover and pauses when the pointer leaves | VERIFIED_PASS |
-| V2-7–8 | REQ-048 | Reduced motion stops the marquee and keeps the loop on its poster | VERIFIED_PASS |
+| V2-5–6 | REQ-024, 069 | Gallery clip ("Pup knight in the fog") plays muted once on screen; a click turns its sound on and every other clip stays muted | VERIFIED_PASS |
+| V2-7–8 | REQ-048 | Reduced motion stops the marquee and keeps hero clips on their posters | VERIFIED_PASS |
 | V2-9–13 | REQ-026, 062 | Studio Home title; empty prompt blocked; quality change updates the exact cost (4 → 6 credits); Generate from Home opens the image studio with the job running; Edit tab routes to the edit studio for the reference | VERIFIED_PASS |
 | V2-14 | REQ-014 | Collapsed rail links keep accessible names | VERIFIED_PASS |
 
@@ -75,16 +79,19 @@ All results below come from commands and scripted browser runs against the **pro
 | QA-V3 | REQ-022 | Section order kept (plus the electric band and closing band) | VERIFIED_PASS |
 | QA-V4 | REQ-017 | Headline and sentence verbatim | VERIFIED_PASS |
 | QA-V5 | REQ-051 | Remaining placeholder media tagged "Placeholder"; studio results built from client files tagged "Sample"; gallery footnote and Help page say prompts are written to match the client files; sample numbers flagged; no testimonials, counts or "unlimited" claims | VERIFIED_PASS |
-| QA-V8 | REQ-063 | Client media screened: files with a watermark or a third-party brand mark excluded (14 excluded or held back, listed in `CLIENT_MEDIA.md`); clip re-encoded without audio | VERIFIED_PASS (visual review of every file, zoomed on labels) |
+| QA-V8 | REQ-063 | Client media screened: files with a watermark or a third-party brand mark excluded (v2.2 local hand-over: 21 of 71 images and 6 of 27 clips excluded, listed in `CLIENT_MEDIA.md`); clips keep their sound track, muted by default | VERIFIED_PASS (contact sheets of every image and 4 frames per clip, zoomed on labels) |
 | QA-V9 | REQ-063 | Text over the new media keeps contrast: sign-in panel gradient raised to 95 % under the headline (worst case: blue-bright 3.66 : 1 for large text, white 16.8 : 1); closing band keeps its 72 % overlay | VERIFIED_PASS (computed) |
-| QA-V6 | REQ-024 | Story / edit clips start on a poster with native controls; muted previews only when visible and motion allowed | VERIFIED_PASS |
+| QA-V6 | REQ-024, 069 | Every public clip (rail, gallery, story tab, use case, edit-and-motion, tool card, showcase) plays muted only while on screen and motion is allowed; centred one by one, all 7 non-hero clips played | VERIFIED_PASS |
+| QA-V10 | REQ-067 | Showcase wall: 24 cards first, "Show all 71" reveals 71, Videos filter shows 21; axe with motion on and the wall expanded: 0 violations | VERIFIED_PASS |
 | QA-V7 | REQ-060–062 | Reference-led hero, homepage and customer dashboard reviewed against the three client screenshots | VERIFIED_PASS (visual review) |
 
 ## 6. Not covered / open
 
 | Item | Status |
 | --- | --- |
-| Client Drive media (REQ-063) | PARTIAL — 14 images + 1 clip in use. 26 videos (12–43 MB) and 9 PNGs exceed the connector's 10 MB cap, and direct Drive access returns 403 through the egress proxy. Rights, tool licence and model records still to confirm (`CLIENT_MEDIA.md`). Remaining placeholders in the brand palette are used and tagged |
+| Client media (REQ-063, 067) | In use: 50 images + 21 clips from the client's local hand-over. Rights, tool licence and model records still to confirm (`CLIENT_MEDIA.md`). Remaining placeholders in the brand palette are used and tagged |
+| Hero motion control (REQ-064 vs REQ-068) | Client decision — the hero has no Pause/Play button; hover/focus pause and reduced motion remain. Not a full WCAG 2.2.2 pass for the hero |
+| Page weight of the clips on slow connections; Lighthouse / Core Web Vitals | NOT_TESTED — clips load only when on screen (`preload="none"`), and Save-Data keeps posters |
 | Real auth, generation, payments, payouts, persistence | BLOCKED_EXTERNAL — blueprint + services not supplied; simulated by design |
 | Approved catalog, prices, partner terms, legal text | BLOCKED_EXTERNAL |
 | Figma / editable design file | BLOCKED_EXTERNAL |

@@ -1,15 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, ArrowUpRight, Clapperboard, Download, ImagePlus, ListChecks, PenLine, Play, Plus, ScanEye, WandSparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Clapperboard, Download, ImagePlus, ListChecks, PenLine, Plus, ScanEye, WandSparkles } from "lucide-react";
 import { Hero } from "@/components/public/hero";
 import { Composer } from "@/components/public/composer";
 import { StoryTabs } from "@/components/public/story-tabs";
+import { ShowcaseWall } from "@/components/public/showcase-wall";
 import { StarterButton, UsePromptButton } from "@/components/public/prompt-buttons";
 import { CompareSlider } from "@/components/compare-slider";
 import { MotionRegion } from "@/components/motion-region";
 import { AutoplayVideo } from "@/components/ui/autoplay-video";
-import { HoverVideo } from "@/components/ui/hover-video";
+import { ShowcaseVideo } from "@/components/ui/showcase-video";
 import { Badge, ConceptTag } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EXAMPLES, MODELS, TOOLS, TOOL_ORDER, modelById, type Example, type ToolId } from "@/lib/catalog";
@@ -97,7 +98,7 @@ function ExampleCard({
         {e.reference ? (
           <SplitPreview before={e.reference} after={e.media} sizes={sizes} />
         ) : m.kind === "video" ? (
-          <HoverVideo media={e.media} label={e.title} className="absolute inset-0" controlClassName="right-3 bottom-3 sm:top-3 sm:bottom-auto" />
+          <ShowcaseVideo media={e.media} label={e.title} className="absolute inset-0" controlClassName="top-3 right-3" />
         ) : (
           <Image src={m.src} alt={m.alt} fill sizes={sizes} className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" style={pos ? { objectPosition: pos } : undefined} />
         )}
@@ -142,7 +143,7 @@ export default function HomePage() {
     { e: featured, cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide, pos: "50% 50%" },
     { e: clip, cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
     { e: ex("ex-earring"), cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: wide, pos: "45% 40%" },
-    { e: ex("ex-garden"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 28%" },
+    { e: ex("ex-giant-astronaut"), cell: "lg:row-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one },
     { e: edit, cell: "lg:col-span-2", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: "(min-width: 1024px) 23vw, 25vw" },
     { e: ex("ex-milky-tent"), cell: "", frame: "aspect-[4/5] md:aspect-[4/3]", sizes: one, pos: "50% 55%" },
   ];
@@ -219,7 +220,29 @@ export default function HomePage() {
             ))}
           </div>
           <p className="mt-8 max-w-3xl text-[13px] text-muted">
-            Images and the clip are supplied by Genlixs for this preview. Prompts and settings are written to match them; they are not the recorded prompt of each file. Items marked “Placeholder” are temporary.
+            Images and clips are supplied by Genlixs for this preview. Prompts and settings are written to match them; they are not the recorded prompt of each file. Items marked “Placeholder” are temporary.
+          </p>
+        </div>
+      </section>
+
+      {/* 2b · Showcase wall: every client image and clip */}
+      <section id="showcase" aria-labelledby="showcase-title" className="scroll-mt-24 border-t border-white/[0.06] py-16 lg:py-24" data-reveal>
+        <div className={wrap}>
+          <SectionHead
+            id="showcase-title"
+            eyebrow="Showcase"
+            title={
+              <>
+                Stills and clips, <span className="text-brand-blue-bright">all in motion.</span>
+              </>
+            }
+            intro="Clips play silently as you scroll. Click or tap one to hear it; only one clip plays sound at a time."
+          />
+          <div className="mt-10">
+            <ShowcaseWall />
+          </div>
+          <p className="mt-8 max-w-3xl text-[13px] text-muted">
+            Every image and clip on this wall is supplied by Genlixs for this preview. Their rights and generation records are still being confirmed.
           </p>
         </div>
       </section>
@@ -253,9 +276,13 @@ export default function HomePage() {
             {USE_CASES.map((u) => (
               <li key={u.title} className="w-[80vw] max-w-sm shrink-0 snap-start md:w-auto md:max-w-none">
                 <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-surface">
-                  <div className="relative aspect-[4/5] overflow-hidden">
-                    <Image src={stillOf(u.media)} alt={MEDIA[u.media].alt} fill sizes="(min-width: 768px) 30vw, 80vw" className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" style={{ objectPosition: u.pos }} />
-                    <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-surface to-transparent" />
+                  <div className="relative isolate aspect-[4/5] overflow-hidden">
+                    {MEDIA[u.media].kind === "video" ? (
+                      <ShowcaseVideo media={u.media} label={u.title} className="absolute inset-0" controlClassName="top-4 right-4" />
+                    ) : (
+                      <Image src={stillOf(u.media)} alt={MEDIA[u.media].alt} fill sizes="(min-width: 768px) 30vw, 80vw" className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" style={{ objectPosition: u.pos }} />
+                    )}
+                    <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-1/3 bg-gradient-to-t from-surface to-transparent" />
                     {MEDIA[u.media].placeholder ? <ConceptTag className="absolute top-4 left-4" /> : null}
                   </div>
                   <div className="-mt-6 flex flex-1 flex-col px-6 pb-6">
@@ -289,7 +316,7 @@ export default function HomePage() {
                 Change what you have. <span className="text-brand-blue-bright">Set it in motion.</span>
               </>
             }
-            intro="Edits keep your original as its own version. Clips start on a poster and only play when you press play."
+            intro="Edits keep your original as its own version. Clips play silently; click one to turn the sound on."
           />
           <div className="mt-10 grid gap-8 lg:grid-cols-12">
             <figure className="lg:col-span-7">
@@ -304,21 +331,14 @@ export default function HomePage() {
               </figcaption>
             </figure>
             <figure className="lg:col-span-5">
-              <div className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black">
-                <video
-                  controls
-                  playsInline
-                  preload="none"
-                  poster={MEDIA.knightClip.poster}
-                  className="block w-full"
-                  style={{ aspectRatio: `${MEDIA.knightClip.width} / ${MEDIA.knightClip.height}` }}
-                  aria-label={MEDIA.knightClip.alt}
-                >
-                  <source src={MEDIA.knightClip.src} type="video/mp4" />
-                </video>
+              <div
+                className="relative overflow-hidden rounded-[var(--radius-media)] border border-white/[0.08] bg-black"
+                style={{ aspectRatio: `${MEDIA.knightClip.width} / ${MEDIA.knightClip.height}` }}
+              >
+                <ShowcaseVideo media="knightClip" label={clip.title} className="absolute inset-0" />
               </div>
               <figcaption className="mt-3 text-sm text-muted">
-                “{clip.prompt}” · {meta(clip)} · no audio
+                “{clip.prompt}” · {meta(clip)} · sound off until you click
               </figcaption>
               <div className="mt-4">
                 <UsePromptButton exampleId={clip.id} context={clip.title} />
@@ -565,22 +585,11 @@ function ToolCard({ tool }: { tool: ToolId }) {
       <div className="relative aspect-[16/10] overflow-hidden bg-raised">
         {tool === "edit" ? (
           <SplitPreview before="dunesNoon" after="dunesDusk" sizes="(min-width: 1024px) 15vw, 50vw" />
+        ) : tool === "video" ? (
+          <ShowcaseVideo media="knightClip" className="absolute inset-0" />
         ) : (
-          <Image
-            src={stillOf(tool === "image" ? "driveThru" : "knightClip")}
-            alt={tool === "image" ? MEDIA.driveThru.alt : MEDIA.knightClip.alt}
-            fill
-            sizes="(min-width: 1024px) 30vw, 100vw"
-            className="object-cover"
-          />
+          <Image src={stillOf("driveThru")} alt={MEDIA.driveThru.alt} fill sizes="(min-width: 1024px) 30vw, 100vw" className="object-cover" />
         )}
-        {tool === "video" ? (
-          <span aria-hidden className="absolute inset-0 grid place-items-center">
-            <span className="grid size-14 place-items-center rounded-full bg-[rgb(15_18_18/0.6)] text-white ring-1 ring-white/30 backdrop-blur-md">
-              <Play className="ml-0.5 size-5" />
-            </span>
-          </span>
-        ) : null}
         {tool === "edit" ? <ConceptTag className="pointer-events-none absolute top-3 left-3" /> : null}
       </div>
       <div className="flex flex-1 flex-col p-6">
@@ -627,17 +636,17 @@ const USE_CASES = [
   {
     title: "Social posts and stories",
     body: "Vertical and square frames sized for feeds and stories, with a short clip when a still is not enough.",
-    media: "sofa" as const,
+    media: "hairRollers" as MediaKey,
     pos: "50% 40%",
-    tool: "image" as const,
-    starter: "Candid vertical of a creator scrolling their phone on a leather sofa by a window, autumn light, space for a caption at the top",
+    tool: "video" as const,
+    starter: "Vertical clip of a creator in pink hair rollers turning to camera, then shaking out glossy blonde waves, warm window light",
     settings: { ratio: "9:16" },
     tags: ["9:16", "1:1", "Short video"],
   },
   {
     title: "Product imagery",
     body: "Product scenes for listings and launches, in the studio or out in the world. Use edit to change a background on your own photo.",
-    media: "summitBag" as const,
+    media: "summitBag" as MediaKey,
     pos: "50% 60%",
     tool: "image" as const,
     starter: "Outdoor product shot: a down sleeping bag on a foam mat at a snowy summit at sunrise, no logos, soft morning light",
@@ -647,7 +656,7 @@ const USE_CASES = [
   {
     title: "Characters and concepts",
     body: "Explore characters, moods and compositions quickly before committing to a direction.",
-    media: "horned" as const,
+    media: "horned" as MediaKey,
     pos: "50% 30%",
     tool: "image" as const,
     starter: "Studio portrait of an original fantasy character with horns and a glossy collar on a deep blue backdrop, film grain",
