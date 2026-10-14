@@ -2,16 +2,35 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
-import { Panel, StatTile } from "@/components/console/parts";
+import { PageHead, Panel } from "@/components/console/parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, errorMessage } from "@/lib/live/api";
 import { cn, fmtNum } from "@/lib/format";
-import { Empty, Field, fmtKie, fmtPct, fmtUsd2, inputCls, Notice, when } from "./shared";
+import { Empty, Field, fmtKie, fmtPct, fmtRate, fmtUsd2, inputCls, Notice, when, Wrap } from "./shared";
+import { useAdminMe } from "../live-admin";
 import type { ProviderSummary } from "./types";
 
 const AUTO_MS = 60_000;
 const STALE_MS = 15 * 60_000;
+
+/** KIE balance page (provider.read): remaining credits and consumption first, operational detail folded away. */
+export function KieBalancePage() {
+  const me = useAdminMe();
+  const caps = me.data?.capabilities ?? [];
+  return (
+    <Wrap>
+      <PageHead title="KIE balance" sub="Credits left on the Genlixs KIE account and how fast they are used. Read on the server; the KIE key never reaches the browser." />
+      {!me.data ? (
+        <div role="status" aria-busy="true" aria-label="Loading KIE balance" className="h-48 animate-pulse-soft rounded-[var(--radius-media)] bg-sheet" />
+      ) : caps.includes("provider.read") ? (
+        <ProviderTab canOperate={caps.includes("catalog.operate")} />
+      ) : (
+        <Notice>Your role cannot see the KIE balance.</Notice>
+      )}
+    </Wrap>
+  );
+}
 
 /**
  * KIE balance, spend and operations. The balance is read on the server with the KIE key (never sent to the browser),
@@ -82,7 +101,7 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
           {fmtKie(b.credits)} left; warning at {fmtKie(b.threshold)}. New generations fail when KIE runs out of credits.
         </Notice>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-[var(--radius-media)] border border-rule bg-sheet p-5 shadow-[var(--shadow-lift)]">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-muted-dark">KIE balance</p>
@@ -92,7 +111,9 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
           </div>
           <p className="mt-2 text-[1.875rem] leading-none font-semibold tracking-tight text-ink-dark tabular">{b.credits === null ? "Unknown" : fmtKie(b.credits)}</p>
           <p className="mt-2 text-xs text-muted-dark">
-            {b.approxUsd !== null ? `≈ ${fmtUsd2(b.approxUsd)} at KIE’s standard $0.005/credit (bonus credits from top-ups not separated)` : "No USD estimate without a reading"}
+            {b.approxUsd !== null
+              ? `≈ ${fmtUsd2(b.approxUsd)} at your KIE credit cost (${fmtRate(b.usdPerCredit)} per KIE credit, set in Pricing & packages)`
+              : "No USD estimate without a reading"}
           </p>
           <p className="mt-2 text-xs text-muted-dark">Read {when(b.observedAt)}</p>
           {failing ? (
@@ -108,15 +129,33 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
               KIE billing <ExternalLink aria-hidden className="size-3.5" />
             </a>
           </div>
-          <p className="mt-2 text-[11px] text-muted-dark">Refreshes every minute while this tab is open; repeated clicks share one KIE request.</p>
+          <p className="mt-2 text-[11px] text-muted-dark">Refreshes every minute while this page is open; repeated clicks share one KIE request.</p>
         </div>
-        <StatTile label="KIE spend today (UTC)" value={fmtKie(s.spend.today.customerCredits + s.spend.today.testCredits)} sub={spendSub(s.spend.today)} />
-        <StatTile label="Last 7 days" value={fmtKie(s.spend.days7.customerCredits + s.spend.days7.testCredits)} sub={spendSub(s.spend.days7)} />
-        <StatTile label="Last 30 days" value={fmtKie(s.spend.days30.customerCredits + s.spend.days30.testCredits)} sub={spendSub(s.spend.days30)} />
+        <div className="rounded-[var(--radius-media)] border border-rule bg-sheet p-5 shadow-[var(--shadow-lift)]">
+          <p className="text-sm font-semibold text-muted-dark">KIE credits used</p>
+          <dl className="mt-3 grid grid-cols-3 gap-3">
+            {(
+              [
+                ["Today (UTC)", s.spend.today],
+                ["7 days", s.spend.days7],
+                ["30 days", s.spend.days30],
+              ] as const
+            ).map(([label, bucket]) => (
+              <div key={label}>
+                <dt className="text-xs text-muted-dark">{label}</dt>
+                <dd className="mt-1 text-lg font-semibold tabular text-ink-dark">{fmtKie(bucket.customerCredits + bucket.testCredits)}</dd>
+                <dd className="text-[11px] text-muted-dark">{spendSub(bucket)}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-xs text-muted-dark">As reported by KIE for each finished task. Tasks without a report are counted, never guessed.</p>
+        </div>
       </div>
+      <details className="rounded-[var(--radius-media)] border border-rule bg-sheet p-5">
+        <summary className="cursor-pointer text-sm font-semibold text-ink-dark">More details: jobs, spend by model, reliability, readings and warning level</summary>
+        <div className="mt-4 space-y-5">
       <p className="text-xs text-muted-dark">
-        Spend is the credits KIE reported for each finished task. Jobs without a report are counted, not guessed. Balance changes on a shared account are not used to
-        measure single tasks.
+        Balance changes on a shared account are not used to measure single tasks.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -226,6 +265,8 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
           )}
         </Panel>
       </div>
+        </div>
+      </details>
     </div>
   );
 }

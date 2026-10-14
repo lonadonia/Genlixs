@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Badge, type Tone } from "@/components/ui/badge";
 import { cn } from "@/lib/format";
-import type { AdminModel, AvailabilityState, CapabilitySpec, Contribution, VerificationStatus } from "./types";
+import type { AdminModel, AvailabilityState, CapabilitySpec, VerificationStatus } from "./types";
 
 /* Shared formatting and small pieces for the admin catalog workspace (light admin surface). */
 
@@ -20,6 +20,14 @@ export const fmtKie = (n: number | null | undefined) => (n === null || n === und
 export const fmtUsd4 = (n: number | null | undefined) => (n === null || n === undefined ? "—" : usd4.format(n));
 export const fmtUsd2 = (n: number | null | undefined) => (n === null || n === undefined ? "—" : usd2.format(n));
 export const fmtPct = (n: number | null | undefined) => (n === null || n === undefined ? "—" : pct.format(n));
+const signedPct = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, signDisplay: "always" });
+/** Markup above cost from a percentage number: "+100 %", "−12.5 %". */
+export const fmtMarkup = (pctValue: number | null | undefined) => (pctValue === null || pctValue === undefined ? "—" : `${signedPct.format(pctValue)} %`);
+const rate = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 });
+/** USD per credit with up to 6 decimals ($0.005, $0.02, $0.0345). */
+export const fmtRate = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? "—" : rate.format(n));
+/** Page container shared by the catalog, pricing and KIE pages. */
+export const Wrap = ({ children }: { children: ReactNode }) => <div className="mx-auto w-full max-w-[1400px] space-y-5 p-4 sm:p-6 lg:p-8">{children}</div>;
 export const fmtBps = (bps: number) => `${bps / 100} %`;
 export const when = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -47,10 +55,10 @@ export const STATE_INFO: Record<AvailabilityState, { label: string; tone: Tone; 
 };
 
 export const VERIFY_INFO: Record<VerificationStatus, { label: string; tone: Tone }> = {
-  verified_by_test: { label: "Verified by test", tone: "success" },
+  verified_by_test: { label: "Tested", tone: "success" },
   manual_evidence: { label: "Manual evidence", tone: "info" },
   test_failed: { label: "Last test failed", tone: "error" },
-  untested: { label: "Untested", tone: "neutral" },
+  untested: { label: "Not tested yet", tone: "neutral" },
 };
 
 export function VerificationBadge({ model }: { model: Pick<AdminModel, "verificationStatus" | "verifiedCurrent"> }) {
@@ -58,7 +66,7 @@ export function VerificationBadge({ model }: { model: Pick<AdminModel, "verifica
   if (model.verificationStatus === "verified_by_test" && model.verifiedCurrent === false) {
     return (
       <Badge surface="light" tone="attention">
-        Verified (older options)
+        Tested (older options)
       </Badge>
     );
   }
@@ -83,34 +91,6 @@ export function ModelBadges({ badges }: { badges: string[] }) {
   );
 }
 
-/** A contribution value; losses are marked with text, not colour alone. */
-export function Money({ value, strong }: { value: number | null | undefined; strong?: boolean }) {
-  if (value === null || value === undefined) return <span className="text-muted-dark">—</span>;
-  const loss = value < 0;
-  return (
-    <span className={cn("tabular", loss ? "font-semibold text-error-text" : strong ? "font-semibold text-ink-dark" : "")}>
-      {fmtUsd4(value)}
-      {loss ? <span className="ml-1 text-[11px]">loss</span> : null}
-    </span>
-  );
-}
-
-export function ContributionCells({ c }: { c: Contribution }) {
-  return (
-    <>
-      <td className="px-3 py-2 text-right">
-        <Money value={c?.direct} />
-      </td>
-      <td className="px-3 py-2 text-right">
-        <Money value={c?.affiliateBase} />
-      </td>
-      <td className="px-3 py-2 text-right">
-        <Money value={c?.affiliateUplift} />
-      </td>
-    </>
-  );
-}
-
 export function Notice({ tone = "info", title, children, action }: { tone?: "info" | "attention" | "error" | "success"; title?: string; children: ReactNode; action?: ReactNode }) {
   const tones = {
     info: "border-[#c7cefd] bg-info-tint text-info-text",
@@ -131,7 +111,7 @@ export function Notice({ tone = "info", title, children, action }: { tone?: "inf
 
 export function Field({ label, hint, children, className }: { label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <label className={cn("grid gap-1 text-sm", className)}>
+    <label className={cn("grid min-w-0 gap-1 text-sm", className)}>
       <span className="font-semibold text-ink-dark">{label}</span>
       {children}
       {hint ? <span className="text-xs text-muted-dark">{hint}</span> : null}

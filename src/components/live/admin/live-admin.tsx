@@ -194,7 +194,7 @@ type Overview = {
 
 const moneyMap = (m: Record<string, string> | undefined) => (m && Object.keys(m).length ? Object.entries(m).map(([c, v]) => money(v, c)).join(" · ") : "—");
 
-export function LiveAdminOverview() {
+export function LiveAdminOverview({ settings }: { settings?: ReactNode }) {
   const o = useApi<Overview>("/api/admin/overview");
   const rec = useApi<Record<string, unknown[]>>("/api/admin/reconciliation");
   if (o.error) return <Wrap><Err>{o.error.message}</Err></Wrap>;
@@ -260,6 +260,7 @@ export function LiveAdminOverview() {
               <p className="mt-3 text-xs text-muted-dark">{d.finance.note}</p>
             </Panel>
           ) : null}
+          {settings}
           <Panel title="Recent staff activity">
             {d.recentActivity.length ? (
               <ul className="space-y-1 text-sm">
@@ -515,13 +516,14 @@ export function LiveAdminPayments() {
 
 // -------------------------------------------------------------- affiliates
 
-export function LiveAdminAffiliates() {
+export function LiveAdminAffiliates({ terms }: { terms?: ReactNode }) {
   const sp = useSearchParams();
   const state = sp.get("state") ?? "";
   const a = useApi<Row[]>(`/api/admin/affiliates${state ? `?state=${state}` : ""}`);
   return (
     <Wrap>
-      <PageHead title="Partners" sub="Applications, tiers and payout destinations. Approval requires a published agreement." />
+      <PageHead title="Partners" sub="Applications, tiers and payout destinations. Approval requires published commission terms." />
+      {terms}
       <Panel bodyClass="p-0">
         {a.error ? <div className="p-5"><Err>{a.error.message}</Err></div> : null}
         <Table

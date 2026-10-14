@@ -92,8 +92,9 @@ design-handoff/genlixs/  brief analysis, design blueprint, master prompt, QA evi
 
 - Complete `docs/SETUP_AND_ACTIVATION.md` (Supabase Auth SMTP/URLs, Vercel variables, Vault worker secrets, owner bootstrap,
   KIE account, payment gateway, partner terms, domain) and the controlled checks in `docs/VERIFICATION.md`.
-- In Admin → Models & pricing: test the models to offer, set prices (bulk markup above KIE cost or per model), publish them
-  and enable the models; publish the approved packages and the partner agreement (all seeded as drafts / disabled).
+- In Admin → Pricing & packages: confirm the reference values, set the model prices and offer the approved packages; in
+  Models: switch the priced models on (a private test is optional); in Partners: publish the commission terms (all seeded as
+  drafts / off).
 - Confirm rights, tool licence, model and settings for each client file (`CLIENT_MEDIA.md`), and replace the remaining placeholders (abstract loop, dune edit pair) with validated outputs.
 - Bring in the 26 Drive videos over 10 MB once they are compressed under 10 MB, or once Drive access is allowed in the environment's network settings.
 - Supply approved legal text for the policy pages and a public support contact.

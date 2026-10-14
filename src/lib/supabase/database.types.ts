@@ -1769,6 +1769,20 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_pricing_save: {
+        Args: {
+          p_accept_loss?: boolean
+          p_excluded?: Json
+          p_include_overrides: boolean
+          p_markup_percent: number
+          p_model_ids: string[]
+          p_preview_revision: string
+          p_publish?: boolean
+          p_scope: string
+          p_selected: string[]
+        }
+        Returns: Json
+      }
       admin_provider_summary: { Args: never; Returns: Json }
       admin_publish_agreement: {
         Args: { p_agreement_id: string; p_reason: string }
@@ -1787,6 +1801,10 @@ export type Database = {
         Args: { p_evidence: string; p_model_id: string }
         Returns: Json
       }
+      admin_reference_impact: {
+        Args: { p_amount_usd: number; p_credits: number; p_kind: string }
+        Returns: Json
+      }
       admin_reply_ticket: {
         Args: { p_body: string; p_status: string; p_ticket_id: string }
         Returns: Json
@@ -1803,12 +1821,48 @@ export type Database = {
         Args: { p_affiliate_id: string; p_decision: string; p_reason: string }
         Returns: Json
       }
+      admin_save_model_price: {
+        Args: {
+          p_accept_loss: boolean
+          p_expected_price_version_id: string
+          p_extra_reference_units: number
+          p_model_id: string
+          p_note?: string
+          p_publish: boolean
+          p_units: Json
+        }
+        Returns: Json
+      }
+      admin_save_package: {
+        Args: {
+          p_amount_minor: number
+          p_bonus_credits: number
+          p_expected_version_id: string
+          p_included_credits: number
+          p_name: string
+          p_offered: boolean
+          p_product_key: string
+        }
+        Returns: Json
+      }
       admin_save_price_draft: {
         Args: {
           p_extra_reference_units?: number
           p_model_id: string
           p_note?: string
           p_units: Json
+        }
+        Returns: Json
+      }
+      admin_save_pricing_reference: {
+        Args: {
+          p_amount_usd: number
+          p_bonus_credits: number
+          p_credits: number
+          p_expected_version_id: string
+          p_kind: string
+          p_note: string
+          p_source_url: string
         }
         Returns: Json
       }
@@ -1888,6 +1942,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_settings: { Args: never; Returns: Json }
       admin_update_model_display: {
         Args: {
           p_badges: string[]

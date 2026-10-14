@@ -1,6 +1,8 @@
 -- Admin catalog upgrade: permissions, configuration costs and bulk markup math, credit economy and commission
 -- scenarios, pricing batches (immutability, stale previews, all-or-nothing), quotes/jobs across price changes,
 -- availability end to end, private staff tests (no wallet, no duplicates, evidence), provider balance and costs.
+-- Updated for migration 15 (simplified pricing): charges are valued at the Genlixs credit value (a reference value)
+-- instead of the cheapest package, and a priced model can be switched on without a paid test.
 -- Rolled back by the final exception. Run 00_helpers.sql first in the same session.
 do $$
 declare
@@ -16,7 +18,8 @@ begin
   insert into app_private.staff_memberships (user_id, role) values (owner_u, 'owner'), (fin, 'finance'), (ops, 'operations'), (sup, 'support');
   -- Isolate from any real catalog state: start from disabled models without published prices.
   update app_private.price_versions set state = 'retired' where state in ('published', 'draft');
-  update app_private.model_catalog set state = 'disabled', verification_status = 'untested', verified_capability_version_id = null;
+  update app_private.model_catalog set state = 'disabled', verification_status = 'untested', verified_capability_version_id = null
+    where state <> 'disabled' or verification_status <> 'untested' or verified_capability_version_id is not null;
   update app_private.settings set value = '100' where key = 'max_quotes_per_minute';
 
   -- C1 permissions: customers, support and partners cannot read costs/balance or change the catalog
@@ -52,13 +55,16 @@ begin
   execute 'reset role';
   v_ok := v_ok + 1;
 
-  -- C2 configuration costs, markup math, credit conversion (lowest revenue per credit), commission scenarios
+  -- C2 configuration costs, markup math, credit conversion (Genlixs credit value), commission scenarios
+  -- Known reference values inside this transaction: $5 / 1,000 KIE credits and $5 / 250 Genlixs credits.
+  perform pg_temp.t_save_ref(fin, 'kie_purchase', 5, 1000);
+  perform pg_temp.t_save_ref(fin, 'credit_value', 5, 250);
   perform pg_temp.t_as(fin);
   p := public.admin_pricing_preview('all', null, 300, false);
   execute 'reset role';
-  -- Conservative basis = lowest package revenue per credit among the applicable packages.
-  v_num := (select min((x ->> 'revenuePerCredit')::numeric) from jsonb_array_elements(p -> 'basis' -> 'products') x);
-  if (p -> 'basis' ->> 'minRevenuePerCredit')::numeric <> v_num then raise exception 'C2 basis is not the lowest %', p -> 'basis'; end if;
+  -- The basis is the Genlixs credit value, not a package.
+  v_num := (app_private.current_reference('credit_value')).usd_per_credit;
+  if (p -> 'basis' ->> 'minRevenuePerCredit')::numeric <> v_num or v_num <> 0.02 then raise exception 'C2 basis is not the credit value %', p -> 'basis'; end if;
   -- Every configuration: proposed = max(1, ceil(cost USD x 4 / rpc)); never a single "from" price.
   for m in select value from jsonb_array_elements(p -> 'models') loop
     if m ->> 'status' <> 'ok' then raise exception 'C2 % status %', m ->> 'modelId', m ->> 'status'; end if;
@@ -189,18 +195,15 @@ begin
      or (select state from app_private.price_versions where id = v_id) <> 'retired' then raise exception 'C4 restore %', r; end if;
   v_ok := v_ok + 1;
 
-  -- C5 availability end to end (enable validation, untested owner decision, disable/maintenance, bulk all-or-nothing)
+  -- C5 availability end to end (enable validation, no paid-test gate, disable/maintenance, bulk all-or-nothing)
   perform pg_temp.t_as(ops);
   begin perform public.admin_set_model_availability('flux-2-pro-image', 'enabled'); raise exception 'C5 enabled without price';
   exception when others then if sqlerrm <> 'MODEL_NOT_PRICED' then raise; end if; end;
-  begin perform public.admin_set_model_availability('veo-3-1', 'enabled'); raise exception 'C5 operations enabled untested';
-  exception when others then if sqlerrm <> 'MODEL_UNTESTED' then raise; end if; end;
+  -- an untested but priced model can be switched on by operations; it stays untested and the basis says why
+  r := public.admin_set_model_availability('veo-3-1', 'enabled');
+  if r ->> 'enableBasis' <> 'documented_cost' or r ->> 'verificationStatus' <> 'untested' then raise exception 'C5 basis %', r; end if;
   execute 'reset role';
   perform pg_temp.t_as(owner_u);
-  begin perform public.admin_set_model_availability('veo-3-1', 'enabled'); raise exception 'C5 untested without confirmation';
-  exception when others then if sqlerrm <> 'UNTESTED_CONFIRMATION_REQUIRED' then raise; end if; end;
-  r := public.admin_set_model_availability('veo-3-1', 'enabled', null, true);
-  if r ->> 'enableBasis' <> 'documented_cost' or r ->> 'verificationStatus' <> 'untested' then raise exception 'C5 basis %', r; end if;
   -- enable with "publish the draft in the same flow"
   perform public.admin_pricing_apply('selected', array['flux-2-pro-image'], 200, false,
     public.admin_pricing_preview('selected', array['flux-2-pro-image'], 200, false) ->> 'revision', 'draft', array['flux-2-pro-image']);

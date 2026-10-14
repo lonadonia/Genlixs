@@ -51,6 +51,23 @@ begin
 end;
 $$;
 
+-- Saves a reference value as a staff member (finance/owner) from the current version; must be called without a role
+-- switch in effect (the current version id is read from app_private first).
+create or replace function pg_temp.t_save_ref(p_actor uuid, p_kind text, p_amount numeric, p_credits numeric)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_id uuid := (app_private.current_reference(p_kind)).id;
+  r jsonb;
+begin
+  perform pg_temp.t_as(p_actor);
+  r := public.admin_save_pricing_reference(p_kind, p_amount, p_credits, 0, null, null, v_id);
+  execute 'reset role';
+  return r;
+end;
+$$;
+
 -- Claims the newest pending work item of a kind for a reference (as the worker would after dequeue).
 create or replace function pg_temp.t_claim(p_ref uuid, p_kind text)
 returns jsonb

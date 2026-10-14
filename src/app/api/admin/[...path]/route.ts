@@ -48,6 +48,34 @@ function decimal(v: unknown, name: string, min: number, max: number, decimals: n
   }
   return n;
 }
+/**
+ * Exact decimal text (no binary floating point): "5", "5.00", "0.5". Money and credit quantities are passed to the
+ * database as text and validated there again.
+ */
+function decimalText(v: unknown, name: string, decimals: number, optional = false): string | null {
+  if ((v === undefined || v === null || v === "") && optional) return null;
+  const t = typeof v === "number" && Number.isFinite(v) ? String(v) : typeof v === "string" ? v.trim() : "";
+  const pattern = decimals > 0 ? new RegExp(`^\\d{1,9}(\\.\\d{1,${decimals}})?$`) : /^\d{1,9}$/;
+  if (!pattern.test(t)) {
+    throw new ApiError("INVALID_INPUT", `${name} must be a positive number${decimals > 0 ? ` with at most ${decimals} decimals` : " (whole)"}.`, 422);
+  }
+  return t;
+}
+/** Kept configurations per model for bulk pricing: {"<modelId>": ["<key>", â€¦]}. */
+function keptMap(v: unknown): Record<string, string[]> {
+  if (v === undefined || v === null) return {};
+  if (typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
+  const entries = Object.entries(v as Record<string, unknown>);
+  if (entries.length > 100) throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
+  return Object.fromEntries(
+    entries.map(([k, list]) => {
+      if (!Array.isArray(list) || list.length > 200 || list.some((x) => typeof x !== "string" || x.length > 60)) {
+        throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
+      }
+      return [modelId(k), list as string[]];
+    }),
+  );
+}
 /** {configuration key: number} maps for per-configuration prices and costs (keys are validated by the database). */
 function numberMap(v: unknown, name: string): Record<string, number> {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", `${name} are required.`, 422);
@@ -113,6 +141,7 @@ const GETS: Record<string, Handler> = {
     runtime: runtime(),
   }),
   "catalog/batches": ({ db, q }) => rpc(db, "admin_pricing_batches", { p_limit: limit(q, 100) }),
+  settings: ({ db }) => rpc(db, "admin_settings"),
   "catalog/tests/outputs/:id": async ({ db, rest }) => {
     // Staff-only signed link to a private test output (the RPC checks the capability and the asset's purpose).
     const loc = await rpc<{ bucket: string; path: string; mime: string }>(db, "admin_authorize_test_output", { p_asset_id: input.uuid(rest[3], "Output") });
@@ -213,8 +242,8 @@ const POSTS: Record<string, Handler> = {
       p_reason: input.str(b.reason, "Reason", { max: 500, optional: true }) ?? null,
     });
   },
-  // One availability control per model. Enabling also needs the server's KIE credentials, which only this layer
-  // can see; the database enforces adapter, option schema, published price and the untested-model owner decision.
+  // One availability control per model. Switching on also needs the server's KIE credentials, which only this layer
+  // can see; the database enforces adapter, option schema, known KIE cost and a published price (no paid-test gate).
   "catalog/models/:id/availability": async ({ req, db, rest }) => {
     const b = await readJson(req);
     const state = input.oneOf(b.state, "Availability", STATES)!;
@@ -223,7 +252,7 @@ const POSTS: Record<string, Handler> = {
       p_model_id: modelId(rest[2]),
       p_state: state,
       p_note: input.str(b.note, "Customer note", { max: 200, optional: true }) ?? null,
-      p_accept_untested: input.bool(b.acceptUntested, "Untested confirmation", true) ?? false,
+      p_accept_untested: false,
       p_publish_price_version_id: input.uuid(b.publishPriceVersionId, "Price draft", true) ?? null,
       p_reason: optionalReason(b.reason),
     });
@@ -235,7 +264,7 @@ const POSTS: Record<string, Handler> = {
     return rpc(db, "admin_bulk_set_availability", {
       p_model_ids: modelIds(b.modelIds),
       p_state: state,
-      p_accept_untested: input.bool(b.acceptUntested, "Untested confirmation", true) ?? false,
+      p_accept_untested: false,
     });
   },
   "catalog/models/:id/display": async ({ req, db, rest }) => {
@@ -254,6 +283,20 @@ const POSTS: Record<string, Handler> = {
       p_model_id: modelId(rest[2]),
       p_units: numberMap(b.units, "Credit charges"),
       p_extra_reference_units: input.int(b.extraReferenceUnits, "Extra reference charge", { min: 0, max: 100000, optional: true }) ?? null,
+      p_note: input.str(b.note, "Note", { max: 300, optional: true }) ?? null,
+    });
+  },
+  // One-step price: a new immutable version, published at once (owner) or saved as a draft. The editor sends the
+  // version it started from so a concurrent change is refused instead of overwritten.
+  "catalog/models/:id/price": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_save_model_price", {
+      p_model_id: modelId(rest[2]),
+      p_units: numberMap(b.units, "Credit charges"),
+      p_extra_reference_units: input.int(b.extraReferenceUnits, "Extra reference charge", { min: 1, max: 1_000_000, optional: true }) ?? null,
+      p_publish: input.bool(b.publish, "Publish", true) ?? true,
+      p_accept_loss: input.bool(b.acceptLoss, "Below-cost confirmation", true) ?? false,
+      p_expected_price_version_id: input.uuid(b.expectedPriceVersionId, "Current price", true) ?? null,
       p_note: input.str(b.note, "Note", { max: 300, optional: true }) ?? null,
     });
   },
@@ -316,18 +359,56 @@ const POSTS: Record<string, Handler> = {
       p_selected: modelIds(b.selected),
     });
   },
-  "catalog/packages/impact": async ({ req, db }) => {
+  // Bulk markup: one "Save changes" for every selected model (all or none), with configurations kept unchanged.
+  "catalog/bulk-pricing/save": async ({ req, db }) => {
     const b = await readJson(req);
-    const changes: Record<string, { amountMinor: number; credits: number }> = {};
-    if (b.changes && typeof b.changes === "object" && !Array.isArray(b.changes)) {
-      for (const [k, v] of Object.entries(b.changes as Record<string, Record<string, unknown>>).slice(0, 20)) {
-        changes[input.str(k, "Package", { min: 2, max: 40 })!] = {
-          amountMinor: input.int(v?.amountMinor, "Package price", { min: 1, max: 100_000_000 })!,
-          credits: input.int(v?.credits, "Package credits", { min: 1, max: 10_000_000 })!,
-        };
-      }
-    }
-    return rpc(db, "admin_package_impact", { p_changes: changes });
+    return rpc(db, "admin_pricing_save", {
+      ...bulkScope(b),
+      p_preview_revision: input.str(b.previewRevision, "Preview revision", { min: 32, max: 32 }),
+      p_selected: modelIds(b.selected),
+      p_excluded: keptMap(b.kept),
+      p_publish: input.bool(b.publish, "Publish", true) ?? true,
+      p_accept_loss: input.bool(b.acceptLoss, "Below-cost confirmation", true) ?? false,
+    });
+  },
+  // Reference values: the KIE purchase (USD per KIE credit) and the Genlixs credit value (USD per Genlixs credit).
+  // Saving one never changes wallets, purchases, quotes, running jobs or published prices.
+  "pricing/references": async ({ req, db }) => {
+    const b = await readJson(req);
+    const kind = input.oneOf(b.kind, "Reference", ["kie_purchase", "credit_value"] as const)!;
+    return rpc(db, "admin_save_pricing_reference", {
+      p_kind: kind,
+      p_amount_usd: decimalText(b.amountUsd, "Amount", 2),
+      p_credits: decimalText(b.credits, "Credits", kind === "credit_value" ? 0 : 2),
+      p_bonus_credits: kind === "kie_purchase" ? decimalText(b.bonusCredits, "Bonus credits", 2, true) : null,
+      p_source_url: input.str(b.sourceUrl, "Source link", { max: 300, optional: true }) ?? null,
+      p_note: input.str(b.note, "Note", { max: 500, optional: true }) ?? null,
+      p_expected_version_id: input.uuid(b.expectedVersionId, "Current value", true) ?? null,
+    });
+  },
+  "pricing/references/impact": async ({ req, db }) => {
+    const b = await readJson(req);
+    const kind = input.oneOf(b.kind, "Reference", ["kie_purchase", "credit_value"] as const)!;
+    return rpc(db, "admin_reference_impact", {
+      p_kind: kind,
+      p_amount_usd: decimalText(b.amountUsd, "Amount", 2),
+      p_credits: decimalText(b.credits, "Credits", kind === "credit_value" ? 0 : 2),
+    });
+  },
+  // One package at a time: a new version when its terms change; other packages are never touched.
+  "packages/:key": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    const key = input.str(rest[1], "Package", { min: 2, max: 40 })!;
+    if (!/^[a-z0-9-]+$/.test(key)) throw new ApiError("INVALID_INPUT", "Package is not valid.", 422);
+    return rpc(db, "admin_save_package", {
+      p_product_key: key,
+      p_name: input.str(b.name, "Name", { min: 2, max: 60 }),
+      p_amount_minor: input.int(b.amountMinor, "Price", { min: 1, max: 100_000_000 }),
+      p_included_credits: input.int(b.includedCredits, "Included credits", { min: 1, max: 10_000_000 }),
+      p_bonus_credits: input.int(b.bonusCredits, "Bonus credits", { min: 0, max: 10_000_000, optional: true }) ?? 0,
+      p_offered: input.bool(b.offered, "Offered to customers"),
+      p_expected_version_id: input.uuid(b.expectedVersionId, "Current version"),
+    });
   },
   "catalog/assumptions": async ({ req, db }) => {
     const b = await readJson(req);

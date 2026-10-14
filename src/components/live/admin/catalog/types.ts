@@ -29,12 +29,22 @@ export type CostInfo = {
   sourceUrl: string | null;
   checkedAt: string;
   usdPerCredit: number;
+  documentedUsdPerCredit?: number;
   stale: boolean;
   note: string | null;
+  extraReference?: ExtraReferenceCost;
 };
 export type CostSummary = CostInfo & { minCredits: number | null; maxCredits: number | null; complete: boolean; lossConfigsUplift: number | null };
+export type ExtraReferenceCost = { free: number; credits: number } | null;
 
-export type PriceRef = { id: string; version: number; source: string; effectiveAt?: string | null; currentCapability: boolean } | null;
+export type PriceRef = {
+  id: string;
+  version: number;
+  source: string;
+  effectiveAt?: string | null;
+  currentCapability: boolean;
+  perExtraReference?: { free: number; units: number } | null;
+} | null;
 export type PriceRules =
   | { format: "table"; dims: string[]; units: Record<string, number>; perExtraReference?: { free: number; units: number } }
   | { base: number; add?: Record<string, Record<string, number>> };
@@ -67,7 +77,17 @@ export type AdminModel = {
   sourceCheckedAt: string | null;
   capability: { id: string; version: number; spec: CapabilitySpec };
   prices: { id: string; version: number; state: string; rules: PriceRules; source: string; effectiveAt: string | null; currentCapability: boolean }[];
-  pricing: { published: PriceRef; draft: PriceRef; minUnits: number | null; maxUnits: number | null; configCount: number };
+  pricing: {
+    published: PriceRef;
+    draft: PriceRef;
+    minUnits: number | null;
+    maxUnits: number | null;
+    configCount: number;
+    markupMin?: number | null;
+    markupMax?: number | null;
+    belowCost?: number | null;
+    override?: boolean;
+  };
   cost: CostSummary | null;
   lastTest: { status: string; at: string; ref: string; jobId: string } | null;
   readiness: Readiness;
@@ -123,6 +143,9 @@ export type PriceTable = {
     worstUpliftContribution: number | null;
     lossConfigsUplift: number;
     lossConfigsDirect: number;
+    markupMin?: number | null;
+    markupMax?: number | null;
+    belowCostConfigs?: number;
   };
   proposedRules: PriceRules | null;
   perExtraReferenceUnits: number | null;
@@ -141,10 +164,13 @@ export type BasisProduct = {
   revenuePerCredit: number;
   overridden: boolean;
 };
+/** Valuation basis for charges: the Genlixs credit value ("minRevenuePerCredit" kept for the shared server functions). */
 export type RevenueBasis = {
-  source: "published" | "draft" | "none";
+  source: "reference" | "published" | "draft" | "none";
   currency: "USD";
   minRevenuePerCredit: number | null;
+  usdPerCredit?: number | null;
+  reference?: Reference | null;
   conservative: BasisProduct | null;
   products: BasisProduct[];
   excluded: { key: string; name: string; reason: string }[];
@@ -152,6 +178,7 @@ export type RevenueBasis = {
 };
 export type Assumptions = {
   usdPerKieCredit: number | null;
+  kieReference?: Reference | null;
   paymentFeeBps: number | null;
   paymentFixedFeeUsd: number | null;
   operatingCostUsdPerJob: number | null;
@@ -179,7 +206,10 @@ export type ProductRow = {
   description: string | null;
   currency: string;
   amountMinor: string;
+  /** Usable credits granted (included + bonus). */
   credits: string;
+  bonusCredits: string;
+  includedCredits: string;
   interval: string | null;
   creditExpiryDays: number | null;
   state: "draft" | "published" | "retired";
@@ -188,9 +218,27 @@ export type ProductRow = {
   createdAt: string;
 };
 
+/** A saved reference value: a KIE purchase (USD paid, KIE credits received) or the Genlixs credit value. */
+export type Reference = {
+  id: string;
+  kind: "kie_purchase" | "credit_value";
+  version: number;
+  amountUsd: number;
+  credits: number;
+  bonusCredits: number;
+  usdPerCredit: number;
+  sourceUrl: string | null;
+  note: string | null;
+  isExample: boolean;
+  createdAt: string;
+  createdBy: string | null;
+};
+
 export type CatalogData = {
   models: AdminModel[];
   products: ProductRow[];
+  references: { kie: Reference | null; credit: Reference | null; history: Reference[] } | null;
+  promotions: { signupUnits: unknown; promoDays: unknown };
   agreements: Record<string, unknown>[];
   settings: Record<string, unknown>;
   economics: { basis: RevenueBasis; assumptions: Assumptions } | null;
@@ -260,6 +308,7 @@ export type ModelDetail = {
   tests: TestRun[];
   evidence: { kind: string; outcome: string; note: string | null; taskId: string | null; recordedBy: string | null; at: string }[];
   activity: { action: string; reason: string | null; actor: string | null; at: string; targetKind: string; targetId: string; before: unknown; after: unknown }[];
+  economics: { basis: RevenueBasis; assumptions: Assumptions } | null;
   access: Access;
   runtime: Runtime;
 };
@@ -292,6 +341,7 @@ export type ProviderSummary = {
     paused: boolean;
     usdPerCredit: number | null;
     approxUsd: number | null;
+    reference?: Reference | null;
   };
   history: { ok: boolean; credits: number | null; error: string | null; source: string; at: string }[];
   spend: {

@@ -113,7 +113,7 @@ check("admin jobs empty", Boolean(await page.waitForSelector("text=No jobs match
 await page.goto(`${BASE}/admin/catalog`);
 await settle(2500);
 t = await text();
-check("admin catalog shows disabled models and draft prices", /disabled/.test(t) && /draft/.test(t), t.slice(0, 200));
+check("admin models list shows every model switched off", /\b0 of \d+ on\b/.test(t) && /\bOff\b/.test(t), t.slice(0, 200));
 await axe("admin catalog");
 await page.goto(`${BASE}/admin/affiliates`);
 await settle(2500);

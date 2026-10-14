@@ -27,11 +27,11 @@ WORKER_TOKEN=<local INTERNAL_WORKER_TOKEN> node live-api-smoke.mjs        # 36 A
 QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node live-flows.mjs   # 30 browser checks
 ```
 
-Catalog upgrade (Models & pricing workspace):
+Simplified admin (Models, Pricing & packages, KIE balance; replaces the v3.1 catalog-workspace scripts):
 
 ```
-QA_EMAIL=… QA_PASSWORD=… node catalog-api-checks.mjs                                   # 25 admin API checks
-QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node catalog-flows.mjs   # 73 browser checks
+QA_EMAIL=… QA_PASSWORD=… node pricing-api-checks.mjs                                   # admin API checks
+QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node pricing-flows.mjs   # browser checks
 ```
 
 Both need a temporary confirmed account with the `operations` and `finance` staff roles (not owner). They only read real data

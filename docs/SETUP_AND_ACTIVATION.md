@@ -43,19 +43,20 @@ Current state (14 Oct 2026, after the catalog upgrade):
 6. **KIE account**: fund it and set the callback HMAC key (KIE dashboard and `KIE_WEBHOOK_HMAC_KEY` in Vercel). Set
    `ALLOW_PAID_PROVIDER_TESTS=true` only on a non-production environment where you deliberately run paid tests (production
    does not need it).
-7. **Models and prices** (Admin → Models & pricing; full guide in `docs/CATALOG_AND_PRICING.md`):
-   - check the KIE balance tab reads a real balance; set the low-balance warning;
-   - run a private paid test for each model you intend to offer (recommended; records task id, KIE-reported credits and the
-     output automatically). If an import fails with "host not allowed", confirm the host is a KIE delivery host and add it to
-     `MEDIA_FETCH_ALLOWED_HOSTS`;
-   - set prices with Bulk pricing (markup above KIE cost) or per model, publish them, then enable the models. An untested model
-     can be enabled only by the owner, after one explicit warning, using the documented KIE cost.
+7. **Models and prices** (Admin → Catalog; full guide in `docs/CATALOG_AND_PRICING.md`):
+   - KIE balance: check it reads a real balance; set the low-balance warning (under More details);
+   - Pricing & packages: confirm or change the two reference values (KIE credit cost from a top-up you made; the Genlixs
+     credit value, seeded with the illustrative $5 for 250 credits), then set the price of each model you intend to offer
+     (per setting, or "Apply a markup to several models");
+   - Models: switch the priced models on. A private paid test (Models → Details → Private test) is optional but recommended;
+     it records the task id, KIE-reported credits and the output. If an import fails with "host not allowed", confirm the host
+     is a KIE delivery host and add it to `MEDIA_FETCH_ALLOWED_HOSTS`.
 8. **Payments**: choose a gateway available to the business (Stripe does not support Morocco-based accounts), implement its
    adapter in `src/lib/billing/` (createCheckout, verifyWebhook, submitRefund) and set `BILLING_PROVIDER`,
    `BILLING_API_SECRET`, `BILLING_WEBHOOK_SECRET`. Until then checkout answers "Payments are not available yet".
-   Then publish the approved packages in Admin → Models & pricing → Packages.
+   Then offer the approved packages in Admin → Pricing & packages → Packages.
 9. **Partner programme**: confirm the proposed terms (attribution window, renewal months, hold days, payout threshold),
-   edit the draft if needed and publish the agreement. Approvals are refused until an agreement is published.
+   edit the draft if needed and publish it (Admin → Partners → Partner commission terms). Approvals are refused until an agreement is published.
 10. **Domain**: add `genlixs.com` to the Vercel project, apply the DNS records Vercel shows, then update `APP_BASE_URL`,
     `KIE_CALLBACK_BASE_URL`, Supabase Auth URLs and the Vault worker URL to it.
 

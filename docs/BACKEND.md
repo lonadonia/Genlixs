@@ -47,8 +47,10 @@ window, renewal, hold and threshold are proposals marked unconfirmed). The launc
 can be generated or bought until the owner prices, enables and publishes.
 
 Prices: a published price version holds either the launch format (`base` + `add`) or a **table** of whole credits per
-configuration (`{"format":"table","dims":[…],"units":{"<values joined by |>":n}}`). Bulk pricing and manual editing write
-tables. KIE costs live in `app_private.supplier_cost_versions` (`unit` output|second, `dims`, `rates` in KIE credits,
+configuration (`{"format":"table","dims":[…],"units":{"<values joined by |>":n}}`). The price editor and the markup tool write
+tables. Charges are valued with two versioned, append-only reference values (`app_private.pricing_reference_versions`:
+the KIE purchase → USD per KIE credit, the Genlixs credit value → USD per Genlixs credit); saving one never touches wallets,
+ledgers, orders, quotes, jobs or prices. Packages store usable `credits` (included + `bonus_credits`); orders snapshot them. KIE costs live in `app_private.supplier_cost_versions` (`unit` output|second, `dims`, `rates` in KIE credits,
 optional `extraReference`); a configuration without a rate has no known cost and blocks pricing and enabling.
 Staff tests are `generation_jobs` with `purpose = staff_test`: units 0, no reservation, no notification, hidden from the
 customer library; a trigger records the outcome in `model_test_runs` and, on a validated delivery, marks only that entry
@@ -91,7 +93,8 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/auth/{referral,redirect}.ts` | Signed referral cookie; same-site redirect guard |
 | `src/lib/live/**` | Browser API helper, account context (wallet/notifications refresh on focus + 30 s), response types |
 | `src/components/live/**` | Live studio, partner portal, admin console and public pricing/consent components |
-| `src/components/live/admin/catalog/**` | Models & pricing workspace: models list + availability, model panel (pricing, tests, KIE cost, activity, advanced), bulk pricing, packages, KIE balance & usage |
+| `src/components/live/admin/catalog/**` | Models (On/Off switch + optional diagnostics: status, private test, KIE cost, activity, advanced), Pricing & packages (reference values, package editor, per-model price editor, bulk markup), KIE balance |
+| `src/lib/pricing/**` | Exact-decimal credit arithmetic mirrored from the database (contract-tested) |
 | `tests/contracts/*.test.ts` | Provider, webhook, safe-fetch, cookie, redirect and file-sniffing contract tests (`npm run test:contracts`) |
 | `supabase/tests/*.sql` | Database invariant tests (run in one transaction, always rolled back) |
 

@@ -1,51 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CircleCheck, CircleX, ExternalLink, TriangleAlert } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { LiveReferenceUploader, type LiveReference } from "@/components/live/studio/live-reference";
-import { api, ApiClientError, errorMessage, newIdempotencyKey } from "@/lib/live/api";
+import { api, errorMessage, newIdempotencyKey } from "@/lib/live/api";
 import { useApi } from "@/lib/live/account";
 import { cn } from "@/lib/format";
-import { useAvailability } from "./availability";
-import { contributionOf, scheduleKeys } from "./math";
-import {
-  configLabel,
-  ContributionCells,
-  day,
-  Empty,
-  Field,
-  fmtGx,
-  fmtKie,
-  fmtUsd4,
-  inputCls,
-  ModelBadges,
-  Notice,
-  STATE_INFO,
-  Tabs,
-  unitLabel,
-  VerificationBadge,
-  when,
-} from "./shared";
-import type { AvailabilityState, CatalogData, ModelDetail, TestRun } from "./types";
+import { scheduleKeys } from "./math";
+import { configLabel, day, Empty, Field, fmtKie, fmtUsd4, inputCls, ModelBadges, Notice, STATE_INFO, Tabs, unitLabel, VerificationBadge, when } from "./shared";
+import type { AvailabilityState, ModelDetail, TestRun } from "./types";
 
-export type PanelSection = "availability" | "pricing" | "test" | "cost" | "activity" | "advanced";
+export type DiagnosticsSection = "status" | "test" | "cost" | "activity" | "advanced";
 
-/** One editing panel per model: availability, pricing, private tests, KIE cost, activity and technical details. */
-export function ModelPanel({
+/**
+ * Optional diagnostics for one model, kept out of the everyday On/Off and pricing work: readiness, special states
+ * (maintenance, experimental label), private paid tests, the KIE cost source, activity and technical details.
+ */
+export function Diagnostics({
   modelId,
   section,
   onSection,
   onClose,
   onChanged,
-  economics,
 }: {
   modelId: string;
-  economics: CatalogData["economics"];
-  section: PanelSection;
-  onSection: (s: PanelSection) => void;
+  section: DiagnosticsSection;
+  onSection: (s: DiagnosticsSection) => void;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -69,14 +52,13 @@ export function ModelPanel({
       surface="light"
       size="xl"
       onClose={onClose}
-      title={m ? m.name : "Loading model…"}
+      title={m ? `${m.name}: details` : "Loading model…"}
       description={
         m ? (
           <span className="flex flex-wrap items-center gap-2">
             <Badge surface="light" tone={STATE_INFO[m.state].tone}>
               {STATE_INFO[m.state].label}
             </Badge>
-            <VerificationBadge model={m} />
             <span>
               {m.family ?? ""} {m.variant ? `· ${m.variant}` : ""} · {m.tool === "video" ? "Video" : m.tool === "edit" ? "Image edit" : "Image"}
             </span>
@@ -90,21 +72,19 @@ export function ModelPanel({
         <div role="status" aria-busy="true" aria-label="Loading model" className="h-48 animate-pulse-soft rounded-xl bg-paper" />
       ) : (
         <div className="space-y-5">
-          <Tabs<PanelSection>
-            label="Model sections"
+          <Tabs<DiagnosticsSection>
+            label="Detail sections"
             value={section}
             onChange={onSection}
             tabs={[
-              { id: "availability", label: "Availability" },
-              { id: "pricing", label: "Pricing" },
-              { id: "test", label: "Test", count: d.data.tests.length || undefined },
+              { id: "status", label: "Status" },
+              { id: "test", label: "Private test", count: d.data.tests.length || undefined },
               { id: "cost", label: "KIE cost" },
               { id: "activity", label: "Activity" },
               { id: "advanced", label: "Advanced" },
             ]}
           />
-          {section === "availability" ? <AvailabilitySection d={d.data} onChanged={reloadAll} go={onSection} /> : null}
-          {section === "pricing" ? <PricingSection d={d.data} economics={economics} onChanged={reloadAll} /> : null}
+          {section === "status" ? <StatusSection d={d.data} onChanged={reloadAll} /> : null}
           {section === "test" ? <TestSection d={d.data} onChanged={reloadAll} /> : null}
           {section === "cost" ? <CostSection d={d.data} onChanged={reloadAll} /> : null}
           {section === "activity" ? <ActivitySection d={d.data} /> : null}
@@ -115,98 +95,109 @@ export function ModelPanel({
   );
 }
 
-// ------------------------------------------------------------------------------------------ availability
+// ------------------------------------------------------------------------------------------------ status
 
-function AvailabilitySection({ d, onChanged, go }: { d: ModelDetail; onChanged: () => void; go: (s: PanelSection) => void }) {
+const SPECIAL: { state: AvailabilityState; label: string; detail: string }[] = [
+  { state: "enabled", label: "On", detail: "Customers can choose it and generate." },
+  { state: "experimental", label: "On, labelled experimental", detail: "Customers can use it; it shows an Experimental label." },
+  { state: "maintenance", label: "Paused for maintenance", detail: "Visible but unavailable, with your note. No new requests." },
+  { state: "disabled", label: "Off", detail: "Hidden. New requests are refused; running jobs finish." },
+];
+
+function StatusSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }) {
   const m = d.model;
   const [state, setState] = useState<AvailabilityState>(m.state);
   const [note, setNote] = useState(m.note ?? "");
-  const avail = useAvailability({ access: d.access, runtime: d.runtime, onChanged, onFix: (_, s) => go(s) });
-  const target = { ...m, readiness: d.readiness };
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const checks = [
     ...d.readiness.checks,
     {
       key: "credentials",
       ok: d.runtime.submitsEnabled,
-      label: "Server credentials",
+      warning: false,
+      label: "Server can reach KIE",
       detail: d.runtime.submitsEnabled ? "This deployment can send work to KIE." : "KIE_API_KEY is missing here (or paid calls are disabled outside production).",
     },
   ];
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api(`/api/admin/catalog/models/${m.id}/availability`, {
+        body: { state, note: state === "maintenance" || state === "experimental" ? note.trim() || null : null },
+      });
+      setMsg({ tone: "success", text: "Saved." });
+      onChanged();
+    } catch (e) {
+      setMsg({ tone: "error", text: errorMessage(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <section aria-labelledby="ready-h">
         <h3 id="ready-h" className="text-sm font-semibold text-ink-dark">
-          Readiness
+          What switching on needs
         </h3>
         <ul className="mt-2 divide-y divide-rule rounded-xl border border-rule">
-          {checks.map((c) => {
-            const fix = "fix" in c ? c.fix : null;
-            return (
-              <li key={c.key} className="flex flex-wrap items-start gap-3 px-4 py-3 text-sm">
-                {c.ok ? (
-                  <CircleCheck aria-hidden className="mt-0.5 size-4 text-success-text" />
-                ) : "warning" in c && c.warning ? (
-                  <TriangleAlert aria-hidden className="mt-0.5 size-4 text-orange-text" />
-                ) : (
-                  <CircleX aria-hidden className="mt-0.5 size-4 text-error-text" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ink-dark">
-                    {c.label} <span className="sr-only">{c.ok ? "(passed)" : "warning" in c && c.warning ? "(warning)" : "(not met)"}</span>
-                  </p>
-                  <p className="text-muted-dark">{c.detail}</p>
-                </div>
-                {!c.ok && fix ? (
-                  <Button size="sm" variant="secondary-light" onClick={() => go(fix === "run_test" ? "test" : fix === "edit_cost" ? "cost" : "pricing")}>
-                    {fix === "run_test" ? "Run a test" : fix === "edit_cost" ? "Open KIE cost" : fix === "publish_draft" ? "Review draft" : "Set price"}
-                  </Button>
-                ) : null}
-              </li>
-            );
-          })}
+          {checks.map((c) => (
+            <li key={c.key} className="flex items-start gap-3 px-4 py-2.5 text-sm">
+              {c.ok ? (
+                <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success-text" />
+              ) : c.warning ? (
+                <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-dark" />
+              ) : (
+                <CircleX aria-hidden className="mt-0.5 size-4 shrink-0 text-error-text" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-ink-dark">
+                  {c.label} <span className="sr-only">{c.ok ? "(met)" : c.warning ? "(optional)" : "(not met)"}</span>
+                </p>
+                <p className="text-muted-dark">{c.detail}</p>
+              </div>
+            </li>
+          ))}
         </ul>
+        <p className="mt-2 flex items-center gap-2 text-xs text-muted-dark">
+          Test status: <VerificationBadge model={m} /> A private test is optional; it never blocks switching a model on.
+        </p>
       </section>
 
       <section aria-labelledby="state-h" className="space-y-3">
         <h3 id="state-h" className="text-sm font-semibold text-ink-dark">
-          Customer availability
+          Special states
         </h3>
+        <p className="text-sm text-muted-dark">The switch on the Models page covers On and Off. Use these only for a maintenance pause or an experimental label.</p>
         <fieldset className="grid gap-2 sm:grid-cols-2">
-          <legend className="sr-only">Availability state</legend>
-          {(["disabled", "maintenance", "experimental", "enabled"] as const).map((s) => (
-            <label key={s} className={cn("flex cursor-pointer gap-3 rounded-xl border p-3 text-sm", state === s ? "border-brand-blue bg-info-tint" : "border-rule")}>
-              <input type="radio" name="availability" checked={state === s} onChange={() => setState(s)} disabled={!d.access.canOperate} className="mt-0.5 size-4 accent-brand-blue" />
+          <legend className="sr-only">Availability</legend>
+          {SPECIAL.map((s) => (
+            <label key={s.state} className={cn("flex cursor-pointer gap-3 rounded-xl border p-3 text-sm", state === s.state ? "border-brand-blue bg-info-tint" : "border-rule")}>
+              <input type="radio" name="availability" checked={state === s.state} onChange={() => setState(s.state)} disabled={!d.access.canOperate} className="mt-0.5 size-4 accent-brand-blue" />
               <span>
-                <span className="block font-semibold text-ink-dark">{STATE_INFO[s].label}</span>
-                <span className="text-muted-dark">{STATE_INFO[s].customer}</span>
+                <span className="block font-semibold text-ink-dark">{s.label}</span>
+                <span className="text-muted-dark">{s.detail}</span>
               </span>
             </label>
           ))}
         </fieldset>
         {state === "maintenance" || state === "experimental" ? (
-          <Field label="Note shown to customers (optional)" hint="For example: “Back later today” or “Results may vary while we tune this model.”">
+          <Field label="Note shown to customers (optional)" hint="For example: “Back later today”.">
             <input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} className={inputCls} />
           </Field>
         ) : null}
         {d.access.canOperate ? (
-          <Button
-            busy={avail.busy}
-            disabled={state === m.state && (note || null) === (m.note || null)}
-            onClick={() => avail.request(target, state, state === "maintenance" || state === "experimental" ? note.trim() || null : null)}
-          >
-            Save availability
+          <Button busy={busy} disabled={state === m.state && (note.trim() || null) === (m.note || null)} onClick={() => void save()}>
+            Save
           </Button>
         ) : (
           <p className="text-sm text-muted-dark">Your role can view but not change availability.</p>
         )}
-        {m.enableBasis === "documented_cost" && (m.state === "enabled" || m.state === "experimental") ? (
-          <Notice tone="attention">Enabled by the owner using the documented KIE cost; no successful private test is recorded yet.</Notice>
-        ) : null}
+        {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
       </section>
 
       {d.access.canPublish ? <DisplayEditor d={d} onChanged={onChanged} /> : null}
-      {d.access.canPublish ? <EvidenceForm modelId={m.id} onChanged={onChanged} /> : null}
-      {avail.dialog}
     </div>
   );
 }
@@ -233,12 +224,12 @@ function DisplayEditor({ d, onChanged }: { d: ModelDetail; onChanged: () => void
   };
   return (
     <details className="rounded-xl border border-rule p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-ink-dark">Customer-facing name, description and badges</summary>
+      <summary className="cursor-pointer text-sm font-semibold text-ink-dark">Name, description and badges shown to customers</summary>
       <div className="mt-3 grid gap-3">
         <Field label="Display name">
           <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} className={inputCls} />
         </Field>
-        <Field label="Short use-case description" hint="Shown under the model name. Describe what it is good at; do not claim it is the best at everything.">
+        <Field label="Short description" hint="Shown under the model name. Describe what it is good at.">
           <textarea value={purpose} maxLength={200} rows={2} onChange={(e) => setPurpose(e.target.value)} className={cn(inputCls, "h-auto py-2")} />
         </Field>
         <fieldset className="flex flex-wrap gap-3 text-sm">
@@ -252,312 +243,12 @@ function DisplayEditor({ d, onChanged }: { d: ModelDetail; onChanged: () => void
         </fieldset>
         <div>
           <Button size="sm" busy={busy} onClick={() => void save()}>
-            Save display
+            Save
           </Button>
         </div>
         {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
       </div>
     </details>
-  );
-}
-
-function EvidenceForm({ modelId, onChanged }: { modelId: string; onChanged: () => void }) {
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
-  return (
-    <details className="rounded-xl border border-rule p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-ink-dark">Record manual or imported evidence</summary>
-      <p className="mt-2 text-sm text-muted-dark">
-        For checks done outside Genlixs (for example a result you verified elsewhere). It is labelled “Manual evidence” and never counts as an integrated test.
-      </p>
-      <textarea value={text} rows={3} maxLength={1000} onChange={(e) => setText(e.target.value)} aria-label="Evidence" className={cn(inputCls, "mt-2 h-auto w-full py-2")} />
-      <Button
-        size="sm"
-        className="mt-2"
-        busy={busy}
-        disabled={text.trim().length < 10}
-        onClick={async () => {
-          setBusy(true);
-          setMsg(null);
-          try {
-            await api(`/api/admin/catalog/models/${modelId}/evidence`, { body: { evidence: text } });
-            setText("");
-            setMsg({ tone: "success", text: "Evidence recorded." });
-            onChanged();
-          } catch (e) {
-            setMsg({ tone: "error", text: errorMessage(e) });
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        Record evidence
-      </Button>
-      {msg ? <div className="mt-2"><Notice tone={msg.tone}>{msg.text}</Notice></div> : null}
-    </details>
-  );
-}
-
-// --------------------------------------------------------------------------------------------- pricing
-
-function PricingSection({ d, economics, onChanged }: { d: ModelDetail; economics: CatalogData["economics"]; onChanged: () => void }) {
-  const t = d.table;
-  const spec = d.model.capability.spec;
-  const [units, setUnits] = useState<Record<string, string>>(() =>
-    Object.fromEntries((t?.configs ?? []).map((c) => [c.key, String(c.draftUnits ?? c.currentUnits ?? "")])),
-  );
-  const [markup, setMarkup] = useState("300");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ tone: "error" | "success" | "attention"; text: string } | null>(null);
-  const [lossReason, setLossReason] = useState<string | null>(null);
-
-  if (!t) {
-    return (
-      <div className="space-y-4">
-        <Notice>Your role sees customer prices but not KIE costs or margins.</Notice>
-        <PriceHistory d={d} onChanged={onChanged} />
-      </div>
-    );
-  }
-  const basis = economics?.basis;
-  const a = economics?.assumptions;
-  const draft = d.prices.find((p) => p.state === "draft" && p.currentCapability);
-  const parsed = Object.fromEntries(Object.entries(units).map(([k, v]) => [k, v.trim() === "" ? null : Number(v)]));
-  const invalid = t.configs.some((c) => {
-    const v = parsed[c.key];
-    return v === null || v === undefined || !Number.isInteger(v) || v < 1;
-  });
-
-  const fill = async () => {
-    setBusy("fill");
-    setMsg(null);
-    try {
-      const p = await api<{ models: { configs: { key: string; proposedUnits: number | null }[] }[] }>("/api/admin/catalog/bulk-pricing/preview", {
-        body: { scope: "selected", modelIds: [d.model.id], markupPercent: Number(markup) },
-      });
-      setUnits(Object.fromEntries(p.models[0].configs.map((c) => [c.key, c.proposedUnits === null ? "" : String(c.proposedUnits)])));
-      setMsg({ tone: "success", text: `Filled from KIE cost +${markup} %. Review, then save as a draft.` });
-    } catch (e) {
-      setMsg({ tone: "error", text: errorMessage(e) });
-    } finally {
-      setBusy(null);
-    }
-  };
-  const saveDraft = async () => {
-    setBusy("save");
-    setMsg(null);
-    try {
-      await api(`/api/admin/catalog/models/${d.model.id}/prices`, { body: { units: parsed } });
-      setMsg({ tone: "success", text: "Draft saved as a new version. Publish it when it is approved." });
-      onChanged();
-    } catch (e) {
-      setMsg({ tone: "error", text: errorMessage(e) });
-    } finally {
-      setBusy(null);
-    }
-  };
-  const publish = async (reason?: string) => {
-    if (!draft) return;
-    setBusy("publish");
-    setMsg(null);
-    try {
-      await api(`/api/admin/catalog/prices/${draft.id}/publish`, { body: reason ? { reason } : {} });
-      setLossReason(null);
-      setMsg({ tone: "success", text: `Price v${draft.version} published. New quotes use it; running jobs keep their quoted price.` });
-      onChanged();
-    } catch (e) {
-      if (e instanceof ApiClientError && e.code === "LOSS_REASON_REQUIRED") {
-        setLossReason("");
-        setMsg({ tone: "attention", text: e.message });
-      } else setMsg({ tone: "error", text: errorMessage(e) });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <div className="space-y-5">
-      {t.status === "incomplete_cost" || t.status === "missing_cost" ? (
-        <Notice tone="error" title="KIE cost is missing for some configurations">
-          Prices cannot be calculated or published until every configuration has a recorded cost. Open the KIE cost section.
-        </Notice>
-      ) : null}
-      <div className="grid gap-3 text-sm sm:grid-cols-3">
-        <Info label="KIE cost source" value={t.cost ? `v${t.cost.version} · ${t.cost.sourceKind} · checked ${day(t.cost.checkedAt)}` : "None"} warn={t.cost?.stale} />
-        <Info
-          label="Lowest revenue per credit"
-          value={basis?.minRevenuePerCredit ? `${fmtUsd4(basis.minRevenuePerCredit)} (${basis.conservative?.name ?? ""}${basis.source === "draft" ? ", draft" : ""})` : "No USD package"}
-        />
-        <Info
-          label="Commission scenarios"
-          value={a ? `30 % → ${a.affiliate.baseBps / 100} %, 50 % → ${a.affiliate.upliftBps / 100} % (after ${a.affiliate.threshold} paying customers)` : "—"}
-        />
-      </div>
-      {d.access.canPrice ? (
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label="Markup above KIE cost (%)" hint="Target price = KIE cost × (1 + markup ÷ 100). +100 % = 2× cost, +300 % = 4× cost. Not a profit margin.">
-            <input inputMode="decimal" value={markup} onChange={(e) => setMarkup(e.target.value)} className={cn(inputCls, "w-36")} />
-          </Field>
-          <Button variant="secondary-light" busy={busy === "fill"} onClick={() => void fill()}>
-            Fill charges from markup
-          </Button>
-        </div>
-      ) : null}
-      <div className="overflow-x-auto rounded-xl border border-rule">
-        <table className="w-full min-w-[920px] text-left text-sm">
-          <caption className="sr-only">Credit charge per configuration with KIE cost and estimated contribution</caption>
-          <thead className="bg-paper text-xs text-muted-dark">
-            <tr>
-              <th scope="col" className="px-3 py-2 font-semibold">Configuration</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">KIE cost</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">Published</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">New charge (credits)</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">Revenue</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">Direct</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">30 % partner</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">50 % partner</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-rule">
-            {t.configs.map((c) => {
-              const v = parsed[c.key];
-              const contrib = contributionOf(v ?? null, c.supplierUsd, basis, a);
-              return (
-                <tr key={c.key}>
-                  <th scope="row" className="px-3 py-2 font-medium text-ink-dark">
-                    {configLabel(spec, c.options)}
-                  </th>
-                  <td className="px-3 py-2 text-right tabular">
-                    {fmtKie(c.supplierCredits)}
-                    <span className="block text-xs text-muted-dark">{fmtUsd4(c.supplierUsd)}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular">{fmtGx(c.currentUnits)}</td>
-                  <td className="px-3 py-2 text-right">
-                    {d.access.canPrice ? (
-                      <input
-                        aria-label={`Credits for ${configLabel(spec, c.options)}`}
-                        inputMode="numeric"
-                        value={units[c.key] ?? ""}
-                        onChange={(e) => setUnits({ ...units, [c.key]: e.target.value.replace(/[^0-9]/g, "") })}
-                        className={cn(inputCls, "h-9 w-24 text-right tabular", v !== null && v !== undefined && v < 1 && "border-error-text")}
-                      />
-                    ) : (
-                      <span className="tabular">{fmtGx(c.draftUnits)}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular">{fmtUsd4(contrib?.revenueUsd)}</td>
-                  <ContributionCells c={contrib} />
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted-dark">
-        Revenue = credits × the lowest package revenue per credit. Contribution {a && (a.paymentFeeBps === null || a.paymentFixedFeeUsd === null || a.operatingCostUsdPerJob === null) ? "is before unknown payment fees and operating costs (set them under Packages)" : "includes the payment fee and operating cost assumptions"}; it is
-        not net profit. Live figures preview an unsaved edit; the server recalculates on save.
-      </p>
-      {d.access.canPrice || d.access.canPublish ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {d.access.canPrice ? (
-            <Button variant="secondary-light" busy={busy === "save"} disabled={invalid} onClick={() => void saveDraft()}>
-              Save as draft
-            </Button>
-          ) : null}
-          {d.access.canPublish && draft ? (
-            <Button busy={busy === "publish"} onClick={() => void publish()}>
-              Publish draft v{draft.version}
-            </Button>
-          ) : null}
-          {invalid && d.access.canPrice ? <span className="text-xs text-muted-dark">Every configuration needs a whole number of credits (at least 1).</span> : null}
-        </div>
-      ) : null}
-      {lossReason !== null ? (
-        <div className="space-y-2 rounded-xl border border-[#f6c4c4] bg-error-tint p-4">
-          <Field label="Reason for publishing below KIE cost (recorded in the audit log)">
-            <input value={lossReason} onChange={(e) => setLossReason(e.target.value)} className={inputCls} />
-          </Field>
-          <Button variant="danger" size="sm" disabled={lossReason.trim().length < 3} busy={busy === "publish"} onClick={() => void publish(lossReason)}>
-            Publish anyway
-          </Button>
-        </div>
-      ) : null}
-      {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
-      <PriceHistory d={d} onChanged={onChanged} />
-    </div>
-  );
-}
-
-function Info({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className="rounded-xl border border-rule bg-paper px-3 py-2">
-      <p className="text-xs font-semibold text-muted-dark">{label}</p>
-      <p className="mt-0.5 text-ink-dark">
-        {value} {warn ? <Badge surface="light" tone="attention">Stale</Badge> : null}
-      </p>
-    </div>
-  );
-}
-
-function PriceHistory({ d, onChanged }: { d: ModelDetail; onChanged: () => void }) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  return (
-    <section aria-labelledby="hist-h">
-      <h3 id="hist-h" className="text-sm font-semibold text-ink-dark">
-        Price versions
-      </h3>
-      <p className="text-xs text-muted-dark">Versions never change once published. Restoring publishes a new version that copies an earlier one.</p>
-      {d.prices.length === 0 ? (
-        <div className="mt-2">
-          <Empty>No price versions yet.</Empty>
-        </div>
-      ) : (
-        <ul className="mt-2 divide-y divide-rule rounded-xl border border-rule text-sm">
-          {d.prices.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
-              <span className="font-semibold">v{p.version}</span>
-              <Badge surface="light" tone={p.state === "published" ? "success" : p.state === "draft" ? "info" : "neutral"}>
-                {p.state}
-              </Badge>
-              <span className="text-muted-dark">
-                {p.source}
-                {p.markupBps !== null ? ` · +${p.markupBps / 100} %` : ""}
-                {p.batchRef ? ` · ${p.batchRef}` : ""}
-                {p.restoredFromVersion ? ` · copy of v${p.restoredFromVersion}` : ""}
-                {p.effectiveAt ? ` · from ${when(p.effectiveAt)}` : ""}
-                {p.publishedBy ? ` · ${p.publishedBy}` : ""}
-                {!p.currentCapability ? " · older options" : ""}
-              </span>
-              {d.access.canPublish && p.state === "retired" && p.currentCapability && p.source !== "seed" ? (
-                <Button
-                  size="sm"
-                  variant="ghost-light"
-                  className="ml-auto"
-                  busy={busy === p.id}
-                  onClick={async () => {
-                    setBusy(p.id);
-                    setErr(null);
-                    try {
-                      await api(`/api/admin/catalog/prices/${p.id}/restore`, { body: {} });
-                      onChanged();
-                    } catch (e) {
-                      setErr(errorMessage(e));
-                    } finally {
-                      setBusy(null);
-                    }
-                  }}
-                >
-                  Restore as new version
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-      {err ? <div className="mt-2"><Notice tone="error">{err}</Notice></div> : null}
-    </section>
   );
 }
 
@@ -603,8 +294,8 @@ function TestSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
   return (
     <div className="space-y-6">
       <Notice>
-        Private and staff-only: the model may stay disabled for customers. The test uses the normal pipeline (queue, KIE task tracking, safe import and private
-        storage). It charges no customer wallet, creates no order and earns no commission. Only a delivered, validated file marks this entry “Verified by test”.
+        Optional, private and staff-only: the model may stay off for customers. The test uses the normal pipeline (queue, KIE task tracking, safe import and
+        private storage). It charges no customer wallet, creates no order and earns no commission. Only a delivered, validated file marks this entry “Tested”.
       </Notice>
       {!d.runtime.submitsEnabled ? <Notice tone="attention">This deployment cannot send work to KIE, so tests are disabled here.</Notice> : null}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -789,7 +480,8 @@ function CostSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
   if (!d.costVersions) return <Notice>Your role cannot see KIE costs.</Notice>;
   if (!current) return <Notice tone="error">No cost structure is recorded for this model.</Notice>;
   const observed = d.tests.filter((t) => t.observedSupplierCredits !== null);
-  const usd = (v: string) => (v.trim() && Number.isFinite(Number(v)) ? fmtUsd4(Number(v) * current.usdPerCredit) : "—");
+  const rate = d.table?.cost?.usdPerCredit ?? current.usdPerCredit;
+  const usd = (v: string) => (v.trim() && Number.isFinite(Number(v)) ? fmtUsd4(Number(v) * rate) : "—");
   const valid = keys.every((k) => {
     const n = Number(rates[k.key]);
     return rates[k.key]?.trim() && Number.isFinite(n) && n > 0;
@@ -801,7 +493,7 @@ function CostSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
       const r = await api<{ version: number }>(`/api/admin/catalog/models/${d.model.id}/costs`, {
         body: { rates: Object.fromEntries(keys.map((k) => [k.key, Number(rates[k.key])])), sourceKind, sourceUrl: sourceUrl.trim() || null, checkedAt, note: note.trim() || null },
       });
-      setMsg({ tone: "success", text: `KIE cost v${r.version} recorded. Re-run the price preview to see its effect.` });
+      setMsg({ tone: "success", text: `KIE cost v${r.version} recorded. Prices did not change; review them in Pricing & packages.` });
       onChanged();
     } catch (e) {
       setMsg({ tone: "error", text: errorMessage(e) });
@@ -813,8 +505,8 @@ function CostSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
     <div className="space-y-5">
       <Notice>
         KIE publishes prices on its pricing page; it has no documented price API, so Genlixs never syncs costs automatically. Check the source, then record a
-        new version here (it keeps the old ones). Rates are KIE credits {unitLabel(current.schedule.unit, spec.output.kind)}; USD uses KIE’s standard {fmtUsd4(current.usdPerCredit)} per
-        credit (larger top-ups add 5–10 % bonus credits, so the amount you actually paid can be lower).
+        new version here (it keeps the old ones). Rates are KIE credits {unitLabel(current.schedule.unit, spec.output.kind)}; USD uses your KIE purchase reference
+        ({fmtUsd4(rate)} per KIE credit, set in Pricing &amp; packages). Recording a cost does not change any price.
       </Notice>
       <div className="flex flex-wrap gap-3 text-sm">
         {d.model.pricingUrl ? (
