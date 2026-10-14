@@ -3,7 +3,8 @@
 > **Two modes.** Without Supabase configuration the site runs as the original **design preview** (everything simulated, clearly
 > labelled). With the public Supabase values set it runs **live** against the real backend: Supabase Auth, credit wallet,
 > generation jobs through KIE.ai, private files, billing, partner programme and admin console. Architecture: `docs/BACKEND.md`.
-> What the owner still has to configure: `docs/SETUP_AND_ACTIVATION.md`. Evidence and readiness: `docs/VERIFICATION.md`.
+> What the owner still has to configure: `docs/SETUP_AND_ACTIVATION.md`. Models, pricing and KIE balance (owner guide):
+> `docs/CATALOG_AND_PRICING.md`. Evidence and readiness: `docs/VERIFICATION.md`.
 
 A coded, responsive design preview of the Genlixs AI image / edit / short-video platform, built from the **Genlixs Website and Product Design Guide v1.0** (13 Oct 2026) and restyled to the client's **brand v2** (new logo package; palette Night `#0F1212`, Lime `#E1FF01`, White and **Electric Blue `#253FF6` as the primary colour**; reference-led hero and creation dashboard). It covers the four surfaces the guide defines:
 
@@ -91,7 +92,8 @@ design-handoff/genlixs/  brief analysis, design blueprint, master prompt, QA evi
 
 - Complete `docs/SETUP_AND_ACTIVATION.md` (Supabase Auth SMTP/URLs, Vercel variables, Vault worker secrets, owner bootstrap,
   KIE account, payment gateway, partner terms, domain) and the controlled checks in `docs/VERIFICATION.md`.
-- Publish the approved model prices, products and partner agreement from the admin console (they are seeded as drafts).
+- In Admin → Models & pricing: test the models to offer, set prices (bulk markup above KIE cost or per model), publish them
+  and enable the models; publish the approved packages and the partner agreement (all seeded as drafts / disabled).
 - Confirm rights, tool licence, model and settings for each client file (`CLIENT_MEDIA.md`), and replace the remaining placeholders (abstract loop, dune edit pair) with validated outputs.
 - Bring in the 26 Drive videos over 10 MB once they are compressed under 10 MB, or once Drive access is allowed in the environment's network settings.
 - Supply approved legal text for the policy pages and a public support contact.

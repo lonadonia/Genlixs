@@ -2,6 +2,7 @@ import "server-only";
 import { ConfigError, env } from "@/lib/server/env";
 import {
   TransientProviderError,
+  type BalanceRead,
   type GenerationProvider,
   type NormalizedState,
   type SubmitOutcome,
@@ -104,6 +105,23 @@ function parseJsonString(v: unknown): Record<string, unknown> | null {
 
 const optStr = (v: unknown) => (v === undefined || v === null || v === "" ? null : String(v).slice(0, 500));
 
+const strings = (v: unknown) => (Array.isArray(v) ? v.filter((u): u is string => typeof u === "string") : []);
+
+/**
+ * Deliverable URLs from a parsed resultJson. Most models return {resultUrls}; Veo 3.1 generated at 1080p/4K documents
+ * the upgraded file under data.result_urls (with the 720p original in data.origin_urls), so the nested form wins when
+ * present. Originals (origin_urls/originUrls) and extras such as Seedance's lastFrameUrl are never deliverables.
+ */
+export function resultUrlsOf(result: Record<string, unknown> | null): string[] {
+  if (!result) return [];
+  const data = result.data && typeof result.data === "object" && !Array.isArray(result.data) ? (result.data as Record<string, unknown>) : null;
+  for (const candidate of [data?.result_urls, data?.resultUrls, result.resultUrls, result.result_urls]) {
+    const urls = strings(candidate);
+    if (urls.length) return urls;
+  }
+  return [];
+}
+
 /** Normalizes a recordInfo response (§12.4). Exported for contract tests. */
 export function normalizeRecord(taskId: string, httpStatus: number, body: string): TaskDetail {
   const e = parseEnvelope(body);
@@ -112,7 +130,8 @@ export function normalizeRecord(taskId: string, httpStatus: number, body: string
     return { taskId, providerState: null, normalized: "unknown", resultUrls: [] };
   }
   const code = codeOf(e);
-  if (code === 404) return { taskId, providerState: null, normalized: "unknown", resultUrls: [], notFound: true };
+  // 404, and 422 "task does not exist or does not belong to your account" (Get Task Details docs): evidence only.
+  if (code === 404 || code === 422) return { taskId, providerState: null, normalized: "unknown", resultUrls: [], notFound: true };
   if (code !== 200) {
     if (code === 429 || code === 455 || code === 500 || httpStatus >= 500) throw new TransientProviderError(`status read code ${code}`);
     return { taskId, providerState: null, normalized: "unknown", resultUrls: [], failCode: String(code), failMsg: msgOf(e) };
@@ -123,8 +142,7 @@ export function normalizeRecord(taskId: string, httpStatus: number, body: string
     return { taskId, providerState: null, normalized: "unknown", resultUrls: [], failMsg: "task id mismatch" };
   }
   const state = typeof d.state === "string" ? d.state : null;
-  const result = parseJsonString(d.resultJson);
-  const urls = Array.isArray(result?.resultUrls) ? (result!.resultUrls as unknown[]).filter((u): u is string => typeof u === "string") : [];
+  const urls = resultUrlsOf(parseJsonString(d.resultJson));
   const param = parseJsonString(d.param);
   return {
     taskId,
@@ -205,6 +223,12 @@ export class KieProvider implements GenerationProvider {
 
   /** Supplier balance (§12.5). A failed read is "unknown", never zero. */
   async balance(): Promise<number | null> {
+    const r = await this.readBalance();
+    return r.ok ? r.credits : null;
+  }
+
+  /** GET /api/v1/chat/credit (documented: Bearer key; {code, msg, data: number}). Errors carry a short code only. */
+  async readBalance(): Promise<BalanceRead> {
     const { key, base } = this.config();
     try {
       const res = await fetch(`${base}/api/v1/chat/credit`, {
@@ -212,12 +236,21 @@ export class KieProvider implements GenerationProvider {
         signal: AbortSignal.timeout(READ_TIMEOUT_MS),
         cache: "no-store",
       });
-      const e = parseEnvelope(await readCapped(res, 64_000));
-      if (!e || codeOf(e) !== 200) return null;
-      const n = Number(e.data);
-      return Number.isFinite(n) ? n : null;
-    } catch {
-      return null;
+      return parseBalance(res.status, await readCapped(res, 64_000));
+    } catch (e) {
+      const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      return { ok: false, error: timeout ? "TIMEOUT" : "NETWORK" };
     }
   }
+}
+
+/** Parses the balance reply. Exported for contract tests. A non-numeric or missing value is an error, never zero. */
+export function parseBalance(httpStatus: number, body: string): BalanceRead {
+  const e = parseEnvelope(body);
+  if (!e) return { ok: false, error: `HTTP_${httpStatus}` };
+  const code = codeOf(e);
+  if (code !== 200) return { ok: false, error: `KIE_${Number.isNaN(code) ? "NO_CODE" : code}` };
+  if (e.data === null || e.data === undefined || e.data === "" || typeof e.data === "boolean") return { ok: false, error: "MALFORMED" };
+  const n = Number(e.data);
+  return Number.isFinite(n) && n >= 0 ? { ok: true, credits: n } : { ok: false, error: "MALFORMED" };
 }

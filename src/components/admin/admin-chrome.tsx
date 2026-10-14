@@ -32,7 +32,7 @@ const LIVE_GROUPS: NavGroup[] = [
       { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
       { href: "/admin/jobs", label: "Jobs", icon: Activity },
       { href: "/admin/users", label: "Customers & credits", icon: Users },
-      { href: "/admin/catalog", label: "Models, prices & terms", icon: Boxes },
+      { href: "/admin/catalog", label: "Models & pricing", icon: Boxes },
     ],
   },
   {

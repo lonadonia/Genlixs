@@ -42,7 +42,11 @@ export type OptionSpec = { label: string; values: (string | number)[]; default: 
 export type CatalogModel = {
   id: string;
   tool: "image" | "edit" | "video";
+  category?: "image" | "video";
   name: string;
+  family?: string | null;
+  variant?: string | null;
+  badges?: string[];
   purpose: string | null;
   state: "enabled" | "experimental" | "maintenance" | "disabled";
   note: string | null;

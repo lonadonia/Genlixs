@@ -31,15 +31,28 @@ Applied to project `qlpxdrbadakbyzdyfrnk` (eu-west-1, Postgres 17). File names e
 | `20261014031121_operations_admin` | support tickets, admin reads/actions, reconciliation, health, retention, `wake_workers` + cron jobs |
 | `20261014031201_fk_indexes` | covering indexes for every foreign key |
 | `20261014035148_bind_verification` | `worker_bind_task` verifies the observed attempt id + correlation token hash in SQL; the old boolean signature is a refusing stub |
+| `20261014065744_catalog_admin_schema` | Model metadata (family, variant, badges, sources) and real verification status; implemented-adapter registry; immutable KIE cost versions; price provenance; append-only pricing batches; staff-test purpose on quotes/jobs/assets; test runs and verification evidence; balance history; `catalog.test` / `provider.read` capabilities; pricing assumptions |
+| `20261014070104_catalog_curated_models` | Curated catalog: 18 entries (15 new + 3 existing ids with corrected names), option schemas and documented per-configuration KIE costs; all disabled and unpriced |
+| `20261014160624_catalog_admin_functions` | Configuration math, credit economy, bulk pricing preview/apply (stale-revision check, all-or-nothing), manual drafts, publish/restore, availability rules, private tests, provider summary and balance reads, admin reads; table-format customer prices in quotes and the public catalog |
+| `20261014161256_catalog_admin_fixes` | Fixes found by the SQL tests (contribution labels, catalog order, manual-override detection) |
 
 Conventions: `public` holds RLS-protected projections and `SECURITY DEFINER` RPCs that check `auth.uid()` or a staff capability
 inside; `app_private` is not exposed to `anon`/`authenticated`. Default `EXECUTE` is revoked and granted per function.
 Business errors use `app_private.fail(CODE, message, details)` → Postgres `message = CODE`, `detail = text`, `hint = JSON`.
 Types generated from the live schema: `src/lib/supabase/database.types.ts`.
 
-Seeded but **inactive**: three launch models (`disabled`), their prices (`draft`), three products (`draft`) and partner agreement
-v1 (`draft`: 30 % of eligible revenue, 50 % after 10 distinct paying customers; window, renewal, hold and threshold are
-proposals marked unconfirmed). Nothing can be generated or bought until the owner verifies and publishes them.
+Seeded but **inactive**: 18 curated models (`disabled`, no price, verification "untested"; see `docs/CATALOG_AND_PRICING.md`),
+three products (`draft`) and partner agreement v1 (`draft`: 30 % of eligible revenue, 50 % after 10 distinct paying customers;
+window, renewal, hold and threshold are proposals marked unconfirmed). The launch placeholder price drafts were retired. Nothing
+can be generated or bought until the owner prices, enables and publishes.
+
+Prices: a published price version holds either the launch format (`base` + `add`) or a **table** of whole credits per
+configuration (`{"format":"table","dims":[…],"units":{"<values joined by |>":n}}`). Bulk pricing and manual editing write
+tables. KIE costs live in `app_private.supplier_cost_versions` (`unit` output|second, `dims`, `rates` in KIE credits,
+optional `extraReference`); a configuration without a rate has no known cost and blocks pricing and enabling.
+Staff tests are `generation_jobs` with `purpose = staff_test`: units 0, no reservation, no notification, hidden from the
+customer library; a trigger records the outcome in `model_test_runs` and, on a validated delivery, marks only that entry
+"verified by test".
 
 ## 3. Request flow
 
@@ -71,18 +84,20 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/supabase/{client,server,admin}.ts` | Browser client · per-request user client (verified with `getUser`) · secret-key client for workers only |
 | `src/lib/providers/kie/{client,adapters,webhook}.ts` | KIE create/status/balance, response classification and normalization, per-adapter inputs, callback HMAC |
 | `src/lib/providers/fake.ts` | Deterministic fake provider (non-production + explicit flag) |
+| `src/lib/providers/balance.ts` | Server-side KIE balance read (deduplicated per instance; cross-instance slot in the database), recorded success or error |
 | `src/lib/media/{safe-fetch,sniff}.ts` | SSRF-safe importer and byte-level file verification |
 | `src/lib/jobs/{worker,kick}.ts` | Queue loop and handlers (submit, check, bind, import, asset delete, billing apply) |
 | `src/lib/billing/index.ts` | Gateway interface; `test` adapter outside production; no live gateway chosen yet |
 | `src/lib/auth/{referral,redirect}.ts` | Signed referral cookie; same-site redirect guard |
 | `src/lib/live/**` | Browser API helper, account context (wallet/notifications refresh on focus + 30 s), response types |
 | `src/components/live/**` | Live studio, partner portal, admin console and public pricing/consent components |
+| `src/components/live/admin/catalog/**` | Models & pricing workspace: models list + availability, model panel (pricing, tests, KIE cost, activity, advanced), bulk pricing, packages, KIE balance & usage |
 | `tests/contracts/*.test.ts` | Provider, webhook, safe-fetch, cookie, redirect and file-sniffing contract tests (`npm run test:contracts`) |
 | `supabase/tests/*.sql` | Database invariant tests (run in one transaction, always rolled back) |
 
 ## 5. HTTP API (guide §20 mapping)
 
-All responses are `Cache-Control: private, no-store` except the public catalog/plans (30 s edge cache). Mutations with the
+All responses are `Cache-Control: private, no-store` except the public catalog (5 s edge cache, so availability changes reach customers almost at once) and plans (30 s). Mutations with the
 session cookie require a same-site `Origin`.
 
 | Route | Notes |
@@ -105,6 +120,8 @@ session cookie require a same-site `Origin`.
 | `GET /r/{slug}` | Referral click; signed cookie only with consent (GPC respected) |
 | `/api/affiliate/{overview,links,referrals,commissions,payouts,applications,links/{id}/archive,payout-destination}` | Partner portal (allowlisted) |
 | `/api/admin/…` | Allowlisted reads and audited actions — see `src/app/api/admin/[...path]/route.ts`; staff-role changes need a sign-in within 10 min (and MFA when enrolled) |
+| `/api/admin/catalog`, `…/catalog/models/{id}`, `…/availability`, `…/models/availability` (bulk), `…/display`, `…/prices`, `…/costs`, `…/evidence`, `…/tests` (Idempotency-Key), `…/prices/{id}/publish|restore`, `…/bulk-pricing/preview|apply`, `…/packages/impact`, `…/assumptions`, `…/batches`, `…/tests/outputs/{assetId}` | Catalog workspace. Enabling and tests are refused with `CREDENTIALS_MISSING` when this deployment cannot reach KIE |
+| `/api/admin/provider/summary`, `…/provider/balance/refresh`, `…/provider/low-balance` | KIE balance, spend and job health (`provider.read`); the KIE key never leaves the server |
 
 Not implemented (no navigation points to them): subscription change/cancel endpoints (no gateway yet), account-deletion
 self-service (handled through a support request), transactional email sending, resumable (TUS) uploads for imports over the

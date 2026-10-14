@@ -50,11 +50,15 @@ export type SubmitRequest = {
   callBackUrl: string | null;
 };
 
+/** One live balance read: real credits, or an error code. Never a substituted zero. */
+export type BalanceRead = { ok: true; credits: number } | { ok: false; error: string };
+
 export interface GenerationProvider {
   readonly name: string;
   submit(req: SubmitRequest): Promise<SubmitOutcome>;
   getTask(taskId: string): Promise<TaskDetail>;
   balance(): Promise<number | null>;
+  readBalance(): Promise<BalanceRead>;
 }
 
 /** Transient read failure: retry later, never interpret as a generation failure. */

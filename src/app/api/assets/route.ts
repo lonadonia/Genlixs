@@ -1,6 +1,6 @@
 import { input, ok, withUser } from "@/lib/server/http";
 
-/** Own verified library (saved outputs), newest first, createdAt cursor. RLS limits rows to the owner. */
+/** Own verified library (saved outputs), newest first, createdAt cursor. RLS limits rows to the owner; private staff tests are excluded. */
 export const GET = withUser(async (req, { supabase, requestId }) => {
   const q = req.nextUrl.searchParams;
   const before = q.get("before");
@@ -8,6 +8,7 @@ export const GET = withUser(async (req, { supabase, requestId }) => {
     .from("assets")
     .select("id, job_id, mime, bytes, width, height, duration_ms, created_at, retention_until")
     .eq("kind", "output")
+    .eq("purpose", "customer")
     .eq("state", "ready")
     .order("created_at", { ascending: false })
     .limit(input.int(q.get("limit") ?? undefined, "limit", { min: 1, max: 60, optional: true }) ?? 24);

@@ -57,6 +57,8 @@ begin
   begin perform public.admin_prepare_refund(v_order, 100, 'x', 'ref-0'); raise exception 'B3 support refunded';
   exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
   perform public.admin_list_tickets(null);
+  -- support works the queue but never sees the KIE balance
+  if (public.admin_overview() -> 'service' -> 'providerBalance') <> 'null'::jsonb then raise exception 'B3 support sees provider balance'; end if;
   execute 'reset role';
   -- profile metadata cannot grant staff capability
   update auth.users set raw_user_meta_data = '{"role": "owner", "is_admin": true}' where id = buyer;
@@ -234,6 +236,11 @@ begin
   -- affiliates never see customer identities
   perform pg_temp.t_as(aff_user);
   if public.list_affiliate_referrals()::text like '%@genlixs.test%' then raise exception 'P2 referral email leaked'; end if;
+  -- an active partner cannot read KIE balance, supplier costs or margins
+  begin perform public.admin_provider_summary(); raise exception 'P2 partner read KIE balance';
+  exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
+  begin perform public.admin_pricing_preview('all', null, 300, false); raise exception 'P2 partner read costs';
+  exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
   execute 'reset role';
   v_ok := v_ok + 1;
 

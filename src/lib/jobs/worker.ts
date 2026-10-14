@@ -7,6 +7,7 @@ import { env } from "@/lib/server/env";
 import { sha256Hex } from "@/lib/server/crypto";
 import { ApiError, fromPostgrest } from "@/lib/server/http";
 import { generationProvider, providerConfigured } from "@/lib/providers";
+import { balanceReadable, readAndRecordBalance } from "@/lib/providers/balance";
 import { FAKE_RESULT_PREFIX, FAKE_SAMPLES } from "@/lib/providers/fake";
 import { parseCallbackUrl } from "@/lib/providers/kie/webhook";
 import { TransientProviderError, type ClaimContext, type TaskDetail } from "@/lib/providers/types";
@@ -273,10 +274,9 @@ export async function runWorker(kind: QueueKind, opts: { budgetMs?: number; work
   return { queue, processed, outcomes, stoppedBy: "budget" };
 }
 
-/** Records the supplier balance observation (§12.5). Stale/missing is distinct from zero. */
+/** Records the supplier balance observation (§12.5), success or failure. Stale/missing is distinct from zero. */
 export async function recordProviderBalance(): Promise<number | null> {
-  if (!providerConfigured()) return null;
-  const balance = await generationProvider().balance();
-  if (balance !== null) await call(adminClient(), "record_provider_balance", { p_balance: balance });
-  return balance;
+  if (!balanceReadable()) return null;
+  const read = await readAndRecordBalance("worker");
+  return read.ok ? read.credits : null;
 }

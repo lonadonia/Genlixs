@@ -1,6 +1,6 @@
 import "server-only";
 import { sha256Hex } from "@/lib/server/crypto";
-import type { GenerationProvider, SubmitOutcome, SubmitRequest, TaskDetail } from "./types";
+import type { BalanceRead, GenerationProvider, SubmitOutcome, SubmitRequest, TaskDetail } from "./types";
 
 /**
  * Deterministic fake provider for local and preview testing (guide §25.1). It is selected only when
@@ -38,6 +38,11 @@ export class FakeProvider implements GenerationProvider {
 
   async balance() {
     return null;
+  }
+
+  /** The fake has no supplier account: it reports that plainly instead of inventing a balance. */
+  async readBalance(): Promise<BalanceRead> {
+    return { ok: false, error: "FAKE_PROVIDER_NO_BALANCE" };
   }
 }
 

@@ -3,11 +3,15 @@
 Everything in the repository and the Supabase database is in place. The items below need the owner's accounts, secrets or
 business decisions. **Never paste secret values into a chat, an issue or a commit**; enter them directly in the dashboards.
 
-Current state (14 Oct 2026):
-- Supabase project `qlpxdrbadakbyzdyfrnk` holds the full schema, queues, cron jobs and seeds (all models disabled, all prices,
-  products and the partner agreement in draft). It has no users.
-- Vercel project `genlixs` deploys branch `claude/nice-curie-ispn6l`. **No environment variables are set**, so the deployed site
-  still runs as the design preview. Setting the two public Supabase values switches it to live mode.
+Current state (14 Oct 2026, after the catalog upgrade):
+- Supabase project `qlpxdrbadakbyzdyfrnk` holds the full schema, queues, cron jobs and seeds: 18 curated models (all disabled,
+  unpriced, untested), products and the partner agreement in draft. The owner account is bootstrapped and the Vault worker
+  secrets exist.
+- Vercel project `genlixs` deploys branch `claude/nice-curie-ispn6l` as production. Production variables observed (names only):
+  the two public Supabase values, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `APP_BASE_URL`, `KIE_API_BASE_URL`, `KIE_API_KEY`,
+  `KIE_CALLBACK_BASE_URL`, `INTERNAL_WORKER_TOKEN`, `REFERRAL_COOKIE_SIGNING_KEY`, `MEDIA_FETCH_ALLOWED_HOSTS`.
+  **`KIE_WEBHOOK_HMAC_KEY` was not in the list**: KIE callbacks are then refused and job status is read by polling (slower,
+  still correct). Add it (and the same key in KIE) to receive callbacks.
 - The Vercel account is on the Hobby plan, which Vercel restricts to non-commercial use. Move to Pro before selling.
 
 ## 1. Order of activation
@@ -17,7 +21,7 @@ Current state (14 Oct 2026):
      `https://genlixs.com/auth/callback`, `https://genlixs.com/auth/confirm` and the same for each test origin.
    - Authentication → SMTP: configure a real sender. The built-in sender only reaches project team members, so customers
      would never receive confirmation emails.
-   - Recommended: enable leaked-password protection and MFA (TOTP) for staff accounts.
+   - Recommended: enable leaked-password protection (the Supabase advisor reports it as disabled) and MFA (TOTP) for staff accounts.
 2. **Vercel environment variables** (Project → Settings → Environment Variables). Public values can be copied from Supabase
    → Project Settings → API. See `.env.example` for every name.
    - Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
@@ -36,15 +40,20 @@ Current state (14 Oct 2026):
 5. **Owner account**: sign up on the live site, confirm the email, then in Supabase → SQL editor run once:
    `select app_private.bootstrap_owner('<owner email>');` — it grants the `owner` role and closes the bootstrap.
    Grant other staff from Admin → Staff.
-6. **KIE account**: fund it, confirm access to the three launch models, set the callback HMAC key, and set
-   `ALLOW_PAID_PROVIDER_TESTS=true` only on the environment where you run the controlled paid tests (production does not need it).
-7. **Controlled real-provider checks** (guide §26.5) — one real job per model, then in Admin → Models:
-   record the verification evidence, create/publish the approved price version, and set the model `enabled`.
-   Confirm the media hosts seen in the real result URLs and update `MEDIA_FETCH_ALLOWED_HOSTS` if they differ.
+6. **KIE account**: fund it and set the callback HMAC key (KIE dashboard and `KIE_WEBHOOK_HMAC_KEY` in Vercel). Set
+   `ALLOW_PAID_PROVIDER_TESTS=true` only on a non-production environment where you deliberately run paid tests (production
+   does not need it).
+7. **Models and prices** (Admin → Models & pricing; full guide in `docs/CATALOG_AND_PRICING.md`):
+   - check the KIE balance tab reads a real balance; set the low-balance warning;
+   - run a private paid test for each model you intend to offer (recommended; records task id, KIE-reported credits and the
+     output automatically). If an import fails with "host not allowed", confirm the host is a KIE delivery host and add it to
+     `MEDIA_FETCH_ALLOWED_HOSTS`;
+   - set prices with Bulk pricing (markup above KIE cost) or per model, publish them, then enable the models. An untested model
+     can be enabled only by the owner, after one explicit warning, using the documented KIE cost.
 8. **Payments**: choose a gateway available to the business (Stripe does not support Morocco-based accounts), implement its
    adapter in `src/lib/billing/` (createCheckout, verifyWebhook, submitRefund) and set `BILLING_PROVIDER`,
    `BILLING_API_SECRET`, `BILLING_WEBHOOK_SECRET`. Until then checkout answers "Payments are not available yet".
-   Then publish the approved products in Admin → Models, prices & terms.
+   Then publish the approved packages in Admin → Models & pricing → Packages.
 9. **Partner programme**: confirm the proposed terms (attribution window, renewal months, hold days, payout threshold),
    edit the draft if needed and publish the agreement. Approvals are refused until an agreement is published.
 10. **Domain**: add `genlixs.com` to the Vercel project, apply the DNS records Vercel shows, then update `APP_BASE_URL`,

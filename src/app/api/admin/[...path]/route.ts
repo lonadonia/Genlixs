@@ -1,14 +1,19 @@
 import type { NextRequest } from "next/server";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { ApiError, input, ok, readJson, rpc, withUser } from "@/lib/server/http";
+import { env } from "@/lib/server/env";
 import { requireGateway } from "@/lib/billing";
 import { adminClient } from "@/lib/supabase/admin";
 import { kickWorker } from "@/lib/jobs/kick";
+import { providerConfigured } from "@/lib/providers";
+import { balanceReadable, readAndRecordBalance } from "@/lib/providers/balance";
+import { supportedAdapters } from "@/lib/providers/kie/adapters";
 
 /**
  * Admin API (§19.3, §20.2): an explicit allowlist of reads and audited actions. Every RPC checks the caller's
  * staff capability on the server and writes its own audit row; this layer only validates input shape.
- * There is no generic SQL, balance or status endpoint.
+ * There is no generic SQL endpoint. The KIE key stays on the server: the balance is read here and only the
+ * resulting number (or an error code) is returned.
  */
 type Ctx = { req: NextRequest; db: SupabaseClient; user: User; rest: string[]; q: URLSearchParams };
 type Handler = (c: Ctx) => Promise<unknown>;
@@ -19,7 +24,68 @@ const cursor = (q: URLSearchParams) => {
 };
 const limit = (q: URLSearchParams, max = 100) => input.int(q.get("limit") ?? undefined, "limit", { min: 1, max, optional: true }) ?? 50;
 const reason = (v: unknown) => input.str(v, "Reason", { min: 3, max: 500 });
+/** Routine actions are described automatically; a typed reason is optional (required only for exceptional overrides). */
+const optionalReason = (v: unknown) => input.str(v, "Reason", { min: 3, max: 500, optional: true }) ?? null;
 const opt = (v: string | null) => (v ? v.slice(0, 100) : null);
+
+const STATES = ["enabled", "experimental", "maintenance", "disabled"] as const;
+const BADGES = ["recommended", "premium", "budget", "fast", "long"] as const;
+const modelId = (v: unknown) => {
+  const s = input.str(v, "Model", { min: 2, max: 60 })!;
+  if (!/^[a-z0-9-]+$/.test(s)) throw new ApiError("INVALID_INPUT", "Model is not valid.", 422);
+  return s;
+};
+const modelIds = (v: unknown) => {
+  if (!Array.isArray(v) || v.length < 1 || v.length > 100) throw new ApiError("INVALID_INPUT", "Select between 1 and 100 models.", 422);
+  return [...new Set(v.map(modelId))];
+};
+/** Optional decimal with bounded precision; null clears an assumption ("unknown"), it never means zero. */
+function decimal(v: unknown, name: string, min: number, max: number, decimals: number): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "string" ? Number(v) : v;
+  if (typeof n !== "number" || !Number.isFinite(n) || n < min || n > max || Math.round(n * 10 ** decimals) !== n * 10 ** decimals) {
+    throw new ApiError("INVALID_INPUT", `${name} must be a number between ${min} and ${max} with at most ${decimals} decimals.`, 422);
+  }
+  return n;
+}
+/** {configuration key: number} maps for per-configuration prices and costs (keys are validated by the database). */
+function numberMap(v: unknown, name: string): Record<string, number> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", `${name} are required.`, 422);
+  const entries = Object.entries(v as Record<string, unknown>);
+  if (entries.length < 1 || entries.length > 200) throw new ApiError("INVALID_INPUT", `${name} are required.`, 422);
+  return Object.fromEntries(
+    entries.map(([k, x]) => {
+      const n = typeof x === "string" ? Number(x) : x;
+      if (k.length > 60 || typeof n !== "number" || !Number.isFinite(n)) throw new ApiError("INVALID_INPUT", `${name}: "${k.slice(0, 60)}" is not a number.`, 422);
+      return [k, n];
+    }),
+  );
+}
+const bulkScope = (b: Record<string, unknown>) => {
+  const scope = input.oneOf(b.scope, "Scope", ["all", "images", "videos", "selected"] as const)!;
+  const markup = typeof b.markupPercent === "string" ? Number(b.markupPercent) : b.markupPercent;
+  if (typeof markup !== "number" || !Number.isFinite(markup)) throw new ApiError("INVALID_MARKUP", "Enter the markup above KIE cost as a percentage.", 422);
+  return {
+    p_scope: scope,
+    p_model_ids: scope === "selected" ? modelIds(b.modelIds) : null,
+    p_markup_percent: markup,
+    p_include_overrides: input.bool(b.includeOverrides, "Include manual prices", true) ?? false,
+  };
+};
+/** What this deployment can do, without revealing any secret value. */
+const runtime = () => ({
+  submitsEnabled: providerConfigured(),
+  kieKeyPresent: Boolean(env.kieApiKey()),
+  fakeProvider: env.fakeProvider(),
+  balanceReadable: balanceReadable(),
+  adaptersInCode: supportedAdapters(),
+});
+const credentialsMissing = () =>
+  new ApiError(
+    "CREDENTIALS_MISSING",
+    "This deployment cannot send work to KIE (KIE_API_KEY is not set, or paid provider calls are disabled outside production). Add the key in Vercel first.",
+    409,
+  );
 
 /** Fresh sign-in (and MFA when the account has a verified factor) for owner-level changes (§19.3). */
 async function requireFreshAuth({ db, user }: Ctx) {
@@ -41,7 +107,20 @@ const GETS: Record<string, Handler> = {
   payments: ({ db, q }) => rpc(db, "admin_list_payments", { p_state: opt(q.get("state")), p_before: cursor(q), p_limit: limit(q) }),
   affiliates: ({ db, q }) => rpc(db, "admin_list_affiliates", { p_state: opt(q.get("state")) }),
   "payout-batches": ({ db }) => rpc(db, "admin_list_payout_batches"),
-  catalog: ({ db }) => rpc(db, "admin_catalog"),
+  catalog: async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_catalog")), runtime: runtime() }),
+  "catalog/models/:id": async ({ db, rest }) => ({
+    ...(await rpc<Record<string, unknown>>(db, "admin_model_detail", { p_model_id: modelId(rest[2]) })),
+    runtime: runtime(),
+  }),
+  "catalog/batches": ({ db, q }) => rpc(db, "admin_pricing_batches", { p_limit: limit(q, 100) }),
+  "catalog/tests/outputs/:id": async ({ db, rest }) => {
+    // Staff-only signed link to a private test output (the RPC checks the capability and the asset's purpose).
+    const loc = await rpc<{ bucket: string; path: string; mime: string }>(db, "admin_authorize_test_output", { p_asset_id: input.uuid(rest[3], "Output") });
+    const { data, error } = await adminClient().storage.from(loc.bucket).createSignedUrl(loc.path, 600);
+    if (error || !data) throw new ApiError("STORAGE_UNAVAILABLE", "The test file could not be opened right now.", 503);
+    return { url: data.signedUrl, mime: loc.mime, expiresInSeconds: 600 };
+  },
+  "provider/summary": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_provider_summary")), configured: balanceReadable() }),
   staff: ({ db }) => rpc(db, "admin_list_staff"),
   audit: ({ db, q }) => rpc(db, "admin_audit_log", { p_before: cursor(q), p_limit: limit(q, 200) }),
   tickets: ({ db, q }) => rpc(db, "admin_list_tickets", { p_status: opt(q.get("status")) }),
@@ -134,35 +213,141 @@ const POSTS: Record<string, Handler> = {
       p_reason: input.str(b.reason, "Reason", { max: 500, optional: true }) ?? null,
     });
   },
-  "catalog/models/:id/state": async ({ req, db, rest }) => {
+  // One availability control per model. Enabling also needs the server's KIE credentials, which only this layer
+  // can see; the database enforces adapter, option schema, published price and the untested-model owner decision.
+  "catalog/models/:id/availability": async ({ req, db, rest }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_set_model_state", {
-      p_model_id: input.str(rest[2], "Model", { min: 1, max: 60 }),
-      p_state: input.oneOf(b.state, "State", ["enabled", "experimental", "maintenance", "disabled"] as const),
+    const state = input.oneOf(b.state, "Availability", STATES)!;
+    if ((state === "enabled" || state === "experimental") && !providerConfigured()) throw credentialsMissing();
+    return rpc(db, "admin_set_model_availability", {
+      p_model_id: modelId(rest[2]),
+      p_state: state,
       p_note: input.str(b.note, "Customer note", { max: 200, optional: true }) ?? null,
-      p_reason: reason(b.reason),
+      p_accept_untested: input.bool(b.acceptUntested, "Untested confirmation", true) ?? false,
+      p_publish_price_version_id: input.uuid(b.publishPriceVersionId, "Price draft", true) ?? null,
+      p_reason: optionalReason(b.reason),
     });
   },
-  "catalog/models/:id/verification": async ({ req, db, rest }) => {
+  "catalog/models/availability": async ({ req, db }) => {
+    const b = await readJson(req);
+    const state = input.oneOf(b.state, "Availability", STATES)!;
+    if ((state === "enabled" || state === "experimental") && !providerConfigured()) throw credentialsMissing();
+    return rpc(db, "admin_bulk_set_availability", {
+      p_model_ids: modelIds(b.modelIds),
+      p_state: state,
+      p_accept_untested: input.bool(b.acceptUntested, "Untested confirmation", true) ?? false,
+    });
+  },
+  "catalog/models/:id/display": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    const badges = Array.isArray(b.badges) ? b.badges.map((x) => input.oneOf(x, "Badge", BADGES)!) : [];
+    return rpc(db, "admin_update_model_display", {
+      p_model_id: modelId(rest[2]),
+      p_name: input.str(b.name, "Display name", { min: 2, max: 60 }),
+      p_purpose: input.str(b.purpose, "Description", { min: 5, max: 200 }),
+      p_badges: badges,
+    });
+  },
+  "catalog/models/:id/prices": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_save_price_draft", {
+      p_model_id: modelId(rest[2]),
+      p_units: numberMap(b.units, "Credit charges"),
+      p_extra_reference_units: input.int(b.extraReferenceUnits, "Extra reference charge", { min: 0, max: 100000, optional: true }) ?? null,
+      p_note: input.str(b.note, "Note", { max: 300, optional: true }) ?? null,
+    });
+  },
+  "catalog/models/:id/costs": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    const checked = input.str(b.checkedAt, "Checked on", { min: 10, max: 40 })!;
+    if (Number.isNaN(Date.parse(checked))) throw new ApiError("INVALID_INPUT", "Checked on is not a valid date.", 422);
+    return rpc(db, "admin_save_supplier_cost", {
+      p_model_id: modelId(rest[2]),
+      p_rates: numberMap(b.rates, "KIE credit rates"),
+      p_source_kind: input.oneOf(b.sourceKind, "Source", ["documented", "manual", "observed"] as const),
+      p_source_url: input.str(b.sourceUrl, "Source link", { max: 300, optional: true }) ?? null,
+      p_checked_at: new Date(checked).toISOString(),
+      p_note: input.str(b.note, "Note", { max: 500, optional: true }) ?? null,
+      p_extra_reference: null,
+    });
+  },
+  "catalog/models/:id/evidence": async ({ req, db, rest }) => {
     const b = await readJson(req);
     return rpc(db, "admin_record_model_verification", {
-      p_model_id: input.str(rest[2], "Model", { min: 1, max: 60 }),
-      p_evidence: input.str(b.evidence, "Evidence", { min: 10, max: 2000 }),
+      p_model_id: modelId(rest[2]),
+      p_evidence: input.str(b.evidence, "Evidence", { min: 10, max: 1000 }),
     });
   },
-  "catalog/prices": async ({ req, db }) => {
+  // Private paid test through the normal durable pipeline. Refused up front when this deployment cannot submit,
+  // so no job is created that could never be sent. The idempotency key makes a repeated click return the same job.
+  "catalog/models/:id/tests": async ({ req, db, rest }) => {
+    if (!providerConfigured()) throw credentialsMissing();
     const b = await readJson(req);
-    if (!b.rules || typeof b.rules !== "object") throw new ApiError("INVALID_INPUT", "Price rules are required.", 422);
-    return rpc(db, "admin_create_price_version", {
-      p_model_id: input.str(b.modelId, "Model", { min: 1, max: 60 }),
-      p_rules: b.rules,
-      p_supplier_cost: b.supplierCost && typeof b.supplierCost === "object" ? b.supplierCost : {},
-      p_evidence: input.str(b.evidence, "Cost evidence", { min: 10, max: 2000 }),
+    const refs = Array.isArray(b.referenceAssetIds) ? b.referenceAssetIds.slice(0, 4).map((x) => input.uuid(x, "Reference")) : [];
+    const result = await rpc(db, "admin_create_model_test", {
+      p_model_id: modelId(rest[2]),
+      p_prompt: input.str(b.prompt, "Prompt", { min: 1, max: 5000 }),
+      p_options: b.options && typeof b.options === "object" && !Array.isArray(b.options) ? b.options : {},
+      p_reference_asset_ids: refs,
+      p_idempotency_key: input.idempotencyKey(req),
+      p_confirm_spend: input.bool(b.confirmSpend, "Spend confirmation", true) ?? false,
     });
+    kickWorker("control", 20_000);
+    return result;
   },
   "catalog/prices/:id/publish": async ({ req, db, rest }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_publish_price_version", { p_price_version_id: input.uuid(rest[2], "Price version"), p_reason: reason(b.reason) });
+    return rpc(db, "admin_publish_price_version", { p_price_version_id: input.uuid(rest[2], "Price version"), p_reason: optionalReason(b.reason) });
+  },
+  "catalog/prices/:id/restore": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_restore_price_version", { p_price_version_id: input.uuid(rest[2], "Price version"), p_reason: optionalReason(b.reason) });
+  },
+  "catalog/bulk-pricing/preview": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_pricing_preview", { ...bulkScope(b) });
+  },
+  "catalog/bulk-pricing/apply": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_pricing_apply", {
+      ...bulkScope(b),
+      p_preview_revision: input.str(b.previewRevision, "Preview revision", { min: 32, max: 32 }),
+      p_action: input.oneOf(b.action, "Action", ["draft", "publish"] as const),
+      p_selected: modelIds(b.selected),
+    });
+  },
+  "catalog/packages/impact": async ({ req, db }) => {
+    const b = await readJson(req);
+    const changes: Record<string, { amountMinor: number; credits: number }> = {};
+    if (b.changes && typeof b.changes === "object" && !Array.isArray(b.changes)) {
+      for (const [k, v] of Object.entries(b.changes as Record<string, Record<string, unknown>>).slice(0, 20)) {
+        changes[input.str(k, "Package", { min: 2, max: 40 })!] = {
+          amountMinor: input.int(v?.amountMinor, "Package price", { min: 1, max: 100_000_000 })!,
+          credits: input.int(v?.credits, "Package credits", { min: 1, max: 10_000_000 })!,
+        };
+      }
+    }
+    return rpc(db, "admin_package_impact", { p_changes: changes });
+  },
+  "catalog/assumptions": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_set_pricing_assumptions", {
+      p_fee_bps: decimal(b.paymentFeeBps, "Payment fee", 0, 3000, 2),
+      p_fixed_fee_usd: decimal(b.paymentFixedFeeUsd, "Fixed payment fee", 0, 100, 4),
+      p_operating_cost_usd: decimal(b.operatingCostUsdPerJob, "Operating cost", 0, 100, 6),
+    });
+  },
+  "provider/balance/refresh": async ({ req, db }) => {
+    const b = await readJson(req);
+    const source = input.oneOf(b.source ?? "admin", "Source", ["admin", "auto"] as const)!;
+    // The database grants one live read per interval across all staff and tabs; others get the cached value.
+    const slot = await rpc<{ proceed: boolean }>(db, "admin_begin_balance_refresh");
+    if (slot.proceed) await readAndRecordBalance(source);
+    return { ...(await rpc<Record<string, unknown>>(db, "admin_provider_summary")), configured: balanceReadable(), refreshed: slot.proceed };
+  },
+  "provider/low-balance": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_set_low_balance_threshold", { p_credits: decimal(b.credits, "Low-balance warning", 0, 100_000_000, 2) });
   },
   "catalog/products": async ({ req, db }) => {
     const b = await readJson(req);
@@ -181,11 +366,11 @@ const POSTS: Record<string, Handler> = {
   },
   "catalog/products/:id/publish": async ({ req, db, rest }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_publish_product_version", { p_product_version_id: input.uuid(rest[2], "Product version"), p_reason: reason(b.reason) });
+    return rpc(db, "admin_publish_product_version", { p_product_version_id: input.uuid(rest[2], "Product version"), p_reason: optionalReason(b.reason) });
   },
   "catalog/products/:id/retire": async ({ req, db, rest }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_retire_product", { p_product_key: input.str(rest[2], "Product key", { min: 2, max: 40 }), p_reason: reason(b.reason) });
+    return rpc(db, "admin_retire_product", { p_product_key: input.str(rest[2], "Product key", { min: 2, max: 40 }), p_reason: optionalReason(b.reason) ?? `Retired package ${rest[2]}` });
   },
   "agreements/:id/publish": async ({ req, db, rest }) => {
     const b = await readJson(req);

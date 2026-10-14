@@ -17,6 +17,7 @@ import { DownloadButton, OutputPreview } from "./media";
 import { LiveJobStatus } from "./live-job-status";
 
 const selectable = (m: CatalogModel) => (m.state === "enabled" || m.state === "experimental") && m.priced;
+const BADGE_LABEL: Record<string, string> = { recommended: "Recommended", premium: "Premium", budget: "Budget", fast: "Fast", long: "Longer clips" };
 const defaults = (m: CatalogModel) => Object.fromEntries(Object.entries(m.options ?? {}).map(([k, o]) => [k, o.default]));
 
 /** Live studio for one tool: catalog-driven controls, server quote, one idempotent intent, honest job state (§19.2). */
@@ -26,6 +27,8 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   const catalog = useApi<Catalog>("/api/catalog");
   const models = useMemo(() => (catalog.data?.models ?? []).filter((m) => m.tool === tool), [catalog.data, tool]);
   const usable = models.filter(selectable);
+  // Models under maintenance stay visible (with their note) but cannot be chosen.
+  const inMaintenance = models.filter((m) => m.state === "maintenance");
 
   const [modelId, setModelId] = useState<string | null>(null);
   const model = usable.find((m) => m.id === modelId) ?? usable[0] ?? null;
@@ -88,6 +91,8 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         setQuote(null);
         setQuoteError(e instanceof ApiClientError ? e : null);
+        // The model was disabled or repriced meanwhile: refresh the choices instead of keeping a stale list.
+        if (e instanceof ApiClientError && ["MODEL_UNAVAILABLE", "MODEL_NOT_PRICED"].includes(e.code)) catalog.reload();
       } finally {
         if (!ac.signal.aborted) setQuoting(false);
       }
@@ -126,6 +131,9 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
       recent.reload();
     } catch (e) {
       setSubmitError(e instanceof ApiClientError ? e : null);
+      if (e instanceof ApiClientError && ["MODEL_UNAVAILABLE", "QUOTE_STALE"].includes(e.code)) catalog.reload();
+      // A new price was published since the quote: fetch a fresh quote so the customer sees the new cost before retrying.
+      if (e instanceof ApiClientError && ["QUOTE_STALE", "QUOTE_EXPIRED"].includes(e.code)) setQuoteNonce((n) => n + 1);
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +205,7 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
             ) : null}
           </div>
 
-          {usable.length > 1 ? (
+          {usable.length > 1 || inMaintenance.length ? (
             <fieldset>
               <legend className="mb-2 text-sm font-semibold text-ink">Model</legend>
               <div className="grid gap-2">
@@ -205,12 +213,28 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
                   <label key={m.id} className={cn("flex cursor-pointer gap-3 rounded-2xl border p-3.5", m.id === model.id ? "border-brand-blue bg-[rgb(37_63_246/0.14)]" : "border-line-strong bg-raised")}>
                     <input type="radio" name="live-model" checked={m.id === model.id} onChange={() => setModelId(m.id)} className="mt-1 size-4 accent-brand-blue" />
                     <span>
-                      <span className="flex items-center gap-2 font-semibold text-ink">
+                      <span className="flex flex-wrap items-center gap-2 font-semibold text-ink">
                         {m.name} {m.state === "experimental" ? <Badge tone="violet">Experimental</Badge> : null}
+                        {(m.badges ?? []).map((b) => (
+                          <span key={b} className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold text-muted">
+                            {BADGE_LABEL[b] ?? b}
+                          </span>
+                        ))}
                       </span>
                       {m.purpose ? <span className="block text-[13px] text-muted">{m.purpose}</span> : null}
                     </span>
                   </label>
+                ))}
+                {inMaintenance.map((m) => (
+                  <div key={m.id} aria-disabled="true" className="flex gap-3 rounded-2xl border border-line-strong bg-raised p-3.5 opacity-70">
+                    <input type="radio" name="live-model" disabled aria-label={`${m.name} (temporarily unavailable)`} className="mt-1 size-4" />
+                    <span>
+                      <span className="flex items-center gap-2 font-semibold text-ink">
+                        {m.name} <Badge tone="attention">Temporarily unavailable</Badge>
+                      </span>
+                      <span className="block text-[13px] text-muted">{m.note ?? "Back soon. Your other models work as usual."}</span>
+                    </span>
+                  </div>
                 ))}
               </div>
             </fieldset>
@@ -223,7 +247,11 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
           {model.note ? <p className="text-sm text-orange-on-dark">{model.note}</p> : null}
 
           {Object.entries(model.options ?? {}).map(([key, spec]) =>
-            key === "aspect_ratio" ? (
+            spec.values.length < 2 ? (
+              <p key={key} className="text-sm text-muted">
+                {spec.label}: <span className="font-semibold text-ink">{spec.labels?.[String(spec.values[0])] ?? String(spec.values[0])}</span>
+              </p>
+            ) : key === "aspect_ratio" ? (
               <RatioChips
                 key={key}
                 legend={spec.label}

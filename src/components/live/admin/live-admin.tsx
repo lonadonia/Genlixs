@@ -65,7 +65,7 @@ export function LiveAdminGate({ children }: { children: ReactNode }) {
 }
 
 /** Action with a mandatory reason; posts once, shows the server answer, then refreshes. */
-function ReasonAction({
+export function ReasonAction({
   label,
   path,
   body = {},
@@ -508,91 +508,6 @@ export function LiveAdminPayments() {
             },
           ]}
         />
-      </Panel>
-    </Wrap>
-  );
-}
-
-// ----------------------------------------------------------------- catalog
-
-type CatalogData = {
-  models: (Row & { id: string; name: string; state: string; verifiedAt: string | null; verificationNote: string | null; prices: (Row & { id: string; version: number; state: string; rules: unknown })[] })[];
-  products: (Row & { id: string; key: string; version: number; name: string; state: string; amountMinor: string; currency: string; credits: string })[];
-  agreements: (Row & { id: string; version: number; state: string })[];
-  settings: Record<string, unknown>;
-};
-
-export function LiveAdminCatalog() {
-  const c = useApi<CatalogData>("/api/admin/catalog");
-  if (c.error) return <Wrap><Err>{c.error.message}</Err></Wrap>;
-  if (!c.data) return <Wrap>Loading…</Wrap>;
-  return (
-    <Wrap>
-      <PageHead title="Catalog, prices and terms" sub="Enable a model only after a recorded verification and a published price. Publishing creates a new immutable version." />
-      <Panel title="Models">
-        <ul className="space-y-4">
-          {c.data.models.map((m) => (
-            <li key={m.id} className="rounded-xl border border-rule p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold">
-                  {m.name} <span className="text-xs text-muted-dark">({m.id})</span>
-                </p>
-                <Badge tone={m.state === "enabled" ? "success" : m.state === "disabled" ? "neutral" : "attention"} surface="light">
-                  {m.state}
-                </Badge>
-              </div>
-              <p className="mt-1 text-xs text-muted-dark">Verification: {m.verifiedAt ? `${when(m.verifiedAt)} — ${str(m.verificationNote)}` : "not recorded"}</p>
-              <ul className="mt-2 space-y-1 text-sm">
-                {m.prices.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center gap-2">
-                    Price v{p.version} · {p.state} · <code className="text-xs">{JSON.stringify(p.rules)}</code>
-                    {p.state === "draft" ? <ReasonAction label="Publish price" variant="primary" path={`/api/admin/catalog/prices/${p.id}/publish`} onDone={c.reload} /> : null}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <ReasonAction label="Record verification" path={`/api/admin/catalog/models/${m.id}/verification`} needsReason={false} extra={[{ name: "evidence", label: "Evidence (test task, date, docs checked)" }]} onDone={c.reload} />
-                {(["enabled", "experimental", "maintenance", "disabled"] as const)
-                  .filter((s) => s !== m.state)
-                  .map((s) => (
-                    <ReasonAction key={s} label={`Set ${s}`} path={`/api/admin/catalog/models/${m.id}/state`} body={{ state: s }} onDone={c.reload} />
-                  ))}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-      <Panel title="Products">
-        <ul className="space-y-2 text-sm">
-          {c.data.products.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center gap-2">
-              {p.name} v{p.version} · {money(p.amountMinor, p.currency)} · {p.credits} credits · <Badge tone={p.state === "published" ? "success" : "neutral"} surface="light">{p.state}</Badge>
-              {p.state === "draft" ? <ReasonAction label="Publish product" variant="primary" path={`/api/admin/catalog/products/${p.id}/publish`} onDone={c.reload} /> : null}
-              {p.state === "published" ? <ReasonAction label="Retire" variant="danger" path={`/api/admin/catalog/products/${p.key}/retire`} onDone={c.reload} /> : null}
-            </li>
-          ))}
-        </ul>
-      </Panel>
-      <Panel title="Partner agreement">
-        <ul className="space-y-2 text-sm">
-          {c.data.agreements.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center gap-2">
-              Version {a.version} · {a.state} · base {Number(a.base_rate_bps) / 100}% → {Number(a.uplift_rate_bps) / 100}% after {str(a.uplift_threshold)} distinct paying customers
-              {a.state === "draft" ? <ReasonAction label="Publish agreement" variant="primary" path={`/api/admin/agreements/${a.id}/publish`} onDone={c.reload} /> : null}
-            </li>
-          ))}
-        </ul>
-      </Panel>
-      <Panel title="Operational settings">
-        <ul className="space-y-2 text-sm">
-          {Object.entries(c.data.settings).map(([k, v]) => (
-            <li key={k} className="flex flex-wrap items-center gap-2">
-              <code>{k}</code> = <code>{JSON.stringify(v)}</code>
-              {k !== "watchdog_heartbeat" ? <ReasonAction label="Change" path={`/api/admin/settings/${k}`} extra={[{ name: "value", label: "New value (JSON)" }]} onDone={c.reload} /> : null}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-muted-dark">Values are JSON: numbers as 30, booleans as true/false, text in quotes.</p>
       </Panel>
     </Wrap>
   );

@@ -124,6 +124,8 @@ begin
     '{"taskId": "task_test_1", "normalized": "success", "resultUrls": ["https://tempfile.aiquickdraw.com/x.png"]}');
   if r ->> 'action' <> 'none' then raise exception 'T7 late success %', r; end if;
   if (select spent_units from public.wallet_accounts where user_id = a) <> 6 then raise exception 'T7 double capture'; end if;
+  -- customer outputs are never marked as private staff tests
+  if (select purpose from public.assets where job_id = job1) <> 'customer' then raise exception 'T7 customer asset marked as test'; end if;
   v_ok := v_ok + 1;
 
   -- T9 provider failure releases exactly once
@@ -131,6 +133,7 @@ begin
   q := public.create_generation_quote('gpt-flare-image', 'A failing lamp', '{}', '{}');
   r := public.create_generation((q ->> 'quoteId')::uuid, 'key-0009-fail');
   job2 := (r -> 'job' ->> 'id')::uuid;
+  if jsonb_array_length(public.list_generations()) < 2 then raise exception 'T9 customer library lost jobs'; end if;
   execute 'reset role';
   w := pg_temp.t_claim(job2, 'job_submit');
   r := public.worker_begin_submission((w ->> 'workItemId')::uuid, (w ->> 'leaseToken')::uuid);
@@ -143,6 +146,9 @@ begin
   if wal.available_units <> 94 or wal.reserved_units <> 0 then raise exception 'T9 wallet %', row_to_json(wal); end if;
   if app_private.release_reservation(job2, 'again') <> 'released' then raise exception 'T9 second release changed state'; end if;
   if (select available_units from public.wallet_accounts where user_id = a) <> 94 then raise exception 'T9 double release'; end if;
+  -- only private staff tests settle without a reservation; a customer job never does
+  begin perform app_private.release_reservation(gen_random_uuid(), 'no such job'); raise exception 'T9 missing reservation ignored';
+  exception when others then if sqlerrm <> 'RESERVATION_NOT_FOUND' then raise; end if; end;
   v_ok := v_ok + 1;
 
   -- T10 unknown submission: no automatic resend; verified callback binding recovers it

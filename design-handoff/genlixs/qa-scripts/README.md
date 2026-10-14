@@ -27,5 +27,16 @@ WORKER_TOKEN=<local INTERNAL_WORKER_TOKEN> node live-api-smoke.mjs        # 36 A
 QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node live-flows.mjs   # 30 browser checks
 ```
 
+Catalog upgrade (Models & pricing workspace):
+
+```
+QA_EMAIL=… QA_PASSWORD=… node catalog-api-checks.mjs                                   # 25 admin API checks
+QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node catalog-flows.mjs   # 73 browser checks
+```
+
+Both need a temporary confirmed account with the `operations` and `finance` staff roles (not owner). They only read real data
+and exercise refused writes; write flows run against intercepted responses, and a request guard fails the run if a write
+reaches the server. Create the account with a bcrypt hash generated locally (no password in SQL), delete it afterwards.
+
 `live-flows.mjs` needs a temporary confirmed account with the `operations` staff role. It creates a support request and a
 partner application; delete the account and its rows afterwards (see `docs/VERIFICATION.md`).

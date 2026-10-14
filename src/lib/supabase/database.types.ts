@@ -1,6 +1,3 @@
-// Generated from the deployed Supabase schema (project ref qlpxdrbadakbyzdyfrnk) on 2026-10-14.
-// Regenerate after every migration: Supabase MCP generate_typescript_types or `supabase gen types typescript`.
-
 export type Json =
   | string
   | number
@@ -199,6 +196,7 @@ export type Database = {
           object_path: string
           original_name: string | null
           provider_task_id: string | null
+          purpose: string
           retention_until: string | null
           sha256: string | null
           state: string
@@ -220,6 +218,7 @@ export type Database = {
           object_path: string
           original_name?: string | null
           provider_task_id?: string | null
+          purpose?: string
           retention_until?: string | null
           sha256?: string | null
           state?: string
@@ -241,6 +240,7 @@ export type Database = {
           object_path?: string
           original_name?: string | null
           provider_task_id?: string | null
+          purpose?: string
           retention_until?: string | null
           sha256?: string | null
           state?: string
@@ -775,8 +775,9 @@ export type Database = {
           next_action_at: string | null
           options: Json
           parent_job_id: string | null
-          price_version_id: string
+          price_version_id: string | null
           prompt: string
+          purpose: string
           quote_id: string
           reference_asset_ids: string[]
           request_hash: string
@@ -810,8 +811,9 @@ export type Database = {
           next_action_at?: string | null
           options: Json
           parent_job_id?: string | null
-          price_version_id: string
+          price_version_id?: string | null
           prompt: string
+          purpose?: string
           quote_id: string
           reference_asset_ids?: string[]
           request_hash: string
@@ -845,8 +847,9 @@ export type Database = {
           next_action_at?: string | null
           options?: Json
           parent_job_id?: string | null
-          price_version_id?: string
+          price_version_id?: string | null
           prompt?: string
+          purpose?: string
           quote_id?: string
           reference_asset_ids?: string[]
           request_hash?: string
@@ -902,7 +905,8 @@ export type Database = {
           input_hash: string
           model_id: string
           normalized_input: Json
-          price_version_id: string
+          price_version_id: string | null
+          purpose: string
           tool: string
           units: number
           user_id: string
@@ -916,7 +920,8 @@ export type Database = {
           input_hash: string
           model_id: string
           normalized_input: Json
-          price_version_id: string
+          price_version_id?: string | null
+          purpose?: string
           tool: string
           units: number
           user_id: string
@@ -930,7 +935,8 @@ export type Database = {
           input_hash?: string
           model_id?: string
           normalized_input?: Json
-          price_version_id?: string
+          price_version_id?: string | null
+          purpose?: string
           tool?: string
           units?: number
           user_id?: string
@@ -1648,7 +1654,31 @@ export type Database = {
         Args: { p_before?: string; p_limit?: number }
         Returns: Json
       }
+      admin_authorize_test_output: {
+        Args: { p_asset_id: string }
+        Returns: Json
+      }
+      admin_begin_balance_refresh: { Args: never; Returns: Json }
+      admin_bulk_set_availability: {
+        Args: {
+          p_accept_untested?: boolean
+          p_model_ids: string[]
+          p_state: string
+        }
+        Returns: Json
+      }
       admin_catalog: { Args: never; Returns: Json }
+      admin_create_model_test: {
+        Args: {
+          p_confirm_spend: boolean
+          p_idempotency_key: string
+          p_model_id: string
+          p_options: Json
+          p_prompt: string
+          p_reference_asset_ids: string[]
+        }
+        Returns: Json
+      }
       admin_create_price_version: {
         Args: {
           p_evidence: string
@@ -1691,7 +1721,9 @@ export type Database = {
         Returns: Json
       }
       admin_me: { Args: never; Returns: Json }
+      admin_model_detail: { Args: { p_model_id: string }; Returns: Json }
       admin_overview: { Args: never; Returns: Json }
+      admin_package_impact: { Args: { p_changes: Json }; Returns: Json }
       admin_payout_batch_action: {
         Args: {
           p_action: string
@@ -1715,6 +1747,29 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_pricing_apply: {
+        Args: {
+          p_action: string
+          p_include_overrides: boolean
+          p_markup_percent: number
+          p_model_ids: string[]
+          p_preview_revision: string
+          p_scope: string
+          p_selected: string[]
+        }
+        Returns: Json
+      }
+      admin_pricing_batches: { Args: { p_limit?: number }; Returns: Json }
+      admin_pricing_preview: {
+        Args: {
+          p_include_overrides?: boolean
+          p_markup_percent: number
+          p_model_ids: string[]
+          p_scope: string
+        }
+        Returns: Json
+      }
+      admin_provider_summary: { Args: never; Returns: Json }
       admin_publish_agreement: {
         Args: { p_agreement_id: string; p_reason: string }
         Returns: Json
@@ -1736,12 +1791,25 @@ export type Database = {
         Args: { p_body: string; p_status: string; p_ticket_id: string }
         Returns: Json
       }
+      admin_restore_price_version: {
+        Args: { p_price_version_id: string; p_reason?: string }
+        Returns: Json
+      }
       admin_retire_product: {
         Args: { p_product_key: string; p_reason: string }
         Returns: Json
       }
       admin_review_affiliate: {
         Args: { p_affiliate_id: string; p_decision: string; p_reason: string }
+        Returns: Json
+      }
+      admin_save_price_draft: {
+        Args: {
+          p_extra_reference_units?: number
+          p_model_id: string
+          p_note?: string
+          p_units: Json
+        }
         Returns: Json
       }
       admin_save_product_draft: {
@@ -1759,8 +1827,35 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_save_supplier_cost: {
+        Args: {
+          p_checked_at: string
+          p_extra_reference?: Json
+          p_model_id: string
+          p_note?: string
+          p_rates: Json
+          p_source_kind: string
+          p_source_url: string
+        }
+        Returns: Json
+      }
       admin_set_account_status: {
         Args: { p_reason: string; p_status: string; p_user_id: string }
+        Returns: Json
+      }
+      admin_set_low_balance_threshold: {
+        Args: { p_credits: number }
+        Returns: Json
+      }
+      admin_set_model_availability: {
+        Args: {
+          p_accept_untested?: boolean
+          p_model_id: string
+          p_note?: string
+          p_publish_price_version_id?: string
+          p_reason?: string
+          p_state: string
+        }
         Returns: Json
       }
       admin_set_model_state: {
@@ -1769,6 +1864,14 @@ export type Database = {
           p_note: string
           p_reason: string
           p_state: string
+        }
+        Returns: Json
+      }
+      admin_set_pricing_assumptions: {
+        Args: {
+          p_fee_bps: number
+          p_fixed_fee_usd: number
+          p_operating_cost_usd: number
         }
         Returns: Json
       }
@@ -1782,6 +1885,15 @@ export type Database = {
           p_email: string
           p_reason: string
           p_role: string
+        }
+        Returns: Json
+      }
+      admin_update_model_display: {
+        Args: {
+          p_badges: string[]
+          p_model_id: string
+          p_name: string
+          p_purpose: string
         }
         Returns: Json
       }
@@ -1910,6 +2022,15 @@ export type Database = {
       }
       record_provider_balance: {
         Args: { p_balance: number }
+        Returns: undefined
+      }
+      record_provider_balance_result: {
+        Args: {
+          p_credits: number
+          p_error: string
+          p_ok: boolean
+          p_source: string
+        }
         Returns: undefined
       }
       record_referral_click: {
