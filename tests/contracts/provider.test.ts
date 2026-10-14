@@ -178,7 +178,8 @@ test("balance: only a numeric code-200 reply is a balance; anything else is an e
   assert.deepEqual(parseBalance(200, body({ code: 200, data: null })), { ok: false, error: "MALFORMED_NULL" });
   assert.deepEqual(parseBalance(200, body({ code: 200, msg: "success" })), { ok: false, error: "MALFORMED_MISSING" });
   assert.deepEqual(parseBalance(200, body({ code: 200, data: "n/a" })), { ok: false, error: "MALFORMED_STRING" });
-  assert.deepEqual(parseBalance(200, body({ code: 200, data: -5 })), { ok: false, error: "MALFORMED_NUMBER" });
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: -5 })), { ok: true, credits: -5 }, "a negative balance reported by KIE is a reading");
+  assert.deepEqual(parseBalance(200, body({ code: 200, data: "-12.5" })), { ok: true, credits: -12.5 });
   assert.deepEqual(parseBalance(200, body({ code: 200, data: [1] })), { ok: false, error: "MALFORMED_ARRAY" });
   assert.deepEqual(parseBalance(200, body({ code: 200, data: { foo: 7, "user id": "x" } })), { ok: false, error: "MALFORMED_OBJECT:foo,userid" });
   assert.deepEqual(parseBalance(502, "<html>"), { ok: false, error: "HTTP_502" });

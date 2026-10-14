@@ -244,12 +244,15 @@ export class KieProvider implements GenerationProvider {
   }
 }
 
-/** A credit amount written as a number or as text ("1234.5", "1,234.5", " 100 "); anything else is not a balance. */
+/**
+ * A credit amount written as a number or as text ("1234.5", "1,234.5", " 100 "); anything else is not a balance.
+ * A negative amount is a real reading (KIE reports an account that owes credits) and is kept as such.
+ */
 function creditAmount(v: unknown): number | null {
-  if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v !== "string") return null;
   const t = v.trim().replace(/,(?=\d{3}(\D|$))/g, "");
-  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
 }

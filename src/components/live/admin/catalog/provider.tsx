@@ -96,7 +96,11 @@ export function ProviderTab({ canOperate }: { canOperate: boolean }) {
   return (
     <div className="space-y-5">
       {!s.configured ? <Notice tone="attention">KIE_API_KEY is not set on this deployment, so the balance cannot be read here.</Notice> : null}
-      {b.low ? (
+      {b.credits !== null && b.credits < 0 ? (
+        <Notice tone="error" title="KIE reports a negative balance" action={<a href={s.billingUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Top up on KIE</a>}>
+          The KIE account is {fmtKie(Math.abs(b.credits))} below zero. New generations will fail until it is topped up; keep models off until then.
+        </Notice>
+      ) : b.low ? (
         <Notice tone="error" title="KIE balance is below your warning level" action={<a href={s.billingUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Top up on KIE</a>}>
           {fmtKie(b.credits)} left; warning at {fmtKie(b.threshold)}. New generations fail when KIE runs out of credits.
         </Notice>
