@@ -6,6 +6,7 @@ import { extractTaskId, parseCallbackUrl, verifyCallback } from "../../src/lib/p
 import { signValue, verifySignedValue, bearerMatches } from "../../src/lib/server/crypto";
 import { safeNext } from "../../src/lib/auth/redirect";
 import { checkUrl, isPrivateAddress } from "../../src/lib/media/safe-fetch";
+import { DEFAULT_MEDIA_HOSTS, mediaAllowedHosts, parseHostList } from "../../src/lib/media/hosts";
 
 const KEY = "test-hmac-key";
 const sign = (task: string, ts: string) => createHmac("sha256", KEY).update(`${task}.${ts}`).digest("base64");
@@ -71,4 +72,20 @@ test("safe fetch: only allowlisted HTTPS hosts on public addresses", () => {
     assert.equal(isPrivateAddress(ip), true, ip);
   }
   for (const ip of ["8.8.8.8", "104.18.0.1", "2606:4700::1111"]) assert.equal(isPrivateAddress(ip), false, ip);
+});
+
+// Regression (15 Oct 2026): a pasted MEDIA_FETCH_ALLOWED_HOSTS value blocked every KIE result import.
+test("result host allowlist: reviewed defaults always apply; pasted values are parsed, never widened", () => {
+  for (const h of DEFAULT_MEDIA_HOSTS) assert.ok(mediaAllowedHosts(undefined).includes(h), h);
+  const pasted = "MEDIA_FETCH_ALLOWED_HOSTS=tempfile.aiquickdraw.com,file.aiquickdraw.com";
+  assert.deepEqual(parseHostList(pasted), ["tempfile.aiquickdraw.com", "file.aiquickdraw.com"]);
+  assert.deepEqual(parseHostList('"tempfile.aiquickdraw.com\nhttps://CDN.Example.com/path ; file.redpandaai.co:443"'), [
+    "tempfile.aiquickdraw.com", "cdn.example.com", "file.redpandaai.co",
+  ]);
+  // Not host names: wildcards, IP literals, bare words, credentials.
+  assert.deepEqual(parseHostList("*.example.com 10.0.0.1 localhost user@evil.example"), []);
+  const merged = mediaAllowedHosts("cdn.example.com");
+  assert.ok(merged.includes("cdn.example.com") && merged.includes("tempfile.aiquickdraw.com"));
+  assert.equal(checkUrl("https://tempfile.aiquickdraw.com/r/a.mp4", mediaAllowedHosts(pasted)).hostname, "tempfile.aiquickdraw.com");
+  assert.throws(() => checkUrl("https://evil.example/a.mp4", mediaAllowedHosts(pasted)), Error);
 });

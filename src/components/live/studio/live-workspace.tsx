@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { RatioChips, Segmented } from "@/components/studio/controls";
 import { TOOLS, type ToolId } from "@/lib/catalog";
 import { api, ApiClientError, errorMessage, newIdempotencyKey } from "@/lib/live/api";
+import { useQuote, type QuoteRequest } from "@/lib/live/use-quote";
 import { useAccount, useApi } from "@/lib/live/account";
-import { STATE_LABEL, TERMINAL_STATES, units, type Catalog, type CatalogModel, type Job, type Quote } from "@/lib/live/types";
+import { STATE_LABEL, TERMINAL_STATES, units, type Catalog, type CatalogModel, type Job } from "@/lib/live/types";
 import { cn, fmtCredits, fmtNum } from "@/lib/format";
 import { useDemo } from "@/lib/demo-store";
 import { LiveReferenceUploader, type LiveReference } from "./live-reference";
@@ -35,13 +36,10 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   const [options, setOptions] = useState<Record<string, string | number>>({});
   const [prompt, setPrompt] = useState("");
   const [reference, setReference] = useState<LiveReference>({ status: "empty" });
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [quoteError, setQuoteError] = useState<ApiClientError | null>(null);
-  const [quoting, setQuoting] = useState(false);
-  const [quoteNonce, setQuoteNonce] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [submitError, setSubmitError] = useState<ApiClientError | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const keys = useRef(new Map<string, string>());
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -63,53 +61,21 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   const refId = reference.status === "ready" ? reference.assetId : null;
   const needsRef = (model?.references?.min ?? 0) > 0;
   const promptOk = model ? prompt.trim().length >= (model.prompt?.min ?? 3) : false;
-  const inputKey = JSON.stringify([model?.id, effectiveOptions, prompt.trim(), refId]);
 
   useEffect(() => {
     const i = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(i);
   }, []);
 
-  // Fresh server quote whenever the request changes (debounced). The quote freezes prompt, options and price.
-  useEffect(() => {
-    if (!model || !promptOk || (needsRef && !refId)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear a quote that no longer matches the input
-      setQuote(null);
-      return;
-    }
-    const ac = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setQuoting(true);
-      try {
-        const q = await api<Quote>("/api/generation/quotes", {
-          body: { modelId: model.id, prompt: prompt.trim(), options: effectiveOptions, referenceAssetIds: refId ? [refId] : [] },
-          signal: ac.signal,
-        });
-        setQuote(q);
-        setQuoteError(null);
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        setQuote(null);
-        setQuoteError(e instanceof ApiClientError ? e : null);
-        // The model was disabled or repriced meanwhile: refresh the choices instead of keeping a stale list.
-        if (e instanceof ApiClientError && ["MODEL_UNAVAILABLE", "MODEL_NOT_PRICED"].includes(e.code)) catalog.reload();
-      } finally {
-        if (!ac.signal.aborted) setQuoting(false);
-      }
-    }, 700);
-    return () => {
-      ac.abort();
-      window.clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputKey, quoteNonce]);
-
-  // A quote is valid for a few minutes; fetch a new one when it lapses.
-  useEffect(() => {
-    if (!quote) return;
-    const t = window.setTimeout(() => setQuoteNonce((n) => n + 1), Math.max(Date.parse(quote.expiresAt) - Date.now(), 0) + 50);
-    return () => window.clearTimeout(t);
-  }, [quote]);
+  // Fresh server quote whenever the request changes. The quote freezes prompt, options and price.
+  const quoteRequest: QuoteRequest | null =
+    model && promptOk && (!needsRef || refId)
+      ? { modelId: model.id, prompt: prompt.trim(), options: effectiveOptions, referenceAssetIds: refId ? [refId] : [] }
+      : null;
+  // The model was disabled or repriced meanwhile: refresh the choices instead of keeping a stale list.
+  const { state: quoteState, quote, renew: renewQuote } = useQuote(quoteRequest, { onUnavailable: () => catalog.reload() });
+  const quoting = quoteState.status === "loading";
+  const quoteError = quoteState.status === "error" ? quoteState.error : null;
 
   const quoteExpired = quote ? Date.parse(quote.expiresAt) <= now : false;
   const cost = quote ? units(quote.creditUnits) : null;
@@ -117,7 +83,9 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   const insufficient = cost !== null && cost > available;
 
   const generate = async () => {
-    if (!quote || quoteExpired || submitting) return;
+    // One click, one intent: a second click while the first is in flight is ignored.
+    if (!quote || quoteExpired || submitLock.current) return;
+    submitLock.current = true;
     // One key per intent (quote); reused if the same intent is retried after a network error.
     const key = keys.current.get(quote.quoteId) ?? newIdempotencyKey();
     keys.current.set(quote.quoteId, key);
@@ -126,15 +94,17 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
     try {
       const r = await api<{ job: Job }>("/api/generations", { body: { quoteId: quote.quoteId }, idempotencyKey: key });
       setJobId(r.job.id);
-      setQuote(null);
+      // The quote was used by this job; price the same input again for the next one.
+      renewQuote();
       void acct.refreshWallet();
       recent.reload();
     } catch (e) {
       setSubmitError(e instanceof ApiClientError ? e : null);
       if (e instanceof ApiClientError && ["MODEL_UNAVAILABLE", "QUOTE_STALE"].includes(e.code)) catalog.reload();
       // A new price was published since the quote: fetch a fresh quote so the customer sees the new cost before retrying.
-      if (e instanceof ApiClientError && ["QUOTE_STALE", "QUOTE_EXPIRED"].includes(e.code)) setQuoteNonce((n) => n + 1);
+      if (e instanceof ApiClientError && ["QUOTE_STALE", "QUOTE_EXPIRED", "QUOTE_ALREADY_USED", "QUOTE_NOT_FOUND"].includes(e.code)) renewQuote();
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -296,10 +266,13 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
             </div>
           </div>
 
-          {quoteError && !quoting ? (
-            <p role="alert" className="mb-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm text-orange-on-dark">
-              {quoteError.message}
-            </p>
+          {quoteError || quoteState.status === "timeout" ? (
+            <div role="alert" className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm">
+              <span className="text-orange-on-dark">{quoteError ? quoteError.message : "The price check is taking longer than usual."}</span>
+              <Button variant="secondary" size="sm" onClick={renewQuote}>
+                Try again
+              </Button>
+            </div>
           ) : quoteExpired ? (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm">
               <span className="text-orange-on-dark">Quote expired. Getting a new one…</span>
@@ -321,7 +294,15 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
           ) : null}
 
           <Button size="lg" className="w-full" onClick={generate} busy={submitting} disabled={!quote || quoting || quoteExpired || insufficient || Boolean(paused)}>
-            {quote && cost !== null ? `Generate for ${fmtCredits(cost)}` : promptOk ? "Getting quote…" : `${t.promptLabel} to get a price`}
+            {quote && cost !== null
+              ? `Generate · ${fmtCredits(cost)}`
+              : quoting
+                ? "Checking the price…"
+                : quoteRequest
+                  ? "Price unavailable"
+                  : needsRef && !refId
+                    ? "Add a reference image to get a price"
+                    : `${t.promptLabel} to get a price`}
           </Button>
           <p className="mt-2 text-center text-xs text-muted">Credits are reserved now and charged only when the file is saved. Failed jobs return them.</p>
         </div>

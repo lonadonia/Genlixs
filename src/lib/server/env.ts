@@ -1,4 +1,5 @@
 import "server-only";
+import { mediaAllowedHosts } from "@/lib/media/hosts";
 
 /**
  * Server configuration (guide §6). Values are read lazily and validated at the feature boundary: a missing
@@ -38,11 +39,8 @@ export const env = {
   kieCallbackBaseUrl: () => read("KIE_CALLBACK_BASE_URL")?.replace(/\/+$/, ""),
   workerToken: () => read("INTERNAL_WORKER_TOKEN"),
   referralSigningKey: () => read("REFERRAL_COOKIE_SIGNING_KEY"),
-  mediaAllowedHosts: () =>
-    (read("MEDIA_FETCH_ALLOWED_HOSTS") ?? "tempfile.aiquickdraw.com,file.aiquickdraw.com,tempfile.redpandaai.co,file.redpandaai.co")
-      .split(",")
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean),
+  /** Reviewed KIE delivery hosts plus valid additions from MEDIA_FETCH_ALLOWED_HOSTS (see lib/media/hosts). */
+  mediaAllowedHosts: () => mediaAllowedHosts(read("MEDIA_FETCH_ALLOWED_HOSTS")),
   billingProvider: () => read("BILLING_PROVIDER"),
   billingWebhookSecret: () => read("BILLING_WEBHOOK_SECRET"),
   generationPaused: () => read("GENERATION_PAUSED") === "true",
