@@ -417,6 +417,68 @@ details > summary::-webkit-details-marker {
   display: none;
 }
 
+/* Generation preview: the white Genlixs emblem breathes softly while a narrow light band passes across it. The
+   emblem never spins; it is a UI overlay only and is never part of a generated file. */
+@keyframes gx-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.015);
+  }
+}
+@keyframes gx-sweep {
+  0% {
+    background-position: 160% 0;
+  }
+  60%,
+  100% {
+    background-position: -60% 0;
+  }
+}
+@keyframes gx-shimmer {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(60%);
+  }
+}
+.gx-emblem {
+  animation: gx-breathe 3.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.gx-emblem-sweep {
+  -webkit-mask: url("/brand/genlixs-symbol-white-256.png") center / contain no-repeat;
+  mask: url("/brand/genlixs-symbol-white-256.png") center / contain no-repeat;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.95) 50%, transparent 62%);
+  background-size: 260% 100%;
+  animation: gx-sweep 3.2s ease-in-out infinite;
+}
+.gx-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.035) 50%, transparent 80%);
+  animation: gx-shimmer 2.8s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gx-emblem,
+  .gx-emblem-sweep,
+  .gx-shimmer::after {
+    animation: none !important;
+  }
+  .gx-emblem {
+    opacity: 1;
+  }
+  .gx-emblem-sweep {
+    background: none;
+  }
+}
+
 /* Studio (phones/tablets): the Generate bar stays above the safe area but steps out of
    the way while a field has focus, so the on-screen keyboard never hides the input. */
 @media (max-width: 1023px) {

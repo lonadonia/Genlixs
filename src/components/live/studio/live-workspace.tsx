@@ -1,21 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Coins, Info, RefreshCw } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RatioChips, Segmented } from "@/components/studio/controls";
 import { TOOLS, type ToolId } from "@/lib/catalog";
-import { api, ApiClientError, errorMessage, newIdempotencyKey } from "@/lib/live/api";
+import { api, ApiClientError, newIdempotencyKey } from "@/lib/live/api";
 import { useQuote, type QuoteRequest } from "@/lib/live/use-quote";
 import { useAccount, useApi } from "@/lib/live/account";
-import { STATE_LABEL, TERMINAL_STATES, units, type Catalog, type CatalogModel, type Job } from "@/lib/live/types";
+import { TERMINAL_STATES, units, type Catalog, type CatalogModel, type Job } from "@/lib/live/types";
 import { cn, fmtCredits, fmtNum } from "@/lib/format";
 import { useDemo } from "@/lib/demo-store";
 import { LiveReferenceUploader, type LiveReference } from "./live-reference";
-import { DownloadButton, OutputPreview } from "./media";
-import { LiveJobStatus } from "./live-job-status";
+import { HistoryTile, prefetchOutputs, type UseAction } from "./preview/generation-card";
+import { EmptyPreview, LiveJobCard } from "./preview/job-card";
 
 const selectable = (m: CatalogModel) => (m.state === "enabled" || m.state === "experimental") && m.priced;
 const BADGE_LABEL: Record<string, string> = { recommended: "Recommended", premium: "Premium", budget: "Budget", fast: "Fast", long: "Longer clips" };
@@ -43,7 +44,44 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   const [jobId, setJobId] = useState<string | null>(null);
   const keys = useRef(new Map<string, string>());
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const recent = useApi<Job[]>(`/api/generations?tool=${tool}&limit=6`);
+  const recent = useApi<Job[]>(`/api/generations?tool=${tool}&limit=8`);
+  const router = useRouter();
+
+  // A saved image can start a video: as the start frame, or as the character for motion control. Offered only when a
+  // matching video model is on sale (or, for staff, as a private test in the video studio).
+  const videoModels = (catalog.data?.models ?? []).filter((m) => m.tool === "video" && selectable(m));
+  const canTest = Boolean(acct.me?.capabilities?.includes("catalog.test"));
+  const uses: UseAction[] = [
+    {
+      id: "animate",
+      label: "Animate this image",
+      applies: (_j, o) => o.mime.startsWith("image/") && videoModels.some((m) => (m.operation ?? "create") === "create" && m.inputs?.first_frame),
+      run: (_j, o) => router.push(`/studio/video?mode=frames&use=${o.assetId}&slot=first_frame`),
+    },
+    {
+      id: "character",
+      label: "Use as character",
+      applies: (_j, o) => o.mime.startsWith("image/") && (canTest || videoModels.some((m) => m.operation === "motion")),
+      run: (_j, o) => router.push(`/studio/video?tab=motion&use=${o.assetId}&slot=character_image`),
+    },
+  ];
+  const refreshWallet = acct.refreshWallet;
+  const reloadRecent = recent.reload;
+  const onSettled = useCallback(() => {
+    void refreshWallet();
+    reloadRecent();
+  }, [refreshWallet, reloadRecent]);
+  useEffect(() => {
+    if (recent.data) prefetchOutputs(recent.data);
+  }, [recent.data]);
+  const anyRunning = (recent.data ?? []).some((j) => !TERMINAL_STATES.includes(j.state));
+  useEffect(() => {
+    if (!anyRunning) return;
+    const i = window.setInterval(() => {
+      if (document.visibilityState === "visible") reloadRecent();
+    }, 20_000);
+    return () => window.clearInterval(i);
+  }, [anyRunning, reloadRecent]);
 
   // A draft written on the homepage before sign-in (kept only in this browser) pre-fills the prompt once.
   const demo = useDemo();
@@ -94,6 +132,8 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
     try {
       const r = await api<{ job: Job }>("/api/generations", { body: { quoteId: quote.quoteId }, idempotencyKey: key });
       setJobId(r.job.id);
+      // On phones the result sits below the composer: bring it into view.
+      if (window.matchMedia("(max-width: 1023px)").matches) document.getElementById("live-result")?.scrollIntoView({ block: "start" });
       // The quote was used by this job; price the same input again for the next one.
       renewQuote();
       void acct.refreshWallet();
@@ -310,13 +350,13 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
 
       <div className="min-w-0 flex-1 p-4 sm:p-6 lg:px-0 lg:pt-1">
         <h1 className="sr-only">{t.studioTitle}</h1>
-        {jobId ? (
-          <LiveJobPanel jobId={jobId} onSettled={() => void acct.refreshWallet()} />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">
-            Your job status and result appear here after you press Generate.
-          </div>
-        )}
+        <div id="live-result" className="scroll-mt-20">
+          {jobId ? (
+            <LiveJobCard jobId={jobId} uses={uses} onSettled={onSettled} onGone={() => setJobId(null)} />
+          ) : (
+            <EmptyPreview kind="image" hint="Write a prompt and press Generate. Credits are reserved, then charged only when the file is saved." />
+          )}
+        </div>
         {recent.data && recent.data.length ? (
           <section aria-labelledby="live-hist" className="mt-8 border-t border-white/[0.07] pt-6">
             <div className="flex items-center justify-between">
@@ -327,20 +367,10 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
                 Open library
               </ButtonLink>
             </div>
-            <ul className="mt-3 flex gap-2 overflow-x-auto pb-1 scroll-thin">
+            <ul className="mt-3 flex flex-wrap gap-3">
               {recent.data.map((h) => (
                 <li key={h.id}>
-                  <button
-                    type="button"
-                    onClick={() => setJobId(h.id)}
-                    aria-current={jobId === h.id ? "true" : undefined}
-                    className={cn("w-44 rounded-2xl border bg-surface p-3 text-left text-xs", jobId === h.id ? "border-brand-blue-bright" : "border-white/[0.08] hover:border-white/25")}
-                  >
-                    <span className="block truncate font-semibold text-ink">{h.title}</span>
-                    <span className="text-muted">
-                      {h.ref} · {STATE_LABEL[h.state] ?? h.state}
-                    </span>
-                  </button>
+                  <HistoryTile job={h} selected={jobId === h.id} onSelect={() => setJobId(h.id)} />
                 </li>
               ))}
             </ul>
@@ -351,67 +381,9 @@ export function LiveWorkspace({ tool }: { tool: ToolId }) {
   );
 }
 
-/** Polls the stored job until it settles (reload-safe: everything comes from the database). */
+/** A stored job followed until it settles (reload-safe: everything comes from the database). */
 export function LiveJobPanel({ jobId, onSettled }: { jobId: string; onSettled?: () => void }) {
-  const [job, setJob] = useState<Job | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const settled = useRef(false);
-  const load = useCallback(async () => {
-    try {
-      const j = await api<Job>(`/api/generations/${jobId}`);
-      setJob(j);
-      setError(null);
-      if (TERMINAL_STATES.includes(j.state) && !settled.current) {
-        settled.current = true;
-        onSettled?.();
-      }
-      return j;
-    } catch (e) {
-      setError(errorMessage(e));
-      return null;
-    }
-  }, [jobId, onSettled]);
-
-  useEffect(() => {
-    settled.current = false;
-    let stop = false;
-    let timer: number;
-    const started = Date.now();
-    const tick = async () => {
-      const j = await load();
-      if (stop || (j && TERMINAL_STATES.includes(j.state))) return;
-      const age = Date.now() - started;
-      timer = window.setTimeout(tick, age < 60_000 ? 3000 : age < 600_000 ? 8000 : 20_000);
-    };
-    void tick();
-    return () => {
-      stop = true;
-      window.clearTimeout(timer);
-    };
-  }, [load]);
-
-  if (error && !job) return <p className="rounded-2xl border border-white/10 bg-surface p-4 text-sm text-muted">{error}</p>;
-  if (!job) return <PanelSkeleton />;
-  return (
-    <div className="space-y-5">
-      <LiveJobStatus job={job} onChanged={load} />
-      {job.state === "succeeded" && job.outputs.length ? (
-        <div className="space-y-4">
-          {job.outputs.map((o) => (
-            <div key={o.assetId} className="space-y-3">
-              <OutputPreview output={o} alt={job.title} />
-              <div className="flex flex-wrap gap-2">
-                <DownloadButton assetId={o.assetId} />
-                <ButtonLink href={`/studio/library?job=${job.id}`} variant="ghost">
-                  Open in library
-                </ButtonLink>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+  return <LiveJobCard jobId={jobId} onSettled={onSettled ? () => onSettled() : undefined} />;
 }
 
 function pick(o: Record<string, string | number>, keys: string[]) {

@@ -82,8 +82,17 @@ export function healthChecks(h: Health): Check[] {
     out.push({ key: "import", label: "Saving results", tone: "attention", status: `${imp.dead} failed`,
       detail: `Last error: "${imp.lastError ?? "unknown"}". Jobs stay in review with credits reserved; use Retry import on the job after fixing the cause.` });
   } else {
-    out.push({ key: "import", label: "Saving results", tone: "success", status: imp?.done ? `${imp.done} saved` : "Idle",
-      detail: `Results are downloaded only from: ${h.config.resultHosts.effective.join(", ")}.${h.config.resultHosts.configuredValuePresent ? ` MEDIA_FETCH_ALLOWED_HOSTS adds ${h.config.resultHosts.configuredHostsUnderstood} understood host(s).` : ""}` });
+    const rh = h.config.resultHosts;
+    // A value that parses to no host is ignored (the reviewed defaults still apply); say so instead of implying it works.
+    const unread = rh.configuredValuePresent && rh.configuredHostsUnderstood === 0;
+    out.push({ key: "import", label: "Saving results", tone: unread ? "attention" : "success", status: unread ? "Setting ignored" : imp?.done ? `${imp.done} saved` : "Idle",
+      detail: `Results are downloaded only from: ${rh.effective.join(", ")}.${
+        unread
+          ? " MEDIA_FETCH_ALLOWED_HOSTS is set but contains no valid host name, so it adds nothing. Set it to comma-separated host names (for example tempfile.aiquickdraw.com,file.aiquickdraw.com) and redeploy, or remove it."
+          : rh.configuredValuePresent
+            ? ` MEDIA_FETCH_ALLOWED_HOSTS adds ${rh.configuredHostsUnderstood} understood host(s).`
+            : ""
+      }` });
   }
 
   const cb = h.config.callbacks;
