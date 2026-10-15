@@ -174,9 +174,10 @@ export function LiveLibrary() {
       ) : null}
       {first.error ? <Err>{first.error.message}</Err> : null}
       {first.data && !all.length ? <Empty>Nothing here yet.</Empty> : null}
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* grid-cols-1 (minmax(0, 1fr)) lets long titles truncate instead of widening the column past a phone screen. */}
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {all.map((j) => (
-          <li key={j.id}>
+          <li key={j.id} className="min-w-0">
             <button
               type="button"
               onClick={() => setSelected(j.id)}
@@ -184,7 +185,7 @@ export function LiveLibrary() {
               className={cn("w-full rounded-2xl border bg-surface p-4 text-left", selected === j.id ? "border-brand-blue-bright" : "border-white/[0.08] hover:border-white/25")}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className="truncate font-semibold text-ink">{j.title}</span>
+                <span className="min-w-0 truncate font-semibold text-ink">{j.title}</span>
                 {j.favorite ? <Star aria-label="Favourite" className="size-4 shrink-0 fill-brand-lime text-brand-lime" /> : null}
               </span>
               <span className="mt-1 block text-xs text-muted">

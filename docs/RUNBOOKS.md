@@ -14,6 +14,10 @@ Never edit financial tables by hand; every correction is a new journal entry.
 | Dead letters on Overview | A work item failed 25 times | Fix the cause (configuration, provider outage), then recheck the affected jobs. |
 | Provider balance low/unknown | Read every ~10 minutes by the control worker and live on the KIE balance tab | Fund the KIE account; if spending must stop, turn on "Pause all new generations" in Overview → Service settings (or `GENERATION_PAUSED=true` in Vercel). Running jobs continue. |
 | Pause one model | Maintenance or unexpected cost | Models → switch it off, or Models → **Details → Status** → "Paused for maintenance" with a customer note. New quotes and submissions are refused at once; existing jobs reconcile normally. |
+| Everything stays **Waiting in queue** | The per-minute wake-up cannot reach the workers. Admin → KIE balance → **Generation pipeline** shows the last wake-up error (15 Oct 2026: the Vault origin was an example domain that does not resolve) | Set the Vault secret `genlixs_worker_base_url` to the live origin (`https://genlixs.vercel.app` until a custom domain is live; the token in `genlixs_worker_token` must equal `INTERNAL_WORKER_TOKEN`). Waiting jobs are picked up at the next minute; nothing is resent twice. |
+| **Sending jobs to KIE: Refused** although the balance is positive | KIE answered 401/402 for the account (15 Oct 2026: "Credits insufficient" with 969 credits shown). New quotes pause for 5 minutes, waiting jobs retry and are returned (credits released once) after 4 refusals or 20 minutes | Check the key's limits and status at kie.ai/api-key and the KIE balance; nothing needs changing in Genlixs. The panel shows the refusal text and when quotes resume. |
+| **Saving results: Setting ignored** | `MEDIA_FETCH_ALLOWED_HOSTS` is set but contains no valid host name, so it adds nothing (the reviewed KIE delivery hosts still apply) | Set it to comma-separated host names (for example `tempfile.aiquickdraw.com,file.aiquickdraw.com,tempfile.redpandaai.co,file.redpandaai.co`) and redeploy, or remove it. Never add hosts that are not KIE delivery hosts. |
+| A delivered job shows a broken preview | The signed link expired (links last minutes) | Nothing: the studio fetches a new link automatically; it is not a failed generation. |
 
 ## Models, prices and the KIE balance
 
@@ -54,6 +58,12 @@ Step-by-step owner guide: `docs/CATALOG_AND_PRICING.md` §1.
 - Suspending an account blocks new quotes, generations and purchases; already accepted jobs and payments still settle.
 - Credit adjustments (goodwill, correction, promotion, support) add a separate lot or debit with a reason and idempotency key.
 - Staff role changes are owner-only and require a fresh sign-in.
+- **Temporary QA accounts** (`qa-…@genlixs.test`): after the checks, finance revokes unused test credits (correction with
+  a reason), the account deletes its own files from the studio (private-test outputs stay as model evidence), operations
+  suspends the account with a reason, its staff roles are switched off, and its sign-in (auth user, identities, sessions)
+  is deleted. Jobs, ledger entries, quotes, test runs and audit rows stay: they are append-only financial and verification
+  records, and nothing outside the auth schema references the auth user. An account that never generated anything can be
+  removed completely (wallet row, profile, auth user).
 
 ## Secrets rotation
 

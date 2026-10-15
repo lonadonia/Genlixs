@@ -166,13 +166,34 @@ Evaluated but not integrated (no fake entries were created):
   and Omni, Seedance with reference media, Wan image/video-to-video) — need a reference or multi-prompt UI in the video tool.
 - **Seedance 2.0 Mini, 2.5 Draft, 1.5 Pro** — 2.0 Fast covers the cheaper option; 1.5 Pro service ends on 11 Nov 2026.
 
+### Video modes (added 15 Oct 2026)
+
+The video studio has three tabs: **Create Video** (References or Extend video), **Edit Video** and **Motion Control**.
+Each tab offers only the models of its operation. The creation models above now also accept start/end frames, reference
+images (Veo 3.1 Fast and Lite: up to 3 images, 8-second clips), Kling elements (2–4 images each, named `@element1…3` in the
+prompt) and Seedance references (up to 9 images and 3 audio clips); frames and references are never combined. Prices of
+these creation models did not change. Three new entries are **off, with a draft price waiting for the owner**:
+
+| Entry | What it does | KIE cost | Draft price (Genlixs credits) | Status |
+| --- | --- | --- | --- | --- |
+| Seedance 2.5 Edit | Edits an uploaded or saved clip with a prompt (4–30 s, 480p or 720p, 24–60 fps, up to 50 MB), optional image/audio references | per second of source + output: 480p 17, 720p 38 (the estimate counts the output as long as the source) | 17 × seconds at 480p, 38 × seconds at 720p (68–1,140) | private test passed 15 Oct (480p, 4 s clip: KIE charged 119) |
+| Kling 3.0 Motion Control | Moves a character image like the person in a 3–30 s video; orientation "Follow the video" (≤ 30 s) or "Keep the image's pose" (≤ 10 s); not a background setting | per second of the motion video: 720p 20, 1080p 27 | 10 × seconds at 720p, ⌈13.5 × seconds⌉ at 1080p (30–405) | private test passed 15 Oct (720p, 4 s: KIE charged 80) |
+| Veo 3.1 Extend | Continues one of the customer's own Veo 3.1 clips (last 13 days) | per extension: Fast 60, Lite 30, Quality 250 | Fast 30, Lite 15, Quality 125 | not tested |
+
+The drafts follow the rule of every published price: KIE cost × 2 (+100 %) at $0.005 per KIE credit and $0.02 per Genlixs
+credit, rounded up to whole credits; none is below cost. They were saved as drafts by finance and are **not published**.
+To offer a mode: Pricing & packages → the model → review the draft → **Publish** (owner), then Models → switch it on. Until
+then customers see an honest "not available yet" in that tab, and staff with the test permission can run private tests
+from the studio (the KIE account pays, no customer credits).
+
 ## 4. What is verified and what is not
 
 - Verified: configuration enumeration and costs for all 18 entries, reference values and the credit arithmetic (including the
   worked example and rounding), one-step prices, bulk markup (manual prices, kept settings, stale previews, all-or-nothing),
   availability without a paid-test gate, package editing with bonus credits, the 30 %/50 % scenarios, the staff-test
   pipeline with simulated provider steps and permissions — see `docs/VERIFICATION.md`.
-- **No real KIE request was made.** Every entry is "Untested". Not yet confirmed against a live task: the result URL hosts of
-  the new models (add any new host to `MEDIA_FETCH_ALLOWED_HOSTS` after checking it is a KIE delivery host), the 1080p/4K
-  Veo result layout, the KIE-reported credits per configuration, and a live balance read. A private test per model answers
-  all of these and records the evidence automatically.
+- **15 Oct 2026, real KIE requests in production** (`docs/VERIFICATION.md` §0): GPT Image 2.5 Flare 1K (6 KIE credits),
+  Veo 3.1 Lite 720p text and start-frame clips (30 each), Seedance 2.5 Edit 480p (119) and Kling 3.0 Motion Control 720p
+  (80), all delivered from the default KIE hosts and saved; the live balance reading moved by exactly the reported credits.
+  Not yet confirmed against a live task: the other entries, 1080p/4K Veo results and Veo 3.1 Extend. A private test per
+  model answers these and records the evidence automatically.

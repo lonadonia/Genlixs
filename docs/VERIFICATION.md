@@ -1,7 +1,57 @@
 # Verification evidence and readiness verdict
 
 Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwright-core 1.64, against Supabase project
-`qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`.
+`qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
+15 Oct 2026 and supersedes the "not executed" rows it covers.
+
+## 0. Generation repair, video modes and real generation (15 Oct 2026, production)
+
+**Why nothing was generated (root causes, in the order they block):**
+
+1. The Vault worker origin (`genlixs_worker_base_url`) was a documentation example domain that does not resolve, so every
+   per-minute wake-up failed and jobs stayed "Waiting in queue". Set to the live origin; wake-ups now succeed (10/10 in 6 h).
+2. KIE answered task creation with HTTP 402 "Credits insufficient" while the balance read positive (until 01:59 UTC); the
+   same key was accepted from 02:30 UTC. The cause is on the KIE account side (check the key limits at kie.ai/api-key). Such
+   refusals are now an account state: new quotes pause for 5 minutes, waiting jobs retry and are returned after 4 refusals
+   or 20 minutes, and the admin Generation pipeline panel says so.
+3. Result imports were refused ("host not allowlisted") because the production `MEDIA_FETCH_ALLOWED_HOSTS` value parsed to
+   no host name. The reviewed KIE delivery hosts now always apply and the setting can only add hosts; the production value was
+   corrected (health: 4 hosts understood). The HTTPS-only, public-address and allowlist checks are unchanged.
+4. `APP_BASE_URL` / `KIE_CALLBACK_BASE_URL` pointed to the same unresolvable domain; corrected to the live origin.
+5. The studio kept "Getting quote…" after a submission because the used quote was never renewed; quotes now renew, time out
+   after 15 s with a retry, ignore out-of-order replies, and a double click cannot create a second job.
+
+Two jobs left behind by these failures (J-ATXMSW image, J-W4LGAF video) were completed with **Retry import** of the same KIE
+task (no new task) and charged once.
+
+**Real end-to-end runs** on genlixs.vercel.app (commit `79913c1`), through the customer UI with a temporary QA account
+funded by an audited 40-credit support grant; the edit and motion models are not on sale, so they ran as private staff
+tests from the video studio (spend confirmation, KIE pays, no customer credits). Every result was found by polling (no
+callback key is configured; callbacks stay refused).
+
+| Flow | Configuration | Job · KIE task | Result | Customer wallet | KIE credits |
+| --- | --- | --- | --- | --- | --- |
+| Image | GPT Image 2.5 Flare, 1K, 2:3 | J-FOYGGE · `0327ec…f8ee` | succeeded in 1 min 41 s; PNG 1024×1536, 1.91 MB; download 200 `image/png` (attachment) | reserve 3 → capture 3 | 6 |
+| Basic video (text) | Veo 3.1 Lite, 4 s, 720p, 16:9 | J-JGGYTZ · `15f6a4…2d30` | page closed 6 s after submitting; finished on the server alone in 1 min 45 s; MP4 1280×720, 4.0 s, 24 fps, audio; plays in the studio; download 200 `video/mp4`, 1,326,113 bytes | reserve 15 → capture 15 | 30 |
+| Reference-based video | Veo 3.1 Lite, 4 s, 720p, 9:16, start frame = the saved image ("Animate this image") | J-YUXAQA · `628702…fdc5` | page closed after submitting; MP4 720×1280, 4.0 s, 24 fps, audio; plays | reserve 15 → capture 15 | 30 |
+| Edit Video (private test) | Seedance 2.5 Edit, 480p, sound on, source = the basic video ("Edit this video"); 4 billable seconds derived by the server | J-Z7BVJK · `7e09c2…e02e` | snow added to the clip; MP4 854×480, 3.7 s, 24 fps, audio; plays; staff-only file | none | 119 = 17 × (4 s source + 3 s output); the estimate of 136 assumes an output as long as the source, so it is an upper bound |
+| Motion Control (private test) | Kling 3.0 Motion Control, 720p, "Follow the video"; motion = the basic video ("Copy this motion"), character = the saved image ("Use as character") | J-6Y6BED · `da1411…6d1e` | the woman from the image performs the dancer's motion; MP4 768×1168, 4.0 s; plays; staff-only file | none | 80 (estimate 80) |
+| Cancellation | Seedream 5.0 Flash, 1K | J-QYEXGH | cancelled 0.8 s after creation, before submission; no KIE attempt; the same request replayed returns the same job | reserve 2 → release 2 | 0 |
+
+Ledger for the QA wallet: one grant (40), one reserve and one capture per delivered job, one reserve and one release for the
+cancelled job, nothing for private tests; final balance 7 available, 0 reserved, 33 spent. The KIE balance went from
+903.03 to 638.03, exactly the 265 credits KIE reported for the five tasks.
+
+| Area | Check | Status |
+| --- | --- | --- |
+| Uploads (production) | 3 s clip refused before upload (needs 4–30 s); 8.3 MB clip through the resumable endpoint (POST 201, PATCH 204) and server verification; image and audio references verified; a text file refused with a reason; drafts keep only verified ids | VERIFIED_PASS (7/7) |
+| Server input checks (production quotes, no credits move) | reference images need 8-second clips; a video refused as a start frame; image + audio references priced together (70 credits); first/last frame and references not combined; a model not on sale cannot be quoted by customers; another customer's file refused; an element needs at least 2 images | VERIFIED_PASS (7/7) |
+| Video studio UI (production, signed in) | 3 tabs with arrow-key navigation, searchable model picker (7 creation models; no edit or motion model offered for creation), quote on Generate, How it works, Edit Video and Motion Control composers, private-test mode for staff (edit, motion, extend), axe 0 violations on every state and dialog, no horizontal overflow at 1440 and 390 px, no console errors | VERIFIED_PASS (18/18) |
+| Other studio pages (production) | Image, Edit, Library, Home at 1440 and 390 px: axe, overflow, console | 17/18 — the Library overflowed by 140 px on phones once long titles existed; fixed (grid column could not shrink), re-checked after deploy |
+| Generation preview card | Emblem with labelled estimated progress (1 % → 21–84 % generating → 94–97 % saving → Ready), never 100 % before the file is saved; hand-over to the image or playable video; Download, Open in library, Animate this image, Use as character; private-test wording | VERIFIED_PASS (observed on the runs above) |
+| Contracts | `npm run test:contracts`: 54 (adds the video studio composer rules: tab/operation filtering, only visible inputs priced, mode-limited options, hidden options not sent, required/dependent/mentioned inputs, upload states, wrong type after a model switch, derived seconds never sent, orientation rule, routing of dropped files, browser-read limits, drafts per account without local links) | VERIFIED_PASS (54/54) |
+| Database | All suites re-run after the five video-mode migrations, on the production project, rolled back: 01 (14/14, including the global wallet reconciliation over real data), 02 (11/11), 03 (8/8), 04 (8/8), 05 (6/6), `06_video_modes_tests.sql` (10/10); user, job, price and model counts unchanged afterwards | VERIFIED_PASS (57/57) |
+| Build | lint, typecheck, `next build` | VERIFIED_PASS |
 
 ## 1. Executed checks
 
@@ -35,14 +85,15 @@ inside a single locked transaction only for those rows and re-enabled). The data
 
 | Check | Status | Why |
 | --- | --- | --- |
-| Worker passes against the real database (submit → check → import → capture) from the Next.js process | BLOCKED_EXTERNAL | Needs `SUPABASE_SECRET_KEY`, which only the owner can set. The same transitions are covered by the SQL tests; the handlers are covered by contract tests. |
-| Real KIE generation, callback delivery, result import, supplier consumption (guide §26.5) | BLOCKED_EXTERNAL | Needs a funded KIE key and HMAC key; no paid test was made. |
+| Worker passes against the real database (submit → check → import → capture) from the Next.js process | VERIFIED_PASS (15 Oct) | See §0: submit, polling, import and capture ran in production. |
+| Real KIE generation, result import, supplier consumption (guide §26.5) | VERIFIED_PASS (15 Oct) | See §0. |
+| KIE callback delivery | BLOCKED_EXTERNAL | `KIE_WEBHOOK_HMAC_KEY` is not set, so callbacks are refused by design; polling found every result within a minute. |
 | Payments, subscription cycles, live refunds | BLOCKED_EXTERNAL | No gateway chosen. The normalized event processing is covered by SQL tests; the `test` adapter path is implemented but was not run end-to-end because it needs the secret key. |
 | Supabase Auth email delivery, password reset email | BLOCKED_EXTERNAL | Needs custom SMTP and redirect URLs (setup step 1). |
-| Cron → Vercel worker wake-up | BLOCKED_EXTERNAL | Needs the Vault secrets and a reachable production origin. |
+| Cron → Vercel worker wake-up | VERIFIED_PASS (15 Oct) | Works since the Vault origin was corrected; the health panel shows every wake-up. |
 | Real parallel concurrency (multiple simultaneous HTTPS requests) | NOT_TESTED | Serialization is enforced by the wallet row lock and unique keys and was tested sequentially inside one transaction; a parallel load test needs committed test data on a staging project. |
-| Reference upload end-to-end (browser → Storage → finalize) | BLOCKED_EXTERNAL | Finalize uses the secret key. |
-| Private paid tests of the 18 catalog entries against KIE | NOT_TESTED | Spends the owner's KIE balance; never run without the owner. All entries stay "Not tested yet"; switching a priced model on does not require one. |
+| Reference upload end-to-end (browser → Storage → finalize) | VERIFIED_PASS (15 Oct) | See §0 (standard and resumable uploads in production). |
+| Private paid tests of the catalog entries against KIE | PARTIAL | Run on 15 Oct for Seedance 2.5 Edit and Kling 3.0 Motion Control (§0). Veo 3.1 Lite and GPT Image 2.5 Flare were exercised as customer jobs. Veo 3.1 Extend and the other entries were not tested. |
 | Live KIE balance read from the admin tab | BLOCKED_EXTERNAL | The key exists only in production; locally the tab correctly reports "Not configured". The worker's periodic read and the admin read use the same documented endpoint (`GET /api/v1/chat/credit`). |
 | Result layout for Veo 1080p/4K and result hosts of the new families | NOT_TESTED | Handled per the documentation (upgraded file in `data.result_urls`); a real test confirms it. |
 | Production deployment of the simplified admin (commit `893cb0c`, deployment `dpl_4ocoyBXYDWy45pazyKz8v4FwAD4F`, READY, aliased to genlixs.vercel.app) | VERIFIED_PASS (read-only) | `/admin/catalog` ("Models"), `/admin/pricing`, `/admin/kie`, `/admin`, `/admin/affiliates`, home, studio and sign-in answer 200; their deployed scripts contain the new pages and none of the retired workspace strings ("Record verification", "Set maintenance", "Lowest revenue per credit", "Publish draft"); admin reads and the reference save answer 401 without a session; the public catalog lists 0 models with no pricing internals; plans empty; no runtime errors after the deploy. The signed-in owner view on production was not opened here (no owner session); the same build was inspected signed in against the production database locally. |
@@ -60,6 +111,12 @@ inside a single locked transaction only for those rows and re-enabled). The data
    creates a 30 % commission in hold.
 
 ## 4. Readiness verdict
+
+**15 Oct 2026:** image and video generation now work end to end in production for the models on sale (verified for one
+image model and Veo 3.1 Lite, including a start frame from a saved image). Video editing and Motion Control work end to
+end as private tests and stay off for customers until the owner approves their draft prices and switches them on (Admin →
+Pricing → model price; Models → switch). Still open: `KIE_WEBHOOK_HMAC_KEY` (polling covers it), Veo 3.1 Extend has no
+live test, 1080p/4K results untested, and the items below.
 
 **Not production-ready yet.** The code, schema, security model and tests are complete for review. The owner has set the
 production variables, so the deployed site runs in live mode, with every model disabled and nothing on sale. Production can be

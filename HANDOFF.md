@@ -2,13 +2,32 @@
 
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
-- **Last updated:** 14 Oct 2026
-- **Latest work:** **v3.2 — simplified admin and explicit credit pricing** (Models with one On/Off switch, Pricing & packages with two reference values, package editor and per-setting price editor, KIE balance page; migrations `20261014203016`–`20261014203957`, 18 in total) on top of **v3.1 — admin catalog, bulk pricing and KIE monitoring** and **v3 — live backend** (`claude/nice-curie-ispn6l`, see `git log`). v3 implemented `Genlixs_Backend_Implementation_Guide_EN.md` v1.0; v3.1 adds the Models & pricing workspace, 18 curated KIE models, bulk markup pricing, private staff tests and the KIE balance panel (4 more migrations, 14 in total). Start with §0.
+- **Last updated:** 15 Oct 2026
+- **Latest work:** **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
+  evidence in `docs/VERIFICATION.md` §0), on top of **v3.2 — simplified admin and explicit credit pricing** (Models with one On/Off switch, Pricing & packages with two reference values, package editor and per-setting price editor, KIE balance page; migrations `20261014203016`–`20261014203957`, 18 in total) on top of **v3.1 — admin catalog, bulk pricing and KIE monitoring** and **v3 — live backend** (`claude/nice-curie-ispn6l`, see `git log`). v3 implemented `Genlixs_Backend_Implementation_Guide_EN.md` v1.0; v3.1 adds the Models & pricing workspace, 18 curated KIE models, bulk markup pricing, private staff tests and the KIE balance panel (4 more migrations, 14 in total). Start with §0.
 - **Repository:** https://github.com/lonadonia/Genlixs (public)
 
 ---
 
 ## 0. v3 backend — state at a glance
+
+**v3.3 (15 Oct 2026) — production state:**
+- Generation works end to end in production (image, Veo 3.1 Lite text and start-frame video) with polling; video editing
+  and Motion Control work as private tests. Root causes fixed: Vault worker origin (unresolvable example domain), KIE 402
+  account refusals now an explicit account state with a 5-minute quote pause, result-host setting that parsed to nothing
+  (reviewed KIE hosts always apply; production value corrected), app/callback base URLs, a quote that was never renewed.
+- Owner's catalog: 18 models enabled with published prices (+100 % on KIE cost at $0.02 per Genlixs credit). Three new
+  entries — Seedance 2.5 Edit, Kling 3.0 Motion Control, Veo 3.1 Extend — are **off with draft prices** awaiting the
+  owner (`docs/CATALOG_AND_PRICING.md`, "Video modes").
+- Code: `src/components/live/studio/video/` (studio, composer controls, inputs, model picker),
+  `src/components/live/studio/preview/` (generation preview card with the white emblem, job card, signed media),
+  `src/lib/live/video-studio.ts` (composer rules, contract-tested), `src/lib/live/{uploads,use-job,use-quote,progress}.ts`;
+  migrations `20261015025200`–`20261015032953` (reliability, typed inputs, video-mode catalog, reads, reuse of outputs).
+- Tests: contracts 54, SQL suites 01–06 (57 groups), browser checks of the signed-in production studio (desktop + phone).
+- Open for the owner: approve the three draft prices and switch the modes on; `KIE_WEBHOOK_HMAC_KEY` (polling covers it);
+  a live test of Veo 3.1 Extend and of 1080p/4K results; check the KIE key limits if 402 refusals return.
+- QA accounts: the temporary accounts of 15 Oct were closed through the runbook procedure (`docs/RUNBOOKS.md`, Accounts);
+  their jobs, ledger and test evidence remain as records.
 
 - **Read first:** `docs/BACKEND.md` (architecture, module and API map), `docs/SETUP_AND_ACTIVATION.md` (owner configuration, in order), `docs/RUNBOOKS.md`, `docs/VERIFICATION.md` (evidence + readiness verdict: **not production-ready until activation and real-account checks**).
 - **Modes:** `LIVE` (`src/lib/config.ts`) is true when both `NEXT_PUBLIC_SUPABASE_*` values are set. The owner has set the production variables on Vercel (names in `docs/SETUP_AND_ACTIVATION.md`; `KIE_WEBHOOK_HMAC_KEY` was missing), so production runs in live mode. **Pushing this branch deploys to production.** Local live QA uses an ignored `.env.local` with the public values only (no secret key, no KIE key).
