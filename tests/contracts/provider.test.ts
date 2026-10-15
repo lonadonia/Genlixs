@@ -18,7 +18,9 @@ test("create: documented rejections are terminal or retryable; ambiguity is unkn
   assert.equal(classifyCreate(200, body({ code: 422, msg: "invalid" })).kind, "rejected_terminal");
   assert.equal(classifyCreate(200, body({ code: 400, msg: "bad" })).kind, "rejected_terminal");
   assert.equal(classifyCreate(200, body({ code: 505, msg: "disabled" })).kind, "rejected_terminal");
-  for (const code of [401, 402, 429, 433, 455]) assert.equal(classifyCreate(200, body({ code, msg: "x" })).kind, "rejected_retryable", `code ${code}`);
+  for (const code of [429, 433, 455]) assert.equal(classifyCreate(200, body({ code, msg: "x" })).kind, "rejected_retryable", `code ${code}`);
+  // Regression (15 Oct 2026): 402 "Credits insufficient" was retried as "busy". Account refusals have their own outcome.
+  for (const code of [401, 402]) assert.equal(classifyCreate(200, body({ code, msg: "Credits insufficient" })).kind, "rejected_account", `code ${code}`);
   assert.equal(classifyCreate(429, "<html>busy</html>").kind, "rejected_retryable");
   // 500 / unexplained / unparseable: the task may exist — never resend blindly.
   assert.equal(classifyCreate(200, body({ code: 500, msg: "server error" })).kind, "unknown");

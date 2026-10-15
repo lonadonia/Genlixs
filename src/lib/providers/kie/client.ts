@@ -59,7 +59,12 @@ const TERMINAL: Record<number, [string, string]> = {
   505: ["MODEL_NOT_AVAILABLE", "This model is not available right now."],
 };
 /** Explicit rejections documented as not entering the provider queue. */
-const RETRYABLE = new Set([401, 402, 429, 433, 455]);
+const RETRYABLE = new Set([429, 433, 455]);
+/**
+ * Refusals of our account (401 access, 402 credits): no task exists, but retrying quickly cannot help and the
+ * customer must not be told the service is merely busy. The database pauses new quotes briefly and bounds the wait.
+ */
+const ACCOUNT = new Set([401, 402]);
 
 /** Classifies one create-task response (§12.5 table). Exported for contract tests. */
 export function classifyCreate(httpStatus: number, body: string): SubmitOutcome {
@@ -79,6 +84,7 @@ export function classifyCreate(httpStatus: number, body: string): SubmitOutcome 
     const [publicCode, publicMessage] = TERMINAL[code];
     return { kind: "rejected_terminal", code: `KIE_${code}`, message: msgOf(e), publicCode, publicMessage };
   }
+  if (ACCOUNT.has(code)) return { kind: "rejected_account", code: `KIE_${code}`, message: msgOf(e) };
   if (RETRYABLE.has(code) || httpStatus === 429) return { kind: "rejected_retryable", code: `KIE_${code}`, message: msgOf(e) };
   // 500 and anything unexplained: the task may exist. Never resend blindly.
   return { kind: "unknown", code: `KIE_${Number.isNaN(code) ? "NO_CODE" : code}`, message: msgOf(e) };

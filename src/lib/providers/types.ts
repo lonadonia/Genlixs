@@ -4,6 +4,7 @@
 export type SubmitOutcome =
   | { kind: "accepted"; taskId: string }
   | { kind: "rejected_retryable"; code: string; message: string }
+  | { kind: "rejected_account"; code: string; message: string }
   | { kind: "rejected_terminal"; code: string; message: string; publicCode: string; publicMessage: string }
   | { kind: "unknown"; code: string; message: string };
 

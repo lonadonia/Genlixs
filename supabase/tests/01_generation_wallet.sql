@@ -10,6 +10,8 @@ declare
   v_ok int := 0; v_n int; v_txt text; v_lot uuid;
   wal record;
 begin
+  -- Independent of the live catalog (the owner enables models in production): every model off in this transaction.
+  update app_private.model_catalog set state = 'disabled';
   perform pg_temp.t_enable_model('gpt-flare-image', '{"base": 4, "add": {"resolution": {"2K": 2, "4K": 6}}}');
   perform app_private.grant_lot(a, 'promo', 'test:grant:' || a, 100, null, null, 'test grant');
   -- Idempotent grant: same source key never grants twice.

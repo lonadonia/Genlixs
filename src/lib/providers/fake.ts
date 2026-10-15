@@ -21,6 +21,7 @@ export class FakeProvider implements GenerationProvider {
         publicMessage: "The generation service did not accept this prompt or these settings." };
     }
     if (p.includes("[busy]")) return { kind: "rejected_retryable", code: "FAKE_429", message: "fake rate limit" };
+    if (p.includes("[no-credits]")) return { kind: "rejected_account", code: "KIE_402", message: "fake credits insufficient" };
     if (p.includes("[unknown]")) return { kind: "unknown", code: "FAKE_TIMEOUT", message: "fake lost response" };
     const scenario = p.includes("[fail]") ? "fail" : "ok";
     const kind = context.output.kind === "video" ? "video" : "image";

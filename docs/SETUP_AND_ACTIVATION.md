@@ -17,8 +17,9 @@ Current state (14 Oct 2026, after the catalog upgrade):
 ## 1. Order of activation
 
 1. **Supabase Auth**
-   - Authentication → URL configuration: Site URL `https://genlixs.com` (or the Vercel URL while testing); add redirect URLs
-     `https://genlixs.com/auth/callback`, `https://genlixs.com/auth/confirm` and the same for each test origin.
+   - Authentication → URL configuration: Site URL = the live origin (today `https://genlixs.vercel.app`; a custom domain only
+     after it is attached in Vercel and resolves); add redirect URLs `<origin>/auth/callback`, `<origin>/auth/confirm` and the
+     same for each test origin.
    - Authentication → SMTP: configure a real sender. The built-in sender only reaches project team members, so customers
      would never receive confirmation emails.
    - Recommended: enable leaked-password protection (the Supabase advisor reports it as disabled) and MFA (TOTP) for staff accounts.
@@ -26,17 +27,23 @@ Current state (14 Oct 2026, after the catalog upgrade):
    → Project Settings → API. See `.env.example` for every name.
    - Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
    - Server: `SUPABASE_URL` (same project), `APP_BASE_URL`, `KIE_API_BASE_URL=https://api.kie.ai`, `KIE_CALLBACK_BASE_URL`
-     (stable public origin, not a preview URL), `MEDIA_FETCH_ALLOWED_HOSTS`.
+     (stable public origin, not a preview URL), optional `MEDIA_FETCH_ALLOWED_HOSTS` (adds result hosts; the reviewed KIE
+     hosts always apply). **Every origin must be one that already resolves** — today `https://genlixs.vercel.app`. Using a
+     domain that is not attached yet (for example `genlixs.com` on 15 Oct 2026) silently breaks callbacks, worker wake-ups and
+     the links in sign-up and password emails. Admin → KIE balance → *Generation pipeline* shows each origin and whether it
+     resolves.
    - Secrets (generate random values for the last two, e.g. `openssl rand -base64 32`): `SUPABASE_SECRET_KEY`, `KIE_API_KEY`,
      `KIE_WEBHOOK_HMAC_KEY`, `INTERNAL_WORKER_TOKEN`, `REFERRAL_COOKIE_SIGNING_KEY`.
    - Redeploy after changing variables.
 3. **Supabase Vault** (Project → Vault → New secret) so Cron can wake the Vercel workers every minute:
-   - `genlixs_worker_base_url` = the stable production origin (e.g. `https://genlixs.com`)
+   - `genlixs_worker_base_url` = the live production origin that resolves today (`https://genlixs.vercel.app`; switch to a
+     custom domain only after it is attached and resolves)
    - `genlixs_worker_token` = the same value as `INTERNAL_WORKER_TOKEN`
-   Without these, queued work stays durable but only advances when a request triggers a worker pass.
-4. **Deployment protection**: the webhook and worker routes must be reachable without a Vercel login. Keep protection off for
-   the production domain (current setting "all except custom domains" protects `*.vercel.app` URLs — attach `genlixs.com`
-   or adjust the setting before relying on callbacks/cron).
+   Without these, queued work stays durable but only advances when a request triggers a worker pass. Cron runs every minute
+   and calls a worker only when that queue has work due (plus a control probe every 10 minutes).
+4. **Deployment protection**: the webhook and worker routes must be reachable without a Vercel login. Checked 15 Oct 2026:
+   the production alias `https://genlixs.vercel.app` answers `/api/internal/workers/*` (401 without the token) and
+   `/api/webhooks/kie` without a login; deployment-specific `*.vercel.app` URLs stay protected and must not be used as origins.
 5. **Owner account**: sign up on the live site, confirm the email, then in Supabase → SQL editor run once:
    `select app_private.bootstrap_owner('<owner email>');` — it grants the `owner` role and closes the bootstrap.
    Grant other staff from Admin → Staff.

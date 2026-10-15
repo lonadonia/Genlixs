@@ -8,6 +8,7 @@ import { kickWorker } from "@/lib/jobs/kick";
 import { providerConfigured } from "@/lib/providers";
 import { balanceReadable, readAndRecordBalance } from "@/lib/providers/balance";
 import { supportedAdapters } from "@/lib/providers/kie/adapters";
+import { pipelineConfig } from "@/lib/server/pipeline-config";
 
 /**
  * Admin API (§19.3, §20.2): an explicit allowlist of reads and audited actions. Every RPC checks the caller's
@@ -150,6 +151,8 @@ const GETS: Record<string, Handler> = {
     return { url: data.signedUrl, mime: loc.mime, expiresInSeconds: 600 };
   },
   "provider/summary": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_provider_summary")), configured: balanceReadable() }),
+  // Pipeline health: database view (wake-ups, queues, outcomes, circuit breaker) plus this deployment's configuration.
+  "generation/health": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_generation_health")), config: await pipelineConfig() }),
   staff: ({ db }) => rpc(db, "admin_list_staff"),
   audit: ({ db, q }) => rpc(db, "admin_audit_log", { p_before: cursor(q), p_limit: limit(q, 200) }),
   tickets: ({ db, q }) => rpc(db, "admin_list_tickets", { p_status: opt(q.get("status")) }),

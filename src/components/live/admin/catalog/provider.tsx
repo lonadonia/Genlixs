@@ -10,6 +10,7 @@ import { cn, fmtNum } from "@/lib/format";
 import { Empty, Field, fmtKie, fmtPct, fmtRate, fmtUsd2, inputCls, Notice, when, Wrap } from "./shared";
 import { useAdminMe } from "../live-admin";
 import type { ProviderSummary } from "./types";
+import { PipelineHealth } from "./pipeline-health";
 
 const AUTO_MS = 60_000;
 const STALE_MS = 15 * 60_000;
@@ -24,7 +25,10 @@ export function KieBalancePage() {
       {!me.data ? (
         <div role="status" aria-busy="true" aria-label="Loading KIE balance" className="h-48 animate-pulse-soft rounded-[var(--radius-media)] bg-sheet" />
       ) : caps.includes("provider.read") ? (
-        <ProviderTab canOperate={caps.includes("catalog.operate")} />
+        <>
+          <PipelineHealth />
+          <ProviderTab canOperate={caps.includes("catalog.operate")} />
+        </>
       ) : (
         <Notice>Your role cannot see the KIE balance.</Notice>
       )}
