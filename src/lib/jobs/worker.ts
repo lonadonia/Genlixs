@@ -13,6 +13,7 @@ import { parseCallbackUrl } from "@/lib/providers/kie/webhook";
 import { TransientProviderError, type ClaimContext, type TaskDetail } from "@/lib/providers/types";
 import { FetchRejected, safeDownload } from "@/lib/media/safe-fetch";
 import { imageDimensionsOk, sniff } from "@/lib/media/sniff";
+import { probeMedia } from "@/lib/media/probe";
 
 /**
  * Short bounded workers (guide §13). Each run dequeues a few messages, claims a fenced lease per work item and
@@ -201,13 +202,16 @@ async function handleImport(db: SupabaseClient, c: Claim): Promise<string> {
     const s = sniff(bytes);
     if (!s || !out.mime.includes(s.mime)) return fail(`unexpected file type ${s?.mime ?? "unknown"}`, false);
     if (s.mime.startsWith("image/") && !imageDimensionsOk(s)) return fail("image dimensions out of bounds", false);
+    // Videos keep their picture size, length and frame rate so they can be reused as inputs (edit, motion).
+    const probe = s.mime.startsWith("video/") ? probeMedia(bytes) : null;
     // Deterministic path: a retried import overwrites the same object, never a second copy (§16.1).
     const objectPath = `${job.userId}/${job.id}/${i}/original.${s.ext}`;
     const { error } = await db.storage.from("generation-outputs").upload(objectPath, bytes, { contentType: s.mime, upsert: true });
     if (error) return fail(`storage upload failed: ${error.message}`, true);
     assets.push({
-      bucket: "generation-outputs", path: objectPath, mime: s.mime, bytes: bytes.byteLength, width: s.width ?? null,
-      height: s.height ?? null, durationMs: s.durationMs ?? null, sha256: sha256Hex(bytes),
+      bucket: "generation-outputs", path: objectPath, mime: s.mime, bytes: bytes.byteLength, width: s.width ?? probe?.width ?? null,
+      height: s.height ?? probe?.height ?? null, durationMs: probe?.durationMs ?? s.durationMs ?? null, sha256: sha256Hex(bytes),
+      media: probe ? { fps: probe.fps ?? null, hasAudio: probe.hasAudio, hasVideo: probe.hasVideo, codec: probe.codec ?? null, rotation: probe.rotation ?? 0 } : null,
     });
   }
   const r = await call<{ action: string }>(db, "worker_record_import", { ...lease(c), p_assets: assets });

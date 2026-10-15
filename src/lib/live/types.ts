@@ -37,12 +37,55 @@ export type Wallet = {
 
 export type Notification = { id: string; kind: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string };
 
-export type OptionSpec = { label: string; values: (string | number)[]; default: string | number; labels?: Record<string, string> };
+export type OptionSpec = {
+  label: string;
+  values: (string | number)[];
+  default: string | number;
+  labels?: Record<string, string>;
+  /** Computed by the server from the media (for example billable seconds); never chosen or sent by the client. */
+  derived?: boolean;
+};
+
+export type InputKind = "image" | "video" | "audio" | "job";
+
+/** One typed input slot of a model (start frame, reference images, video to edit, motion video, source job…). */
+export type InputSlotSpec = {
+  kind: InputKind;
+  label: string;
+  min: number;
+  max: number;
+  mime?: string[];
+  maxBytes?: number;
+  minSeconds?: number;
+  maxSeconds?: number;
+  totalMaxSeconds?: number;
+  minSide?: number;
+  maxSide?: number;
+  minPixels?: number;
+  maxPixels?: number;
+  aspectMin?: number;
+  aspectMax?: number;
+  fpsMin?: number;
+  fpsMax?: number;
+  needs?: string[];
+  hides?: string[];
+  group?: string;
+  mention?: string;
+  families?: string[];
+  maxAgeDays?: number;
+  hint?: string;
+};
+
+export type InputMode = { id: string; label?: string; uses: string[]; requires?: string[]; allowed?: Record<string, (string | number)[]>; allowedMessage?: string };
+export type InputRule = { when: Record<string, string | number>; slot: string; maxSeconds?: number; message?: string };
+
+export type Operation = "create" | "edit" | "motion" | "extend";
 
 export type CatalogModel = {
   id: string;
   tool: "image" | "edit" | "video";
   category?: "image" | "video";
+  operation?: Operation | null;
   name: string;
   family?: string | null;
   variant?: string | null;
@@ -51,11 +94,19 @@ export type CatalogModel = {
   state: "enabled" | "experimental" | "maintenance" | "disabled";
   note: string | null;
   options: Record<string, OptionSpec>;
-  prompt: { min: number; max: number };
+  prompt: { min: number; max: number; optional?: boolean };
   references: { min: number; max: number; mime?: string[]; maxBytes?: number };
+  inputs?: Record<string, InputSlotSpec> | null;
+  modes?: InputMode[] | null;
+  rules?: InputRule[] | null;
+  derived?: Record<string, { from: string }> | null;
   output: { kind: "image" | "video"; count: number };
   fixed: Record<string, string> | null;
   priced: boolean;
+  priceRules?: { format?: string; dims?: string[]; units?: Record<string, number> } | null;
+  /** Staff test catalog only. */
+  adapterImplemented?: boolean;
+  costSchedule?: { unit: "output" | "second"; dims: string[]; rates: Record<string, number>; durationOption?: string; secondsFactor?: number } | null;
 };
 
 export type Catalog = { generationPaused: boolean; tools: { id: string; label: string; enabled: boolean }[]; models: CatalogModel[] };
@@ -66,6 +117,8 @@ export type Quote = {
   expiresAt: string;
   availableUnits: string;
   options: Record<string, string | number>;
+  mode?: string | null;
+  inputs?: Record<string, string[]> | null;
 };
 
 export type JobOutput = {
@@ -100,6 +153,20 @@ export type Job = {
   favorite: boolean;
   outputs: JobOutput[];
   events: { event: string; message: string; at: string }[];
+  // Present since the generation-reliability release (older API responses may omit them).
+  stage?: string | null;
+  purpose?: "customer" | "staff_test";
+  operation?: Operation | null;
+  mode?: string | null;
+  inputs?: Record<string, { id: string; kind: InputKind | null; mime: string | null }[]> | null;
+  submittedAt?: string | null;
+  acceptedAt?: string | null;
+  generatedAt?: string | null;
+  lastCheckedAt?: string | null;
+  nextActionAt?: string | null;
+  providerProgress?: { value: number | string; at: string } | null;
+  outputKind?: "image" | "video" | null;
+  timing?: { generateSeconds?: number | null; generateP80Seconds?: number | null; saveSeconds?: number | null; samples?: number; basis?: "history" | "typical" } | null;
 };
 
 export type Product = {
