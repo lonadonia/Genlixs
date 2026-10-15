@@ -26,6 +26,11 @@ export type TaskDetail = {
   notFound?: boolean;
 };
 
+/** One input of a typed slot: a stored asset, or (for extensions) an earlier job with its provider task. */
+export type ClaimInput =
+  | { assetId: string; bucket: string; path: string; mime: string; durationMs: number | null; width: number | null; height: number | null }
+  | { jobId: string; taskId: string | null };
+
 /** Context returned by worker_claim for generation work. */
 export type ClaimContext = {
   job: {
@@ -37,10 +42,14 @@ export type ClaimContext = {
     prompt: string;
     options: Record<string, string | number>;
     units: string;
+    /** Input combination chosen by the quote (for example "frames" or "reference"); null for single-input specs. */
+    mode?: string | null;
   };
   model: { id: string; providerModelId: string; adapter: string; adapterVersion: number; providerAccountId: string };
   output: { kind: "image" | "video"; mime: string[]; count: number; maxBytes: number };
   references: { assetId: string; bucket: string; path: string; mime: string }[];
+  /** Ordered inputs per slot of the capability (empty for specs without slots). */
+  inputs?: Record<string, ClaimInput[]>;
   attempt: { id: string; ordinal: number; state: string; taskId: string | null } | null;
 };
 
@@ -48,6 +57,10 @@ export type SubmitRequest = {
   context: ClaimContext;
   /** Short-lived signed URLs for reference images, generated just before submission (§12.3). */
   referenceUrls: string[];
+  /** Signed URLs per typed input slot, in the customer's order (empty when the spec has no slots). */
+  inputUrls?: Record<string, string[]>;
+  /** Provider task ids of earlier jobs per "job" slot (video extension). */
+  sourceTasks?: Record<string, string[]>;
   callBackUrl: string | null;
 };
 

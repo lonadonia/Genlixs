@@ -1,13 +1,12 @@
 import { ApiError, input, ok, rpc, withUser } from "@/lib/server/http";
 import { adminClient } from "@/lib/supabase/admin";
-import { sha256Hex } from "@/lib/server/crypto";
-import { imageDimensionsOk, sniff } from "@/lib/media/sniff";
+import { verifyUpload } from "@/lib/media/verify-upload";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+export const maxDuration = 120;
 
 /**
- * Verifies the uploaded object from its bytes (magic number, size, dimensions, sha256) before it can be used
- * as a reference (§16.2). The intent is read with the customer's session first, so only the owner can finalize.
+ * Verifies the uploaded object from its bytes before it can be used in a quote (§16.2). The intent is read with the
+ * customer's session first, so only the owner can finalize. A rejected file is deleted and never becomes an asset.
  */
 export const POST = withUser<{ id: string }>(async (_req, { supabase, params, requestId }) => {
   const id = input.uuid(params.id, "Upload id")!;
@@ -24,21 +23,12 @@ export const POST = withUser<{ id: string }>(async (_req, { supabase, params, re
   const { data: blob, error } = await admin.storage.from(intent.bucket).download(intent.object_path);
   if (error || !blob) throw new ApiError("UPLOAD_MISSING", "The file has not finished uploading. Try again.", 409);
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const s = sniff(bytes);
-  let reason: string | null = null;
-  if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) reason = "File size is not allowed.";
-  else if (bytes.byteLength !== Number(intent.expected_bytes)) reason = "The uploaded file does not match the requested upload.";
-  else if (!s || s.mime !== intent.expected_mime) reason = "The file content is not a supported image.";
-  else if (!s.width || !s.height || !imageDimensionsOk(s, 8192) || s.width < 64 || s.height < 64) reason = "Image dimensions are not supported.";
-
-  if (reason) {
+  const v = verifyUpload(intent.expected_mime, Number(intent.expected_bytes), bytes);
+  if (!v.ok) {
     await admin.storage.from(intent.bucket).remove([intent.object_path]);
-    await rpc(admin, "finalize_upload", { p_intent_id: id, p_verified: { ok: false, reason } });
-    throw new ApiError("UPLOAD_REJECTED", reason, 422);
+    await rpc(admin, "finalize_upload", { p_intent_id: id, p_verified: { ok: false, reason: v.reason } });
+    throw new ApiError("UPLOAD_REJECTED", v.reason, 422);
   }
-  const data = await rpc(admin, "finalize_upload", {
-    p_intent_id: id,
-    p_verified: { ok: true, mime: s!.mime, bytes: bytes.byteLength, width: s!.width, height: s!.height, sha256: sha256Hex(bytes) },
-  });
+  const data = await rpc(admin, "finalize_upload", { p_intent_id: id, p_verified: v });
   return ok(data, 200, requestId);
 });

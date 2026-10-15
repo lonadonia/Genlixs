@@ -24,6 +24,7 @@ export const QUEUE_KINDS: readonly QueueKind[] = ["control", "media", "events"];
 
 const BUDGET_MS: Record<QueueKind, number> = { control: 45_000, media: 240_000, events: 45_000 };
 const REFERENCE_URL_TTL_SECONDS = 2 * 60 * 60;
+const MEDIA_URL_TTL_SECONDS = 6 * 60 * 60;
 
 type Claim = {
   status: "claimed";
@@ -67,6 +68,8 @@ async function handleSubmit(db: SupabaseClient, c: Claim): Promise<string> {
   const provider = generationProvider();
   const context = { ...c.context, attempt: { id: begin.attemptId!, ordinal: 0, state: "submitting", taskId: null } };
   let referenceUrls: string[] = [];
+  const inputUrls: Record<string, string[]> = {};
+  const sourceTasks: Record<string, string[]> = {};
   try {
     referenceUrls = await Promise.all(
       context.references.map(async (r) => {
@@ -75,6 +78,20 @@ async function handleSubmit(db: SupabaseClient, c: Claim): Promise<string> {
         return data.signedUrl;
       }),
     );
+    // Typed inputs keep the customer's order per slot. Video and audio links stay valid longer: the provider may
+    // fetch them only when the task starts. Storage itself stays private.
+    for (const [name, items] of Object.entries(context.inputs ?? {})) {
+      for (const it of items) {
+        if ("jobId" in it) {
+          if (it.taskId) (sourceTasks[name] ??= []).push(it.taskId);
+          continue;
+        }
+        const ttl = it.mime.startsWith("image/") ? REFERENCE_URL_TTL_SECONDS : MEDIA_URL_TTL_SECONDS;
+        const { data, error } = await db.storage.from(it.bucket).createSignedUrl(it.path, ttl);
+        if (error || !data) throw new Error("reference url failed");
+        (inputUrls[name] ??= []).push(data.signedUrl);
+      }
+    }
   } catch {
     // Nothing was sent yet: this is a definite non-submission, safe to retry with backoff.
     await call(db, "worker_record_submission", {
@@ -89,7 +106,7 @@ async function handleSubmit(db: SupabaseClient, c: Claim): Promise<string> {
 
   let outcome;
   try {
-    outcome = await provider.submit({ context, referenceUrls, callBackUrl });
+    outcome = await provider.submit({ context, referenceUrls, inputUrls, sourceTasks, callBackUrl });
   } catch (e) {
     // Local failure building the request (before any network send) is terminal for this input.
     outcome = { kind: "rejected_terminal" as const, code: "ADAPTER", message: redact(String(e instanceof Error ? e.message : e)),

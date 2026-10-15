@@ -227,6 +227,19 @@ export const input = {
     if (typeof v !== "string" || !values.includes(v as T)) throw new ApiError("INVALID_INPUT", `${name} is not allowed.`, 422);
     return v as T;
   },
+  /** Typed generation inputs: {"<slot>": [uuid, …]}. Shape only; ownership, types and limits are checked in the database. */
+  slots(v: unknown, name = "Inputs"): Record<string, string[]> {
+    if (v === undefined || v === null) return {};
+    if (typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", `${name} are not valid.`, 422);
+    const entries = Object.entries(v as Record<string, unknown>);
+    if (entries.length > 12) throw new ApiError("INVALID_INPUT", `${name} are not valid.`, 422);
+    return Object.fromEntries(
+      entries.map(([k, list]) => {
+        if (!/^[a-z0-9_]{1,40}$/.test(k) || !Array.isArray(list) || list.length > 12) throw new ApiError("INVALID_INPUT", `${name} are not valid.`, 422);
+        return [k, list.map((x, i) => input.uuid(x, `${name}: ${k} ${i + 1}`)!)];
+      }),
+    );
+  },
   idempotencyKey(req: NextRequest): string {
     const k = req.headers.get("idempotency-key");
     if (!k || !/^[A-Za-z0-9_-]{8,100}$/.test(k)) throw new ApiError("INVALID_IDEMPOTENCY_KEY", "Send an Idempotency-Key header (8–100 safe characters).", 422);

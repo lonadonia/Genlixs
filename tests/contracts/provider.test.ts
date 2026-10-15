@@ -1,6 +1,6 @@
 // Provider contract fixtures (guide §12, §26.2). Shapes follow the KIE Market API documentation checked 14 Oct 2026.
 import { test } from "node:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { classifyCreate, normalizeRecord, parseBalance, resultUrlsOf } from "../../src/lib/providers/kie/client";
 import { buildInput, supportedAdapters } from "../../src/lib/providers/kie/adapters";
@@ -144,10 +144,20 @@ test("adapters: video models map tiers, modes, audio and durations to the docume
   });
 });
 
-test("adapters in code equal the implemented-adapter registry shipped in the migration", () => {
-  const sql = readFileSync(new URL("../../supabase/migrations/20261014065744_catalog_admin_schema.sql", import.meta.url), "utf8");
-  const block = sql.slice(sql.indexOf("insert into app_private.provider_adapters"), sql.indexOf("alter table app_private.provider_adapters"));
-  const registry = [...block.matchAll(/\('([a-z0-9-]+)', 'kie'/g)].map((m) => m[1]).sort();
+test("adapters in code equal the implemented-adapter registry shipped in the migrations", () => {
+  const dir = new URL("../../supabase/migrations/", import.meta.url);
+  const registry = readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .flatMap((f) => {
+      const sql = readFileSync(new URL(f, dir), "utf8");
+      const at = sql.indexOf("insert into app_private.provider_adapters");
+      if (at < 0) return [];
+      // The statement ends at the first semicolon closing a line followed by a blank line (descriptions contain ";").
+      const rest = sql.slice(at);
+      const block = rest.slice(0, rest.search(/;\r?\n\r?\n/) + 1);
+      return [...block.matchAll(/\('([a-z0-9-]+)', 'kie'/g)].map((m) => m[1]);
+    })
+    .sort();
   assert.deepEqual(registry, [...supportedAdapters()].sort());
 });
 
@@ -185,4 +195,93 @@ test("balance: only a numeric code-200 reply is a balance; anything else is an e
   assert.deepEqual(parseBalance(200, body({ code: 200, data: [1] })), { ok: false, error: "MALFORMED_ARRAY" });
   assert.deepEqual(parseBalance(200, body({ code: 200, data: { foo: 7, "user id": "x" } })), { ok: false, error: "MALFORMED_OBJECT:foo,userid" });
   assert.deepEqual(parseBalance(502, "<html>"), { ok: false, error: "HTTP_502" });
+});
+
+// ------------------------------------------------------- typed video inputs (docs.kie.ai, 15 Oct 2026)
+
+const typed = (adapter: string, options: Record<string, string | number>, inputUrls: Record<string, string[]>, extra: Partial<ClaimContext["job"]> = {}, sourceTasks: Record<string, string[]> = {}) =>
+  buildInput({
+    context: { ...ctx(adapter, options), job: { ...ctx(adapter, options).job, tool: "video", ...extra } },
+    referenceUrls: [],
+    inputUrls,
+    sourceTasks,
+    callBackUrl: null,
+  });
+const VEO = { variant: "veo3_fast", aspect_ratio: "16:9", resolution: "720p", duration: 8 };
+
+test("Veo 3.1: text, start/end frames and reference images are distinct, valid payloads", () => {
+  assert.deepEqual(typed("kie-veo-3-1", VEO, {}), {
+    prompt: "A lamp", model: "veo3_fast", aspect_ratio: "16:9", resolution: "720p", duration: 8, generation_type: "TEXT_2_VIDEO",
+  });
+  const frames = typed("kie-veo-3-1", VEO, { first_frame: ["https://s/first.png"], last_frame: ["https://s/last.png"] });
+  assert.equal(frames.generation_type, "FIRST_AND_LAST_FRAMES_2_VIDEO");
+  assert.deepEqual(frames.image_urls, ["https://s/first.png", "https://s/last.png"]);
+  const start = typed("kie-veo-3-1", VEO, { first_frame: ["https://s/first.png"] });
+  assert.deepEqual(start.image_urls, ["https://s/first.png"]);
+  const refs = typed("kie-veo-3-1", VEO, { reference_images: ["https://s/a.png", "https://s/b.png"] });
+  assert.equal(refs.generation_type, "REFERENCE_2_VIDEO");
+  assert.deepEqual(refs.image_urls, ["https://s/a.png", "https://s/b.png"]);
+  // Mutually exclusive or incomplete combinations never reach the provider.
+  assert.throws(() => typed("kie-veo-3-1", VEO, { first_frame: ["https://s/f.png"], reference_images: ["https://s/a.png"] }));
+  assert.throws(() => typed("kie-veo-3-1", VEO, { last_frame: ["https://s/l.png"] }));
+  assert.throws(() => typed("kie-veo-3-1", VEO, { reference_images: ["1", "2", "3", "4"] }));
+});
+
+test("Kling 3.0: frames replace the aspect ratio; elements are named for their @mentions", () => {
+  const o = { resolution: "1080p", audio: "off", duration: 10, aspect_ratio: "9:16" };
+  assert.deepEqual(typed("kie-kling-3-v2", o, {}), {
+    prompt: "A lamp", mode: "pro", sound: false, duration: "10", aspect_ratio: "9:16", multi_shots: false,
+  });
+  const withFrame = typed("kie-kling-3-v2", o, { first_frame: ["https://s/f.png"], last_frame: ["https://s/l.png"] });
+  assert.deepEqual(withFrame.image_urls, ["https://s/f.png", "https://s/l.png"]);
+  assert.equal("aspect_ratio" in withFrame, false);
+  const el = typed("kie-kling-3-v2", o, { element_2: ["https://s/a.png", "https://s/b.png"] });
+  assert.deepEqual(el.kling_elements, [{ name: "element2", description: "element 2", element_input_urls: ["https://s/a.png", "https://s/b.png"] }]);
+  assert.throws(() => typed("kie-kling-3-v2", o, { element_1: ["https://s/only-one.png"] }), /2 to 4/);
+});
+
+test("Seedance 2.x: first/last frame or references (images + audio), never both", () => {
+  const o = { resolution: "720p", audio: "on", duration: 5, aspect_ratio: "adaptive" };
+  const frames = typed("kie-seedance-2-v2", o, { first_frame: ["https://s/f.png"], last_frame: ["https://s/l.png"] });
+  assert.equal(frames.first_frame_url, "https://s/f.png");
+  assert.equal(frames.last_frame_url, "https://s/l.png");
+  assert.equal("reference_image_urls" in frames, false);
+  const refs = typed("kie-seedance-2-v2", o, { reference_images: ["https://s/a.png"], reference_audio: ["https://s/a.mp3"] });
+  assert.deepEqual(refs.reference_image_urls, ["https://s/a.png"]);
+  assert.deepEqual(refs.reference_audio_urls, ["https://s/a.mp3"]);
+  assert.equal("first_frame_url" in refs, false);
+  assert.equal(refs.aspect_ratio, "adaptive");
+  assert.throws(() => typed("kie-seedance-2-v2", o, { first_frame: ["https://s/f.png"], reference_images: ["https://s/a.png"] }));
+});
+
+test("Seedance 2.5 edit: the source clip is the reference video, length follows it, no invented fields", () => {
+  const edit = typed("kie-seedance-edit", { resolution: "480p", audio: "off", seconds: 5 }, {
+    source_video: ["https://s/src.mp4"], reference_images: ["https://s/style.png"],
+  });
+  assert.deepEqual(edit, {
+    prompt: "A lamp", reference_video_urls: ["https://s/src.mp4"], reference_image_urls: ["https://s/style.png"],
+    resolution: "480p", generate_audio: false, duration: -1, aspect_ratio: "adaptive", nsfw_checker: true,
+  });
+  assert.equal("seconds" in edit, false, "the derived billing option is never sent");
+  assert.throws(() => typed("kie-seedance-edit", { resolution: "480p", audio: "on" }, {}), /source video/);
+  assert.throws(() => typed("kie-seedance-edit", { resolution: "1080p", audio: "on" }, { source_video: ["https://s/src.mp4"] }), /resolution/);
+});
+
+test("Kling 3.0 Motion Control: one image, one video, orientation (not a background flag)", () => {
+  const m = typed("kie-kling-motion", { mode: "720p", orientation: "image", seconds: 7 }, {
+    character_image: ["https://s/me.png"], motion_video: ["https://s/dance.mp4"],
+  }, { prompt: "" });
+  assert.deepEqual(m, { input_urls: ["https://s/me.png"], video_urls: ["https://s/dance.mp4"], mode: "720p", character_orientation: "image" });
+  assert.equal(JSON.stringify(m).includes("background"), false);
+  const withPrompt = typed("kie-kling-motion", { mode: "1080p", orientation: "video" }, { character_image: ["https://s/me.png"], motion_video: ["https://s/d.mp4"] });
+  assert.equal(withPrompt.prompt, "A lamp");
+  assert.throws(() => typed("kie-kling-motion", { mode: "720p", orientation: "video" }, { character_image: ["https://s/me.png"] }));
+  assert.throws(() => typed("kie-kling-motion", { mode: "4K", orientation: "video" }, { character_image: ["https://s/me.png"], motion_video: ["https://s/d.mp4"] }));
+});
+
+test("Veo 3.1 Extend: continues the earlier provider task with the chosen tier", () => {
+  assert.deepEqual(typed("kie-veo-extend", { tier: "lite" }, {}, {}, { source_job: ["veo_task_abc123"] }), {
+    task_id: "veo_task_abc123", prompt: "A lamp", model: "lite",
+  });
+  assert.throws(() => typed("kie-veo-extend", { tier: "fast" }, {}), /source task/);
 });

@@ -151,6 +151,8 @@ const GETS: Record<string, Handler> = {
     return { url: data.signedUrl, mime: loc.mime, expiresInSeconds: 600 };
   },
   "provider/summary": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_provider_summary")), configured: balanceReadable() }),
+  // Every model whatever its state, for private tests from the studio composer (catalog.test only).
+  "catalog/test-catalog": ({ db }) => rpc(db, "staff_test_catalog"),
   // Pipeline health: database view (wake-ups, queues, outcomes, circuit breaker) plus this deployment's configuration.
   "generation/health": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_generation_health")), config: await pipelineConfig() }),
   staff: ({ db }) => rpc(db, "admin_list_staff"),
@@ -329,15 +331,26 @@ const POSTS: Record<string, Handler> = {
   "catalog/models/:id/tests": async ({ req, db, rest }) => {
     if (!providerConfigured()) throw credentialsMissing();
     const b = await readJson(req);
-    const refs = Array.isArray(b.referenceAssetIds) ? b.referenceAssetIds.slice(0, 4).map((x) => input.uuid(x, "Reference")) : [];
-    const result = await rpc(db, "admin_create_model_test", {
-      p_model_id: modelId(rest[2]),
-      p_prompt: input.str(b.prompt, "Prompt", { min: 1, max: 5000 }),
-      p_options: b.options && typeof b.options === "object" && !Array.isArray(b.options) ? b.options : {},
-      p_reference_asset_ids: refs,
-      p_idempotency_key: input.idempotencyKey(req),
-      p_confirm_spend: input.bool(b.confirmSpend, "Spend confirmation", true) ?? false,
-    });
+    const options = b.options && typeof b.options === "object" && !Array.isArray(b.options) ? b.options : {};
+    // Typed inputs (frames, references, source video, motion video, source job) use the v2 test; the rest is unchanged.
+    const result =
+      b.inputs !== undefined && b.inputs !== null
+        ? await rpc(db, "admin_create_model_test_v2", {
+            p_model_id: modelId(rest[2]),
+            p_prompt: typeof b.prompt === "string" ? b.prompt.slice(0, 5000) : "",
+            p_options: options,
+            p_inputs: input.slots(b.inputs),
+            p_idempotency_key: input.idempotencyKey(req),
+            p_confirm_spend: input.bool(b.confirmSpend, "Spend confirmation", true) ?? false,
+          })
+        : await rpc(db, "admin_create_model_test", {
+            p_model_id: modelId(rest[2]),
+            p_prompt: input.str(b.prompt, "Prompt", { min: 1, max: 5000 }),
+            p_options: options,
+            p_reference_asset_ids: Array.isArray(b.referenceAssetIds) ? b.referenceAssetIds.slice(0, 4).map((x) => input.uuid(x, "Reference")) : [],
+            p_idempotency_key: input.idempotencyKey(req),
+            p_confirm_spend: input.bool(b.confirmSpend, "Spend confirmation", true) ?? false,
+          });
     kickWorker("control", 20_000);
     return result;
   },

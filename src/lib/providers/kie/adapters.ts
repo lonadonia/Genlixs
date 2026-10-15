@@ -128,7 +128,125 @@ const ADAPTERS: Record<string, (req: SubmitRequest) => Input> = {
       nsfw_checker: true,
     };
   },
+
+  // ---- typed inputs (checked 15 Oct 2026). The quote already validated slots and combinations; these builders
+  // still refuse an impossible combination so a malformed job can never reach the provider.
+
+  // Veo 3.1: TEXT_2_VIDEO, FIRST_AND_LAST_FRAMES_2_VIDEO (1 image = start, 2 = start + end) or REFERENCE_2_VIDEO (1–3).
+  "kie-veo-3-1": (req) => {
+    const o = req.context.job.options;
+    const first = slot(req, "first_frame");
+    const last = slot(req, "last_frame");
+    const refsIn = slot(req, "reference_images");
+    if (last.length && !first.length) throw new Error("end frame without start frame");
+    if (refsIn.length && first.length) throw new Error("frames and reference images cannot be combined");
+    const base = {
+      prompt: req.context.job.prompt,
+      ...(o.variant ? { model: String(o.variant) } : {}),
+      ...pick(o, ["aspect_ratio", "resolution"]),
+      ...(o.duration !== undefined ? { duration: Number(o.duration) } : {}),
+    };
+    if (refsIn.length) {
+      if (refsIn.length > 3) throw new Error("too many reference images");
+      return { ...base, generation_type: "REFERENCE_2_VIDEO", image_urls: refsIn };
+    }
+    if (first.length) return { ...base, generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: [...first.slice(0, 1), ...last.slice(0, 1)] };
+    return { ...base, generation_type: "TEXT_2_VIDEO" };
+  },
+  // Kling 3.0: image_urls = [start] or [start, end]; up to three elements of 2–4 images, named element1..3 so the
+  // prompt's "@element1" refers to them. With a start frame the clip takes the frame's shape (aspect omitted).
+  "kie-kling-3-v2": (req) => {
+    const o = req.context.job.options;
+    const first = slot(req, "first_frame");
+    const last = slot(req, "last_frame");
+    if (last.length && !first.length) throw new Error("end frame without start frame");
+    const elements = [1, 2, 3]
+      .map((n) => ({ n, urls: slot(req, `element_${n}`) }))
+      .filter((e) => e.urls.length > 0)
+      .map((e) => {
+        if (e.urls.length < 2 || e.urls.length > 4) throw new Error("an element needs 2 to 4 images");
+        return { name: `element${e.n}`, description: `element ${e.n}`, element_input_urls: e.urls };
+      });
+    return {
+      prompt: req.context.job.prompt,
+      mode: mapped(o, "resolution", { "720p": "std", "1080p": "pro", "4K": "4K" }),
+      sound: onOff(o, "audio"),
+      duration: mapped(o, "duration", { "5": "5", "10": "10", "15": "15" }),
+      ...(first.length ? { image_urls: [...first.slice(0, 1), ...last.slice(0, 1)] } : { aspect_ratio: String(o.aspect_ratio) }),
+      ...(elements.length ? { kling_elements: elements } : {}),
+      multi_shots: false,
+    };
+  },
+  // Seedance 2.x: first frame (+ last frame) OR multimodal references (images, audio) — mutually exclusive.
+  "kie-seedance-2-v2": (req) => {
+    const o = req.context.job.options;
+    const first = slot(req, "first_frame");
+    const last = slot(req, "last_frame");
+    const images = slot(req, "reference_images");
+    const audio = slot(req, "reference_audio");
+    if (last.length && !first.length) throw new Error("last frame without first frame");
+    if (first.length && (images.length || audio.length)) throw new Error("frames and references cannot be combined");
+    return {
+      prompt: req.context.job.prompt,
+      resolution: String(o.resolution),
+      generate_audio: onOff(o, "audio"),
+      duration: Number(o.duration),
+      aspect_ratio: String(o.aspect_ratio),
+      ...(first.length ? { first_frame_url: first[0], ...(last.length ? { last_frame_url: last[0] } : {}) } : {}),
+      ...(images.length ? { reference_image_urls: images } : {}),
+      ...(audio.length ? { reference_audio_urls: audio } : {}),
+      nsfw_checker: true,
+    };
+  },
+  // Seedance 2.5 video edit: the source clip as the reference video plus the written change; duration -1 keeps the
+  // source length and the aspect follows the source. Optional reference images/audio guide the change.
+  "kie-seedance-edit": (req) => {
+    const o = req.context.job.options;
+    const source = slot(req, "source_video");
+    if (source.length !== 1) throw new Error("source video missing");
+    const images = slot(req, "reference_images");
+    const audio = slot(req, "reference_audio");
+    return {
+      prompt: req.context.job.prompt,
+      reference_video_urls: source,
+      ...(images.length ? { reference_image_urls: images } : {}),
+      ...(audio.length ? { reference_audio_urls: audio } : {}),
+      resolution: mapped(o, "resolution", { "480p": "480p", "720p": "720p" }),
+      generate_audio: onOff(o, "audio"),
+      duration: -1,
+      aspect_ratio: "adaptive",
+      nsfw_checker: true,
+    };
+  },
+  // Kling 3.0 Motion Control: one character image, one motion video; orientation is "video" (follow the video) or
+  // "image" (keep the image's orientation). There is no background-source parameter.
+  "kie-kling-motion": (req) => {
+    const o = req.context.job.options;
+    const character = slot(req, "character_image");
+    const motion = slot(req, "motion_video");
+    if (character.length !== 1 || motion.length !== 1) throw new Error("character image and motion video are required");
+    const prompt = req.context.job.prompt.trim();
+    return {
+      ...(prompt ? { prompt } : {}),
+      input_urls: character,
+      video_urls: motion,
+      mode: mapped(o, "mode", { "720p": "720p", "1080p": "1080p" }),
+      character_orientation: mapped(o, "orientation", { video: "video", image: "image" }),
+    };
+  },
+  // Veo 3.1 Extend (model veo/extend): the earlier Veo task id, the prompt and the extension tier.
+  "kie-veo-extend": (req) => {
+    const o = req.context.job.options;
+    const task = req.sourceTasks?.source_job?.[0];
+    if (!task) throw new Error("source task missing");
+    return { task_id: task, prompt: req.context.job.prompt, model: mapped(o, "tier", { fast: "fast", lite: "lite", quality: "quality" }) };
+  },
 };
+
+/** Signed URLs of one typed input slot (empty when the slot is unused). */
+function slot(req: SubmitRequest, name: string): string[] {
+  return req.inputUrls?.[name] ?? [];
+}
 
 export function buildInput(req: SubmitRequest): Input {
   const build = ADAPTERS[req.context.model.adapter];

@@ -32,3 +32,49 @@ test("renamed or unknown content is rejected; absurd dimensions fail the bound",
   assert.equal(imageDimensionsOk({ mime: "image/png", ext: "png", width: 50_000, height: 50_000 }), false);
   assert.equal(imageDimensionsOk({ mime: "image/png", ext: "png", width: 2048, height: 2048 }), true);
 });
+
+// ------------------------------------------------- video/audio references (15 Oct 2026)
+import { probeMedia } from "../../src/lib/media/probe";
+import { verifyUpload } from "../../src/lib/media/verify-upload";
+
+const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`../fixtures/media/${name}`, import.meta.url)));
+
+test("video references: length, picture size, frame rate and tracks are read from the container", () => {
+  const mov = probeMedia(fixture("clip-3s-25fps.mov"));
+  assert.equal(mov?.mime, "video/quicktime");
+  assert.deepEqual([mov?.durationMs, mov?.width, mov?.height, mov?.fps, mov?.hasAudio], [3000, 160, 90, 25, true]);
+  // The movie header after the media data (no "fast start") is still found.
+  const tail = probeMedia(fixture("clip-2s-30fps-moov-end.mp4"));
+  assert.deepEqual([tail?.mime, tail?.durationMs, tail?.fps, tail?.hasAudio], ["video/mp4", 2000, 30, false]);
+  // A phone clip stored sideways reports the size people see.
+  const rotated = probeMedia(fixture("clip-2s-rotated.mp4"));
+  assert.deepEqual([rotated?.width, rotated?.height], [90, 160]);
+  const real = probeMedia(new Uint8Array(readFileSync(new URL(first(".mp4"), media))));
+  assert.deepEqual([real?.width, real?.height, real?.fps], [540, 960, 24]);
+});
+
+test("audio references: MP3, WAV and M4A lengths", () => {
+  const mp3 = probeMedia(fixture("tone-2s.mp3"));
+  assert.equal(mp3?.mime, "audio/mpeg");
+  assert.ok(Math.abs((mp3?.durationMs ?? 0) - 2000) < 100, `mp3 ${mp3?.durationMs}`);
+  assert.deepEqual([probeMedia(fixture("tone-2s.wav"))?.mime, probeMedia(fixture("tone-2s.wav"))?.durationMs], ["audio/wav", 2000]);
+  const m4a = probeMedia(fixture("tone-2s.m4a"));
+  assert.deepEqual([m4a?.mime, m4a?.kind, m4a?.durationMs], ["audio/mp4", "audio", 2000]);
+});
+
+test("upload verification: declared type, size and content must agree", () => {
+  const mov = fixture("clip-3s-25fps.mov");
+  const ok = verifyUpload("video/quicktime", mov.byteLength, mov);
+  assert.ok(ok.ok && ok.durationMs === 3000 && ok.media?.fps === 25);
+  // A MOV announced as MP4, a WAV announced as MP3, a size mismatch and an image renamed to .mp4 are refused.
+  assert.equal(verifyUpload("video/mp4", mov.byteLength, mov).ok, false);
+  const wav = fixture("tone-2s.wav");
+  assert.equal(verifyUpload("audio/mpeg", wav.byteLength, wav).ok, false);
+  assert.equal(verifyUpload("video/quicktime", mov.byteLength + 1, mov).ok, false);
+  const png = new Uint8Array(readFileSync(new URL(first(".webp"), media)));
+  assert.equal(verifyUpload("video/mp4", png.byteLength, png).ok, false);
+  // Audio-only MP4 is not a video.
+  const m4a = fixture("tone-2s.m4a");
+  assert.equal(verifyUpload("video/mp4", m4a.byteLength, m4a).ok, false);
+  assert.equal(verifyUpload("audio/mp4", m4a.byteLength, m4a).ok, true);
+});
