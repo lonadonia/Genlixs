@@ -24,6 +24,12 @@ Test 07 (`07_image_edit_references_tests.sql`) checks migration `20261018013256_
 migration it stops at `R1 limit …` by design. All tests can also run on an isolated local database: see
 `supabase/local-test/README.md`.
 
+Test 09 (`09_catalog_supply_tests.sql`) checks `20261018194110_catalog_supply` (the read-only supplier view behind Admin ›
+Models, Pricing and Supplier balances): access, one entry per model with the router's own choice marked, costs exactly as
+the router computes them (USD, illustrative CNY, card fee, incompatible settings), the first missing step per offer, each
+product outside the catalog once, and no key material (`PASS: 6 catalog supply test groups`). It changes no shared rows,
+so it also runs on production inside its rolled-back transaction (done on 18 Oct 2026).
+
 Test 08 (`08_multi_provider_routing_tests.sql`) checks migrations `20261018181012`…`20261018182418` (multi-provider
 routing, parts 01–12, applied 18 Oct 2026; run locally — on production it would lock every model and provider row): the 14
 acceptance items of the multi-provider brief (`PASS: 14 multi-provider test groups`). It creates test models `tst-*` and

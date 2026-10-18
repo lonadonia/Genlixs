@@ -1,24 +1,33 @@
-# Models, pricing and KIE balance — owner guide and reference
+# Models, pricing and supplier balances — owner guide and reference
 
-The admin console has three sections under **Catalog**:
+Customers see every model **once**, whichever supplier makes it: each request goes to the cheapest verified supplier that
+supports its exact settings (see `docs/PROVIDERS_AND_ROUTING.md`). The admin console has four sections under **Catalog**:
 
-- **Models** (`/admin/catalog`): one On/Off switch per model. Maintenance, the experimental label, private tests, the KIE
-  cost source and technical details are behind each model's **Details** button.
-- **Pricing & packages** (`/admin/pricing`): the two reference values, the packages customers buy and the credit charge of
-  each model.
-- **KIE balance** (`/admin/kie`): credits left on the KIE account, how fast they are used, and the connection state.
+- **Models** (`/admin/catalog`): one row per model with its On/Off switch, the supplier serving it now, the cost, price and
+  margin of its default request, and the cheapest other supplier with the step still missing to use it (key, paid test,
+  routing switch or integration). Click a model for every supplier's quote; maintenance, the experimental label, private
+  tests and the KIE cost source are under **Technical details and tests**. The **Available at suppliers** tab lists the image
+  and video products the suppliers sell that are not Genlixs models yet — each product once, its cheapest supplier first.
+- **Pricing & packages** (`/admin/pricing`): summary cards (credit value, priced models, margin range, settings below cost)
+  and three tabs: **Model prices** (customer price, what customers pay, supplier cost with the supplier serving the model,
+  margin), **Packages** and **Reference values** (with the supplier currency rates the router uses).
+- **Supplier balances** (`/admin/balances`; the old `/admin/kie` address redirects here): each supplier's balance with its
+  source and age, spending today and this month, how long KIE's balance lasts at the last 7 days' pace, a warning naming the
+  models whose most expensive settings cost more than KIE's balance, the generation pipeline and KIE activity.
+- **Providers & routing** (`/admin/providers`): keys, connection tests, offers, prices and the routing review.
 
 Operational settings are on **Overview** (Service settings); partner commission terms are on **Partners**. Every change is
 written to the audit log with an automatic description; a typed reason is asked only for operational settings and partner terms.
 
-Three units appear on these pages and are always labelled; they are never the same thing:
-- **KIE credits**: what KIE charges Genlixs per task.
+These units appear on these pages and are always labelled; they are never the same thing:
+- **KIE credits** (and each supplier's own unit: PoYo and APIMart credits, CNY, Duomi points): what a supplier charges.
 - **Genlixs credits**: what customers spend from their balance. One wallet, one unit, whatever package they came from.
-- **USD**: reference values used to compare the two.
+- **USD**: reference values used to compare them. Supplier units are converted with the rates in Reference values;
+  CNY and Duomi points use an illustrative rate until the rate actually paid is entered.
 
 ## Quick guide (three tasks)
 
-**Switch a model on or off.** Models → find the model (Images/Videos filter or search) → press its switch. "Saving…"
+**Switch a model on or off.** Models → find the model (type filter or search) → press its switch. "Saving…"
 appears, then On or Off. If something is missing the switch stays as it was and one sentence says what to do, for example
 "Set a price first" with a link to the price. Off hides the model; new price checks and submissions are refused (also price
 checks made earlier); jobs already running finish. A paid test is not needed; the model stays "Not tested yet" until one runs.
@@ -43,13 +52,17 @@ once use **Apply a markup to several models** → Preview → untick any setting
 - The switch checks, on the server: the integration exists in this release, the option schema, the server KIE key, a known
   KIE cost and a saved price. A private test is optional and never blocks switching on. The switch maps to the stored
   states without contradictions: On = enabled (or experimental), Off = disabled; "Paused for maintenance" (visible, not
-  usable, with a note) and "On, labelled experimental" are set under **Details → Status**.
+  usable, with a note) and "On, labelled experimental" are set under **Technical details and tests → Status**.
 - Switching on records why the model is available: a validated test, manual evidence, or the documented KIE cost
   ("not tested yet"). Untested models are never shown as tested.
 - Customers see a change within a few seconds (the public catalog is cached for 5 s).
+- **Served by** is the router's own choice for the model's default request; **Cheaper supplier** is the lowest quote for the
+  same request from a supplier that cannot serve it yet, with the saving and the next step. Quotes use each supplier's
+  published price with its funding terms (for example Cuddler's card fee); conflicting or unverified prices are never
+  compared. Nothing on this page changes routing: suppliers are switched on in Providers & routing after a paid test.
 
 ### Private test (optional, spends KIE credits)
-Models → **Details → Private test**. Write a prompt and choose the settings; the expected KIE cost is shown before you
+Models → a model → **Technical details and tests → Private test**. Write a prompt and choose the settings; the expected KIE cost is shown before you
 confirm "I understand this spends credits from the owner's KIE balance". A repeated click returns the same job; one test per
 model runs at a time; no customer wallet, order or commission is involved. Only a delivered, validated file marks this entry
 "Tested".
@@ -83,15 +96,19 @@ model runs at a time; no customer wallet, order or commission is involved. Only 
   changed since the preview, the save is refused and the preview refreshed.
 - **Price history** in the editor lists every version; **Restore** saves an earlier one again as a new version.
 
-### KIE balance
-The balance is read on the server with the KIE key (never sent to the browser), at most once per 30 s across all staff, and
-every minute while the page is open. Status: Live, Stale (older than 15 minutes), Refresh failed (the error and the last real
-value — never a zero) or Not configured. The USD estimate uses your KIE credit cost. "KIE credits used" is what KIE reported per
-finished task. Jobs, spend by model, reliability, recent readings and the low-balance warning are under **More details**.
+### Supplier balances
+Each supplier card shows the balance in the supplier's own unit with an approximate USD value, where it came from (provider
+API or a dated manual entry) and its age; a supplier without a key shows "No key saved", never $0. KIE's balance is read on
+the server with the KIE key (never sent to the browser), at most once per 30 s across all staff, and every minute while the
+page is open (**Read now** reads it at once); **Refresh balances** reads every supplier that has a key. The router refuses a
+job before any charge when a balance read less than an hour ago (minus jobs in flight) cannot cover it, so the page warns
+when the most expensive settings of KIE-served models cost more than KIE's balance. "KIE balance lasts" divides the balance
+by the last 7 days' KIE spending. The **KIE activity** section has credits used, jobs now, spend by model, reliability, recent
+readings and the low-balance warning.
 
 ### Update a KIE cost
-KIE has no documented price API, so costs are never synchronised automatically. When kie.ai/pricing changes: Models →
-**Details → KIE cost** → new rates, source link, date checked → **Record new cost version**. Prices do not change; review
+KIE has no documented price API, so costs are never synchronised automatically. When kie.ai/pricing changes: Models → the
+model → **Technical details and tests → KIE cost** → new rates, source link, date checked → **Record new cost version**. Prices do not change; review
 them in Pricing & packages. Costs older than 30 days are marked stale.
 
 ## 2. Credit pricing (how numbers are computed)

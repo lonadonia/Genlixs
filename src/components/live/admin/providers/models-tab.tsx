@@ -16,11 +16,14 @@ import type { CostUnit, Offer, ReviewProposal, RoutePreview, RoutingModel, Routi
 
 type Tool = "image" | "edit" | "video";
 
-/** Models: one row per public model with its active route, cheapest eligible offer and saving against KIE. */
-export function ModelsTab({ canManage, canTest, units }: { canManage: boolean; canTest: boolean; units: CostUnit[] }) {
+/**
+ * Models: one row per public model with its active route, cheapest eligible offer and saving against KIE. `focusModel`
+ * opens that model's comparison directly (links from Admin › Models).
+ */
+export function ModelsTab({ canManage, canTest, units, focusModel }: { canManage: boolean; canTest: boolean; units: CostUnit[]; focusModel?: string | null }) {
   const data = useApi<RoutingModels>("/api/admin/providers/models");
   const [tool, setTool] = useState<Tool>("image");
-  const [compare, setCompare] = useState<RoutingModel | null>(null);
+  const [compareId, setCompareId] = useState<string | null>(focusModel ?? null);
   const [offer, setOffer] = useState<Offer | null>(null);
   const [review, setReview] = useState(false);
   const [section, setSection] = useState<"models" | "inventory">("models");
@@ -34,7 +37,7 @@ export function ModelsTab({ canManage, canTest, units }: { canManage: boolean; c
   }
   if (!data.data) return <div role="status" aria-busy="true" aria-label="Loading models" className="h-48 animate-pulse-soft rounded-[var(--radius-media)] bg-sheet" />;
   const models = data.data.models.filter((m) => m.tool === tool);
-  const model = compare ? data.data.models.find((m) => m.id === compare.id) ?? compare : null;
+  const model = compareId ? (data.data.models.find((m) => m.id === compareId) ?? null) : null;
 
   return (
     <div className="space-y-4">
@@ -132,7 +135,7 @@ export function ModelsTab({ canManage, canTest, units }: { canManage: boolean; c
                           </ul>
                         </td>
                         <td className="px-3 py-3 text-right align-top">
-                          <Button size="sm" variant="secondary-light" onClick={() => setCompare(m)}>
+                          <Button size="sm" variant="secondary-light" onClick={() => setCompareId(m.id)}>
                             Compare
                           </Button>
                         </td>
@@ -151,7 +154,7 @@ export function ModelsTab({ canManage, canTest, units }: { canManage: boolean; c
         <Inventory items={data.data.inventory} onOpen={setOffer} />
       )}
 
-      {model ? <CompareDrawer m={model} onClose={() => setCompare(null)} onOffer={setOffer} /> : null}
+      {model ? <CompareDrawer m={model} onClose={() => setCompareId(null)} onOffer={setOffer} /> : null}
       {offer ? (
         <OfferDrawer
           offerId={offer.id}

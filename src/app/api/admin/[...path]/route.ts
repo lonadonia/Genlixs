@@ -189,6 +189,8 @@ const GETS: Record<string, Handler> = {
     runtime: runtime(),
   }),
   "catalog/batches": ({ db, q }) => rpc(db, "admin_pricing_batches", { p_limit: limit(q, 100) }),
+  // Which supplier serves each model now and every supplier's cost for the same default request (provider.read).
+  "catalog/supply": ({ db }) => rpc(db, "admin_catalog_supply"),
   settings: ({ db }) => rpc(db, "admin_settings"),
   "catalog/tests/outputs/:id": async ({ db, rest }) => {
     // Staff-only signed link to a private test output (the RPC checks the capability and the asset's purpose).

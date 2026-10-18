@@ -4,6 +4,26 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 0000. Catalog pages rebuilt for multi-supplier routing (18 Oct 2026)
+
+Admin › Models, Pricing & packages and Supplier balances (formerly KIE balance) rebuilt around "every model once, served by
+the cheapest verified supplier". New read-only function `admin_catalog_supply` (migration `20261018194110_catalog_supply`).
+Browser checks ran on the local app with a mocked staff session whose admin reads were answered from production
+snapshots taken read-only; **no write reached Supabase, no supplier was called, no routing or price changed**.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `npm run build` | `VERIFIED_PASS` (`/admin/balances` built; `/admin/kie` is a 307 redirect from `next.config.ts`) |
+| `npm run test:contracts` | `VERIFIED_PASS` 81/81 — new `catalog-supply.test.ts` (6): cheaper option = cheapest usable, compatible quote below the current cost; quote order; one line per product with settings-dependent winners; unit labels; savings never shown as 0 %; supplier notes cleaned |
+| SQL, isolated local PostgreSQL 17 | `VERIFIED_PASS` — all migrations, the new function, tests 01–09 (test 09: 6 groups) |
+| Production — before applying | `VERIFIED_PASS` — function created and test 09 run inside one rolled-back batch: `PASS: 6`; nothing left behind |
+| Production — migration | `VERIFIED_PASS` — `20261018194110_catalog_supply` stored text byte-identical to the file (md5 `7c254bdc…`); `anon` cannot execute it; test 09 against the applied function `PASS: 6` (rolled back, no test user left) |
+| Production data shown | 21 models each once, all served by KIE; 10 have a cheaper quote for their default request (up to −83 %, NezhaGate for GPT Image 2.5 Flare/Sunburst), none serving yet (keys missing); 87 supplier offers outside the catalog = 50 products, 33 with a usable price; KIE 626.03 credits ≈ $3.13 with 4 models whose most expensive settings cost more (Kling 3.0, Seedance 2.5, Seedance 2.5 Edit, Kling 3.0 Motion Control); ≈ 12 days at the last 7 days' pace |
+| Browser checks (`scratchpad flows`, 37) | `VERIFIED_PASS` on the dev server and on `next start` — one row per model, cheaper-supplier filter, model sheet with every quote, serving supplier and illustrative-rate flag, deep link to Providers › Models, 50 products listed once (33 priced by default), pricing KPIs and tabs kept in the address, supplier currencies, `/admin/kie` → `/admin/balances`, six supplier cards, unknown never $0, runway, navigation label, support role without supplier data, no write calls, no page errors, no horizontal overflow at 390 / 1024 / 1280 px |
+| `qa-scripts/v34/catalog-pages.mjs` (19) | `VERIFIED_PASS` against `next start` |
+| Accessibility (axe-core, WCAG 2.1 A/AA) | `VERIFIED_PASS` — 0 violations on 7 states (models, model sheet, available products, three pricing tabs, supplier balances) |
+| Adding the 50 products as customer models | `NOT_TESTED` — needs an integration per product, the supplier's key, a paid test and a price |
+
 ## 000. Multi-provider routing, supplier keys and cost ledger (18 Oct 2026, applied to production)
 
 Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` (one tested migration split into 12

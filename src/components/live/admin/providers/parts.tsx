@@ -16,7 +16,7 @@ const num = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 export const usd = (n: number | null | undefined, unknown = "Unknown") => (n === null || n === undefined ? unknown : usdFine.format(n));
 export const usdShort = (n: number | null | undefined, unknown = "Unknown") => (n === null || n === undefined ? unknown : usd2.format(n));
 const usdSmall = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 4 });
-/** Spending: cents for larger amounts, up to four decimals below one dollar (a /usr/bin/bash.005 job is never shown as /usr/bin/bash.01). */
+/** Spending: cents for larger amounts, up to four decimals below one dollar (a $0.005 job is never shown as $0.01). */
 export const money = (n: number | null | undefined, unknown = "Unknown") =>
   n === null || n === undefined ? unknown : Math.abs(n) < 1 ? usdSmall.format(n) : usd2.format(n);
 

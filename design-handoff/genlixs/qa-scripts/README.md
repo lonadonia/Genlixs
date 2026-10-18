@@ -27,7 +27,16 @@ WORKER_TOKEN=<local INTERNAL_WORKER_TOKEN> node live-api-smoke.mjs        # 36 A
 QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node live-flows.mjs   # 30 browser checks
 ```
 
-Simplified admin (Models, Pricing & packages, KIE balance; replaces the v3.1 catalog-workspace scripts):
+Catalog pages after the multi-supplier rebuild (Models with supplier quotes and products available at suppliers, Pricing &
+packages tabs, Supplier balances — the old `/admin/kie` redirects there). Mocked staff session; every admin read comes from
+saved API responses (see the header of the script for the six files), every write is blocked:
+
+```
+FIXTURES=<dir> PLAYWRIGHT_PATH=… CHROME_PATH=… node v34/catalog-pages.mjs   # 19 checks incl. 390/1024/1440 px overflow
+```
+
+Simplified admin of v3.2 (Models, Pricing & packages, KIE balance; replaces the v3.1 catalog-workspace scripts). Its page
+checks describe the v3.2 screens (18 models, the KIE balance page); use `v34/catalog-pages.mjs` for the current ones:
 
 ```
 QA_EMAIL=… QA_PASSWORD=… node pricing-api-checks.mjs                                   # admin API checks

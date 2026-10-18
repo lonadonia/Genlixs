@@ -41,6 +41,7 @@ export function configLabel(spec: CapabilitySpec | undefined, options: Record<st
     const o = spec?.options?.[k];
     const label = o?.labels?.[String(v)];
     if (label) return label;
+    if (/duration|seconds/i.test(k) && typeof v === "number") return `${v} s`;
     if (k === "duration") return `${v} s`;
     return String(v);
   });
@@ -100,7 +101,7 @@ export function Notice({ tone = "info", title, children, action }: { tone?: "inf
   };
   return (
     <div role={tone === "error" ? "alert" : "note"} className={cn("flex flex-wrap items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm", tones[tone])}>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-64">
         {title ? <p className="font-semibold">{title}</p> : null}
         <div className={title ? "mt-0.5" : ""}>{children}</div>
       </div>

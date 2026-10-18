@@ -39,6 +39,12 @@ Nothing to configure by hand. Supabase Vault is built into the project; keys are
 Re-run *Review routing* after switching a winning supplier off: an original route that was dominated stays off until a
 review switches it back on (no hidden fallback).
 
+The everyday overview lives in the Catalog pages (`docs/CATALOG_AND_PRICING.md`): **Models** shows, for every model once,
+the supplier serving its default request, its cost, price and margin, and the cheapest other supplier with the step still
+missing (key, paid test, routing); its **Available at suppliers** tab lists each product outside the catalog once with its
+cheapest supplier. **Supplier balances** shows every supplier's balance and spending and warns when KIE's balance cannot
+cover a model's most expensive settings. Both read `admin_catalog_supply` (`provider.read`, read-only).
+
 ## 3. How a route is chosen
 
 For every job the database evaluates all offers of the model (`app_private.route_evaluate`, `route_choose`):

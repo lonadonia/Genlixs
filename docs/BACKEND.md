@@ -96,7 +96,7 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/auth/{referral,redirect}.ts` | Signed referral cookie; same-site redirect guard |
 | `src/lib/live/**` | Browser API helper, account context (wallet/notifications refresh on focus + 30 s), response types |
 | `src/components/live/**` | Live studio, partner portal, admin console and public pricing/consent components |
-| `src/components/live/admin/catalog/**` | Models (On/Off switch + optional diagnostics: status, private test, KIE cost, activity, advanced), Pricing & packages (reference values, package editor, per-model price editor, bulk markup), KIE balance |
+| `src/components/live/admin/catalog/**` | Models (one row per model: On/Off switch, supplier serving it, default-request cost/price/margin, cheapest other supplier; model sheet with every supplier quote; products available at suppliers; diagnostics: status, private test, KIE cost, activity, advanced), Pricing & packages (summary, model prices with supplier cost, package editor, reference values and supplier currencies, per-model price editor, bulk markup), Supplier balances (all suppliers, KIE runway and warning, generation pipeline, KIE activity) |
 | `src/lib/pricing/**` | Exact-decimal credit arithmetic mirrored from the database (contract-tested) |
 | `tests/contracts/*.test.ts` | Provider, webhook, safe-fetch, cookie, redirect and file-sniffing contract tests (`npm run test:contracts`) |
 | `supabase/tests/*.sql` | Database invariant tests (run in one transaction, always rolled back) |
@@ -126,7 +126,7 @@ session cookie require a same-site `Origin`.
 | `GET /r/{slug}` | Referral click; signed cookie only with consent (GPC respected) |
 | `/api/affiliate/{overview,links,referrals,commissions,payouts,applications,links/{id}/archive,payout-destination}` | Partner portal (allowlisted) |
 | `/api/admin/…` | Allowlisted reads and audited actions — see `src/app/api/admin/[...path]/route.ts`; staff-role changes need a sign-in within 10 min (and MFA when enrolled) |
-| `/api/admin/catalog`, `…/catalog/models/{id}`, `…/availability`, `…/models/availability` (bulk), `…/display`, `…/prices`, `…/costs`, `…/evidence`, `…/tests` (Idempotency-Key), `…/prices/{id}/publish|restore`, `…/bulk-pricing/preview|apply`, `…/packages/impact`, `…/assumptions`, `…/batches`, `…/tests/outputs/{assetId}` | Catalog workspace. Enabling and tests are refused with `CREDENTIALS_MISSING` when this deployment cannot reach KIE |
+| `/api/admin/catalog`, `…/catalog/models/{id}`, `…/availability`, `…/models/availability` (bulk), `…/display`, `…/prices`, `…/costs`, `…/evidence`, `…/tests` (Idempotency-Key), `…/prices/{id}/publish|restore`, `…/bulk-pricing/preview|apply`, `…/packages/impact`, `…/assumptions`, `…/batches`, `…/tests/outputs/{assetId}`, `…/catalog/supply` (`provider.read`: supplier serving each model and every supplier quote for its default request; products outside the catalog, each once) | Catalog workspace. Enabling and tests are refused with `CREDENTIALS_MISSING` when this deployment cannot reach KIE |
 | `/api/admin/provider/summary`, `…/provider/balance/refresh`, `…/provider/low-balance` | KIE balance, spend and job health (`provider.read`); the KIE key never leaves the server |
 
 Not implemented (no navigation points to them): subscription change/cancel endpoints (no gateway yet), account-deletion

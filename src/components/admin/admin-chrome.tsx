@@ -41,7 +41,7 @@ const LIVE_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/catalog", label: "Models", icon: Boxes },
       { href: "/admin/pricing", label: "Pricing & packages", icon: Tag },
-      { href: "/admin/kie", label: "KIE balance", icon: Gauge },
+      { href: "/admin/balances", label: "Supplier balances", icon: Gauge },
       { href: "/admin/providers", label: "Providers & routing", icon: Network },
     ],
   },

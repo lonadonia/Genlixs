@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { PageHead } from "@/components/console/parts";
 import { Button } from "@/components/ui/button";
@@ -15,16 +16,20 @@ import type { ProvidersOverview } from "./types";
 import { UsageTab } from "./usage-tab";
 
 type TabId = "overview" | "providers" | "models" | "usage";
+const TAB_IDS: TabId[] = ["overview", "providers", "models", "usage"];
 
 /**
  * Providers & routing (provider.read; changes need provider.manage, which only the owner has). Keys are entered here
  * and stored in Vault on the server; this page only ever sees a masked hint. Balances and spending are read from the
- * database as recorded, with their source and age — nothing on this page is sample data.
+ * database as recorded, with their source and age — nothing on this page is sample data. `?tab=models&model=<id>` opens
+ * one model's supplier comparison (links from Admin › Models).
  */
 export function ProvidersPage() {
   const me = useAdminMe();
   const caps = me.data?.capabilities ?? [];
-  const [tab, setTab] = useState<TabId>("overview");
+  const sp = useSearchParams();
+  const linkedTab = sp.get("tab") as TabId | null;
+  const [tab, setTab] = useState<TabId>(linkedTab && TAB_IDS.includes(linkedTab) ? linkedTab : "overview");
   const overview = useApi<ProvidersOverview>(caps.includes("provider.read") ? "/api/admin/providers/overview" : null, [caps.length]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
@@ -88,7 +93,7 @@ export function ProvidersPage() {
           ) : tab === "providers" ? (
             <ProvidersTab o={overview.data} canManage={canManage} reload={overview.reload} />
           ) : tab === "models" ? (
-            <ModelsTab canManage={canManage} canTest={caps.includes("catalog.test")} units={overview.data.units} />
+            <ModelsTab canManage={canManage} canTest={caps.includes("catalog.test")} units={overview.data.units} focusModel={sp.get("model")} />
           ) : (
             <UsageTab accounts={overview.data.accounts} />
           )}
