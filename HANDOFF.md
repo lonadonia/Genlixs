@@ -3,7 +3,7 @@
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
 - **Last updated:** 18 Oct 2026
-- **Latest work:** **v3.4 — UI refinement, Image Edit references, walkthroughs and Motion Library** (local commit, not deployed; see §0, first block) on top of **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
+- **Latest work:** **v3.4 — UI refinement, Image Edit references, walkthroughs and Motion Library** (deployed 18 Oct 2026; migration `20261018013256` applied; see §0, first block) on top of **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
   evidence in `docs/VERIFICATION.md` §0), on top of **v3.2 — simplified admin and explicit credit pricing** (Models with one On/Off switch, Pricing & packages with two reference values, package editor and per-setting price editor, KIE balance page; migrations `20261014203016`–`20261014203957`, 18 in total) on top of **v3.1 — admin catalog, bulk pricing and KIE monitoring** and **v3 — live backend** (`claude/nice-curie-ispn6l`, see `git log`). v3 implemented `Genlixs_Backend_Implementation_Guide_EN.md` v1.0; v3.1 adds the Models & pricing workspace, 18 curated KIE models, bulk markup pricing, private staff tests and the KIE balance panel (4 more migrations, 14 in total). Start with §0.
 - **Repository:** https://github.com/lonadonia/Genlixs (public)
 
@@ -11,8 +11,8 @@ This file lets a new Claude Code session, on any account, continue exactly where
 
 ## 0. v3 backend — state at a glance
 
-**v3.4 (18 Oct 2026) — UI refinement, Image Edit references, walkthroughs and Motion Library. Committed locally on
-this branch and NOT pushed (pushing deploys production); evidence in `docs/VERIFICATION.md` §00.**
+**v3.4 (18 Oct 2026) — UI refinement, Image Edit references, walkthroughs and Motion Library. Pushed and deployed with
+the owner's go-ahead; evidence in `docs/VERIFICATION.md` §00.**
 - Studio about 10 % more compact by real layout values (rail 236 → 212 px, header 68 → 60, buttons 44 → 40 / 48 → 44,
   tabs 48 → 44, option chips 44 → 40); refined panels, buttons (lower edge), segments and icon tiles. Dark `SelectMenu`
   (`src/components/ui/select-menu.tsx`) replaces the native selects. Studio focus rings use #6b7cff; settings panels scroll
@@ -22,11 +22,10 @@ this branch and NOT pushed (pushing deploys production); evidence in `docs/VERIF
   with its query (`src/proxy.ts`, page redirect as fallback; `src/lib/studio-routes.ts`).
 - One `ModelPicker` for Image and Video with provider marks (`src/components/live/studio/model-logo.tsx`, Simple Icons
   CC0 paths; FLUX.2 shows a "BFL" monogram because no vetted mark is available).
-- Image Edit takes several references in order (`src/lib/live/references.ts`, `image/reference-collection.tsx`). The
-  per-model limits need **`supabase/pending/20261018120000_image_edit_multi_reference.sql`** (16/16/8/8/10 from the KIE
-  docs, ordered references end to end, prices re-bound unchanged; rollback file beside it). **Not applied**: production
-  still allows one image per model and the studio shows `0 / 1`. Apply only with the owner's go-ahead, then run
-  `supabase/tests/07_image_edit_references_tests.sql`.
+- Image Edit takes several references in order (`src/lib/live/references.ts`, `image/reference-collection.tsx`).
+  Migration `20261018013256_image_edit_multi_reference` (applied 18 Oct 2026 with the owner's go-ahead) sets the
+  per-model limits 16/16/8/8/10 from the KIE docs, keeps the reference order from quote to provider and re-binds the
+  prices unchanged; rollback in `supabase/rollbacks/` (not applied). `supabase/tests/07` passes on production.
 - Video canvas: History / Motion Library / How it works (`?view=library|how`). Walkthrough carousel
   (`video/how-it-works.tsx`, `src/lib/tutorials.ts`), Motion Control banner (`video/motion-banner.tsx`), Motion Library
   (9 clips, `src/lib/motion-library.ts`, `video/motion-library.tsx`): Recreate uploads the library clip itself as the motion
@@ -34,8 +33,7 @@ this branch and NOT pushed (pushing deploys production); evidence in `docs/VERIF
 - Media: demo clips on `/sign-in` and in the landing "Video" section (`#reel`); new wordmark `genlixs-header-v3-*`. All
   choices and exclusions: `design-handoff/genlixs/CLIENT_MEDIA.md` (v3.4).
 - Isolated database tests: `supabase/local-test/` (embedded PostgreSQL 17 + Supabase stand-in; never touches production).
-- Open for the owner: approve and apply the pending migration; a paid live run of a multi-reference edit and of Recreate
-  (not run: cost-bearing); review, then push to deploy.
+- Open for the owner: a paid live run of a multi-reference edit and of Recreate (not run: cost-bearing).
 
 **v3.3 (15 Oct 2026) — production state:**
 - Generation works end to end in production (image, Veo 3.1 Lite text and start-frame video) with polling; video editing

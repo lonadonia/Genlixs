@@ -1,4 +1,4 @@
--- Image Edit with several reference images (pending migration 20261018120000_image_edit_multi_reference; run after it).
+-- Image Edit with several reference images (migration 20261018013256_image_edit_multi_reference; run after it).
 -- Rolled back by the final exception. R1 each edit model's limit follows its documented endpoint (16/16/8/8/10) and a
 -- published price is bound to the new capability with unchanged rules; R2 a quote keeps the customer's order and counts
 -- a repeated image once; R3 the limit is enforced per model with the real number; R4 the price does not depend on the
@@ -37,7 +37,6 @@ begin
   end loop;
   v_ok := v_ok + 1;
 
-  update app_private.model_catalog set state = 'disabled';
   update app_private.provider_accounts set submit_blocked_until = null, paused = false where provider = 'kie';
   perform pg_temp.t_enable_model('gpt-flare-edit', '{"format": "table", "dims": ["resolution"], "units": {"1K": 3, "2K": 5, "4K": 8}}');
   perform pg_temp.t_enable_model('nano-banana-pro-edit', '{"format": "table", "dims": ["resolution"], "units": {"1K": 9, "2K": 9, "4K": 12}}');

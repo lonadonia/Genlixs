@@ -19,7 +19,7 @@ rolled-back transactions; they create their own users and roles and leave nothin
 Afterwards the database is unchanged; check with
 `select count(*) from auth.users; select count(*) from public.generation_jobs;`.
 
-Test 07 (`07_image_edit_references_tests.sql`) belongs to the pending migration
-`supabase/pending/20261018120000_image_edit_multi_reference.sql` and passes only after it is applied
-(`PASS: 8 image-edit reference test groups`); before that it stops at `R1 limit …` by design. All tests can also run on
-an isolated local database: see `supabase/local-test/README.md`.
+Test 07 (`07_image_edit_references_tests.sql`) checks migration `20261018013256_image_edit_multi_reference` (applied
+18 Oct 2026): `PASS: 8 image-edit reference test groups` on production and locally; on a database without that
+migration it stops at `R1 limit …` by design. All tests can also run on an isolated local database: see
+`supabase/local-test/README.md`.

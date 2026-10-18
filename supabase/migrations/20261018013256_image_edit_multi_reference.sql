@@ -1,70 +1,27 @@
--- Rollback of 20261018120000_image_edit_multi_reference.sql (also pending). Restores one reference image per edit model with
--- new capability versions (capability versions are immutable, so the raised ones stay in the history), carries the
--- published prices over unchanged again, restores the two descriptions and the previous function definitions (copied
--- verbatim from the applied migrations). Jobs already created with several references keep them and still run: the
--- worker and the adapters accept any number of references.
+-- Genlixs · Image Edit with several reference images. Applied on 18 Oct 2026 with the owner's authorization, after a
+-- full run on an isolated local PostgreSQL 17 with all earlier migrations (supabase/local-test). Rollback:
+-- supabase/rollbacks/*_image_edit_multi_reference.rollback.sql (supabase/rollbacks/README.md).
+--
+-- 1. Order. Reference images keep the customer's order from the quote to the provider request:
+--    normalize_generation_input sorted them by id (array_agg(distinct x order by x)); it now keeps the order chosen and
+--    counts a repeated id once, at its first position. Jobs copy the quote's list with an explicit order
+--    (create_generation and both staff-test functions), and worker_claim returns the references in that order
+--    (it joined assets without an order). The worker signs them in order and the adapters send them in order
+--    (input_urls / image_input / image_urls). Typed video inputs were already ordered.
+-- 2. Limits. Each edit model accepts the number of input images its KIE endpoint documents (docs.kie.ai, re-read
+--    18 Oct 2026):
+--      gpt-flare-edit         16  (GPT Image 2.5 Flare image-to-image: input_urls, maxItems 16)
+--      gpt-sunburst-edit      16  (GPT Image 2.5 Sunburst image-to-image: input_urls, maxItems 16)
+--      nano-banana-pro-edit    8  (Nano Banana Pro: image_input, maxItems 8 (30 MB each))
+--      flux-2-pro-edit         8  (FLUX.2 Pro image-to-image: input_urls, maxItems 8 (10 MB each))
+--      seedream-5-flash-edit  10  (Seedream 5.0 Flash image-to-image: image_urls, maxItems 10 (30 MB each))
+--    Per-file limits stay at the product's 10 MB and PNG/JPEG/WebP, within every endpoint's own limits.
+-- 3. Prices: unchanged. The published price of each model is re-bound to its new capability version with the same rules
+--    (as in vm3); every change is audited. Quotes made before this migration become stale and are refreshed by the
+--    studio before any charge.
+-- 4. Copy: two model descriptions that said "one image" / "a reference image" now say "your images" (only if unchanged).
 
--- ------------------------------------------------------------ limits
-
--- New capability version per model (versions are immutable; the previous one stays for jobs that used it), audited
--- in the same statement.
-with v(model_id, max) as (values
-  ('gpt-flare-edit', 1),
-  ('gpt-sunburst-edit', 1),
-  ('nano-banana-pro-edit', 1),
-  ('flux-2-pro-edit', 1),
-  ('seedream-5-flash-edit', 1)
-), ins as (
-  insert into app_private.model_capability_versions (model_id, version, spec)
-  select c.model_id, c.version + 1, jsonb_set(c.spec, '{references,max}', to_jsonb(v.max))
-  from v cross join lateral app_private.capability_for(v.model_id) c
-  where c.model_id is not null and (c.spec -> 'references' ->> 'max')::int is distinct from v.max
-  returning model_id, version, spec
-)
-select app_private.audit(null, 'catalog.publish', 'capability.references_restored', 'model', ins.model_id, 'Rollback: Image Edit back to one reference image; the published price is carried over unchanged.',
-  jsonb_build_object('capabilityVersion', ins.version - 1), jsonb_build_object('capabilityVersion', ins.version, 'references', ins.spec -> 'references'))
-from ins;
-
--- Published prices: the same rules, re-bound to the new capability version and audited (the price does not depend on
--- the number of reference images: these endpoints are billed per output image). A model without a published price
--- keeps none.
-do $$
-declare
-  r record;
-  v_new uuid;
-  v_cap app_private.model_capability_versions;
-begin
-  for r in
-    select p.* from app_private.price_versions p
-    where p.state = 'published' and p.model_id in ('gpt-flare-edit', 'gpt-sunburst-edit', 'nano-banana-pro-edit', 'flux-2-pro-edit', 'seedream-5-flash-edit')
-  loop
-    v_cap := app_private.capability_for(r.model_id);
-    continue when r.capability_version_id = v_cap.id;
-    update app_private.price_versions set state = 'retired' where id = r.id;
-    insert into app_private.price_versions (model_id, capability_version_id, version, state, rules, supplier_cost_snapshot, cost_evidence,
-      effective_at, published_by, created_by, source, supplier_cost_version_id, markup_bps, basis, restored_from)
-    values (r.model_id, v_cap.id, (select max(version) + 1 from app_private.price_versions where model_id = r.model_id), 'published', r.rules,
-      r.supplier_cost_snapshot, r.cost_evidence, now(), r.published_by, null, 'capability', r.supplier_cost_version_id, r.markup_bps, r.basis, r.id)
-    returning id into v_new;
-    perform app_private.audit(null, 'catalog.publish', 'price.carried_to_capability', 'model', r.model_id,
-      'Rollback: Image Edit back to one reference image; the published price is carried over unchanged.',
-      jsonb_build_object('priceVersionId', r.id, 'capabilityVersionId', r.capability_version_id),
-      jsonb_build_object('priceVersionId', v_new, 'capabilityVersionId', v_cap.id, 'referencesMax', v_cap.spec -> 'references' -> 'max'));
-  end loop;
-end;
-$$;
-
-
--- ------------------------------------------------------------ copy
-
-update app_private.model_catalog m set purpose = v.before
-from (values
-  ('gpt-flare-edit', 'Fast reference edits: change a scene, style or detail from one image and a written instruction.', 'Fast reference edits: change a scene, style or detail from your images and a written instruction.'),
-  ('flux-2-pro-edit', 'Low-cost photorealistic edits guided by a reference image.', 'Low-cost photorealistic edits guided by your reference images.')
-) as v(id, before, after)
-where m.id = v.id and m.purpose = v.after;
-
--- ------------------------------------------------------------ previous function definitions
+-- ------------------------------------------------------------ order
 
 create or replace function app_private.normalize_generation_input(p_uid uuid, p_model_id text, p_spec jsonb, p_prompt text, p_options jsonb,
   p_reference_asset_ids uuid[])
@@ -76,7 +33,9 @@ as $$
 declare
   v_prompt text := trim(coalesce(p_prompt, ''));
   v_opts jsonb := '{}'::jsonb;
-  v_refs uuid[] := coalesce((select array_agg(distinct x order by x) from unnest(coalesce(p_reference_asset_ids, '{}')) x), '{}');
+  -- The customer's order is kept (image 1, image 2, …); an id sent twice counts once, at its first position.
+  v_refs uuid[] := coalesce((select array_agg(r.x order by r.first_at)
+    from (select u.x, min(u.ord) as first_at from unnest(coalesce(p_reference_asset_ids, '{}')) with ordinality u(x, ord) group by u.x) r), '{}');
   k text;
   v_spec jsonb;
   v_val jsonb;
@@ -103,7 +62,10 @@ begin
     perform app_private.fail('REFERENCE_REQUIRED', 'Add a reference image to edit.');
   end if;
   if cardinality(v_refs) > coalesce((p_spec -> 'references' ->> 'max')::int, 0) then
-    perform app_private.fail('TOO_MANY_REFERENCES', 'This model accepts fewer reference images.');
+    perform app_private.fail('TOO_MANY_REFERENCES',
+      case when coalesce((p_spec -> 'references' ->> 'max')::int, 0) = 1 then 'This model accepts one reference image.'
+        else format('This model accepts up to %s reference images.', coalesce((p_spec -> 'references' ->> 'max')::int, 0)) end,
+      jsonb_build_object('max', coalesce((p_spec -> 'references' ->> 'max')::int, 0), 'count', cardinality(v_refs)));
   end if;
   if cardinality(v_refs) > 0 and (
     select count(*) from public.assets a
@@ -196,7 +158,7 @@ begin
   ) values (
     v_job, v_uid, q.id, q.tool, m.id, m.public_name, q.capability_version_id, q.price_version_id, m.adapter, m.adapter_version,
     q.normalized_input ->> 'prompt', q.normalized_input -> 'options',
-    coalesce((select array_agg(x::uuid) from jsonb_array_elements_text(q.normalized_input -> 'referenceAssetIds') x), '{}'),
+    coalesce((select array_agg(x::uuid order by o) from jsonb_array_elements_text(q.normalized_input -> 'referenceAssetIds') with ordinality r(x, o)), '{}'),
     v_title, q.units, p_idempotency_key, v_request_hash, 'queued', now(),
     now() + make_interval(mins => coalesce((app_private.setting('delayed_after_minutes'))::text, '30')::int),
     now() + make_interval(hours => coalesce((app_private.setting('reservation_deadline_hours'))::text, '24')::int)
@@ -287,7 +249,7 @@ begin
   ) values (
     v_job, v_uid, v_quote, m.tool, m.id, m.public_name, c.id, null, m.adapter, m.adapter_version,
     v_norm -> 'input' ->> 'prompt', v_norm -> 'options',
-    coalesce((select array_agg(x::uuid) from jsonb_array_elements_text(v_norm -> 'input' -> 'referenceAssetIds') x), '{}'),
+    coalesce((select array_agg(x::uuid order by o) from jsonb_array_elements_text(v_norm -> 'input' -> 'referenceAssetIds') with ordinality r(x, o)), '{}'),
     left('Test · ' || regexp_replace(v_norm -> 'input' ->> 'prompt', '\s+', ' ', 'g'), 60), 0, p_idempotency_key,
     encode(extensions.digest(v_quote::text || ':' || v_hash, 'sha256'), 'hex'), 'queued', 'released', now(),
     now() + make_interval(mins => coalesce((app_private.setting('delayed_after_minutes'))::text, '30')::int),
@@ -379,7 +341,7 @@ begin
   ) values (
     v_job, v_uid, v_quote, m.tool, m.id, m.public_name, c.id, null, m.adapter, m.adapter_version,
     v_norm -> 'input' ->> 'prompt', v_norm -> 'options',
-    coalesce((select array_agg(x::uuid) from jsonb_array_elements_text(v_norm -> 'input' -> 'referenceAssetIds') x), '{}'),
+    coalesce((select array_agg(x::uuid order by o) from jsonb_array_elements_text(v_norm -> 'input' -> 'referenceAssetIds') with ordinality r(x, o)), '{}'),
     left('Test · ' || coalesce(nullif(regexp_replace(v_norm -> 'input' ->> 'prompt', '\s+', ' ', 'g'), ''), m.public_name), 60), 0, p_idempotency_key,
     encode(extensions.digest(v_quote::text || ':' || v_hash, 'sha256'), 'hex'), 'queued', 'released', now(),
     now() + make_interval(mins => coalesce((app_private.setting('delayed_after_minutes'))::text, '30')::int),
@@ -445,9 +407,10 @@ begin
       'model', jsonb_build_object('id', m.id, 'providerModelId', m.provider_model_id, 'adapter', j.adapter,
         'adapterVersion', j.adapter_version, 'providerAccountId', m.provider_account_id),
       'output', (select c.spec -> 'output' from app_private.model_capability_versions c where c.id = j.capability_version_id),
+      -- Reference images in the customer's order; the adapters forward them to the provider in this order.
       'references', coalesce((
-        select jsonb_agg(jsonb_build_object('assetId', a.id, 'bucket', a.bucket, 'path', a.object_path, 'mime', a.mime))
-        from public.assets a where a.id = any (j.reference_asset_ids)), '[]'),
+        select jsonb_agg(jsonb_build_object('assetId', a.id, 'bucket', a.bucket, 'path', a.object_path, 'mime', a.mime) order by r.o)
+        from unnest(j.reference_asset_ids) with ordinality r(id, o) join public.assets a on a.id = r.id), '[]'),
       'inputs', coalesce((
         select jsonb_object_agg(s.key, coalesce((
           select jsonb_agg(
@@ -477,3 +440,62 @@ begin
 end;
 $$;
 
+-- ------------------------------------------------------------ limits
+
+-- New capability version per model (versions are immutable; the previous one stays for jobs that used it), audited
+-- in the same statement.
+with v(model_id, max) as (values
+  ('gpt-flare-edit', 16),
+  ('gpt-sunburst-edit', 16),
+  ('nano-banana-pro-edit', 8),
+  ('flux-2-pro-edit', 8),
+  ('seedream-5-flash-edit', 10)
+), ins as (
+  insert into app_private.model_capability_versions (model_id, version, spec)
+  select c.model_id, c.version + 1, jsonb_set(c.spec, '{references,max}', to_jsonb(v.max))
+  from v cross join lateral app_private.capability_for(v.model_id) c
+  where c.model_id is not null and (c.spec -> 'references' ->> 'max')::int is distinct from v.max
+  returning model_id, version, spec
+)
+select app_private.audit(null, 'catalog.publish', 'capability.references_raised', 'model', ins.model_id, 'Image Edit takes several reference images, up to the number documented for this endpoint (docs.kie.ai, 18 Oct 2026); the published price is carried over unchanged.',
+  jsonb_build_object('capabilityVersion', ins.version - 1), jsonb_build_object('capabilityVersion', ins.version, 'references', ins.spec -> 'references'))
+from ins;
+
+-- Published prices: the same rules, re-bound to the new capability version and audited (the price does not depend on
+-- the number of reference images: these endpoints are billed per output image). A model without a published price
+-- keeps none.
+do $$
+declare
+  r record;
+  v_new uuid;
+  v_cap app_private.model_capability_versions;
+begin
+  for r in
+    select p.* from app_private.price_versions p
+    where p.state = 'published' and p.model_id in ('gpt-flare-edit', 'gpt-sunburst-edit', 'nano-banana-pro-edit', 'flux-2-pro-edit', 'seedream-5-flash-edit')
+  loop
+    v_cap := app_private.capability_for(r.model_id);
+    continue when r.capability_version_id = v_cap.id;
+    update app_private.price_versions set state = 'retired' where id = r.id;
+    insert into app_private.price_versions (model_id, capability_version_id, version, state, rules, supplier_cost_snapshot, cost_evidence,
+      effective_at, published_by, created_by, source, supplier_cost_version_id, markup_bps, basis, restored_from)
+    values (r.model_id, v_cap.id, (select max(version) + 1 from app_private.price_versions where model_id = r.model_id), 'published', r.rules,
+      r.supplier_cost_snapshot, r.cost_evidence, now(), r.published_by, null, 'capability', r.supplier_cost_version_id, r.markup_bps, r.basis, r.id)
+    returning id into v_new;
+    perform app_private.audit(null, 'catalog.publish', 'price.carried_to_capability', 'model', r.model_id,
+      'Image Edit takes several reference images, up to the number documented for this endpoint (docs.kie.ai, 18 Oct 2026); the published price is carried over unchanged.',
+      jsonb_build_object('priceVersionId', r.id, 'capabilityVersionId', r.capability_version_id),
+      jsonb_build_object('priceVersionId', v_new, 'capabilityVersionId', v_cap.id, 'referencesMax', v_cap.spec -> 'references' -> 'max'));
+  end loop;
+end;
+$$;
+
+
+-- ------------------------------------------------------------ copy
+
+update app_private.model_catalog m set purpose = v.after
+from (values
+  ('gpt-flare-edit', 'Fast reference edits: change a scene, style or detail from one image and a written instruction.', 'Fast reference edits: change a scene, style or detail from your images and a written instruction.'),
+  ('flux-2-pro-edit', 'Low-cost photorealistic edits guided by a reference image.', 'Low-cost photorealistic edits guided by your reference images.')
+) as v(id, before, after)
+where m.id = v.id and m.purpose = v.before;

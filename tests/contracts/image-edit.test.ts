@@ -1,5 +1,5 @@
 // Image Edit with several reference images, and the Image studio routes (18 Oct 2026). Limits come from each model's
-// capability (the pending migration sets 16/16/8/8/10 from the KIE docs); the server checks repeat in supabase/tests/07.
+// capability (migration 20261018013256 set 16/16/8/8/10 from the KIE docs); the server checks repeat in supabase/tests/07.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CatalogModel } from "../../src/lib/live/types";

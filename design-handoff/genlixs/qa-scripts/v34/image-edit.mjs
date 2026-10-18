@@ -1,8 +1,8 @@
 // Image studio checks (mocked account, real running app): routes, Generate/Edit drafts, several references
 // (multi-select, append, remove, failed upload + retry, model-limit change), the priced request's order, and the
-// production state (one image per model until the pending migration is applied).
+// honest limit of a model that takes one image.
 import { mkdirSync, readFileSync } from "node:fs";
-import { BASE, fixtures, launch, liveCatalog, mockAccount, overflowX, raisedCatalog } from "./mock.mjs";
+import { BASE, EDIT_LIMITS, catalogWithEditLimits, fixtures, launch, mockAccount, overflowX } from "./mock.mjs";
 
 const OUT = process.env.OUT ?? "out-v34/image";
 mkdirSync(OUT, { recursive: true });
@@ -19,7 +19,7 @@ try {
   // ------------------------------------------------------------ raised limits (after the migration)
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   let failNext = false;
-  const log = await mockAccount(ctx, { catalog: await raisedCatalog(), failIntent: () => (failNext ? ((failNext = false), true) : false) });
+  const log = await mockAccount(ctx, { catalog: await catalogWithEditLimits(EDIT_LIMITS), failIntent: () => (failNext ? ((failNext = false), true) : false) });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -95,12 +95,12 @@ try {
   check("no horizontal overflow at 1440", (await overflowX(page)) === 0);
   await ctx.close();
 
-  // ------------------------------------------------------------ production today: one image per edit model
+  // ------------------------------------------------------------ a model that takes one image stays honestly constrained
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const log2 = await mockAccount(ctx2, { catalog: await liveCatalog() });
+  const log2 = await mockAccount(ctx2, { catalog: await catalogWithEditLimits(1) });
   const p2 = await ctx2.newPage();
   await p2.goto(`${BASE}/studio/image?mode=edit`, { waitUntil: "networkidle" });
-  check("production limit is shown as 0 / 1", (await p2.getByText("0 / 1").count()) === 1);
+  check("a one-image limit is shown as 0 / 1", (await p2.getByText("0 / 1").count()) === 1);
   check("the file picker takes one file for a one-image model", (await p2.locator('input[type="file"]').first().getAttribute("multiple")) === null);
   // Dropping three files at once onto the drop area.
   const files = ["a", "b", "c"].map((n) => ({ name: n + ".png", b64: readFileSync(fx(n)).toString("base64") }));

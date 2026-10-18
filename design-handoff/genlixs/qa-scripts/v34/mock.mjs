@@ -88,11 +88,13 @@ export async function liveCatalog() {
   return (await (await fetch(`${BASE}/api/catalog`)).json()).data;
 }
 
-/** The catalog with the pending migration's per-model limits (16/16/8/8/10) — what production shows once it is applied. */
-export async function raisedCatalog() {
+/** Per-model reference limits set by migration 20261018013256 (production since 18 Oct 2026). */
+export const EDIT_LIMITS = { "gpt-flare-edit": 16, "gpt-sunburst-edit": 16, "nano-banana-pro-edit": 8, "flux-2-pro-edit": 8, "seedream-5-flash-edit": 10 };
+
+/** The app's catalog with fixed reference limits for the edit models, so a run does not depend on the live values. */
+export async function catalogWithEditLimits(limits) {
   const c = await liveCatalog();
-  const max = { "gpt-flare-edit": 16, "gpt-sunburst-edit": 16, "nano-banana-pro-edit": 8, "flux-2-pro-edit": 8, "seedream-5-flash-edit": 10 };
-  return { ...c, models: c.models.map((m) => (max[m.id] ? { ...m, references: { ...m.references, max: max[m.id] } } : m)) };
+  return { ...c, models: c.models.map((m) => (m.tool === "edit" ? { ...m, references: { ...m.references, max: typeof limits === "number" ? limits : (limits[m.id] ?? m.references.max) } } : m)) };
 }
 
 // ------------------------------------------------------------ PNG fixtures (no image library needed)

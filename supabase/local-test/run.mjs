@@ -3,10 +3,11 @@
 //
 // Usage: node supabase/local-test/run.mjs <steps...>
 //   fresh          drop and recreate the test database; load the Supabase stand-in (shim.sql) and pgmq 1.4.4
-//   migrations     apply supabase/migrations/*.sql in order (pgmq, pg_net and pg_cron come from the stand-in)
+//   migrations[:v] apply supabase/migrations/*.sql in order that are not applied yet, up to version v if given
+//                  (pgmq, pg_net and pg_cron come from the stand-in)
 //   tests[:01,07]  run supabase/tests: 00_helpers + each file in its own session (default 01-06)
-//   pending        apply supabase/pending/*_image_edit_multi_reference.sql
-//   rollback       apply supabase/pending/*_image_edit_multi_reference.rollback.sql
+//   pending        apply supabase/pending/*.sql, if any (migrations written but not applied anywhere yet)
+//   rollback       apply supabase/rollbacks/*_image_edit_multi_reference.rollback.sql
 //   sql:<file>     run a SQL file (relative to this folder) and print the rows of its last statement
 //   stop           stop the local server
 import crypto from "node:crypto";
@@ -74,24 +75,35 @@ for (const step of process.argv.slice(2)) {
       await c.query(queue);
       // Installed outside an extension: queue tables are never added to one.
       await c.query("create or replace function pgmq._belongs_to_pgmq(table_name text) returns boolean language sql as $$ select true $$");
+      // Which migrations this database already has (lets a run stop at a version, load a fixture, then continue).
+      await c.query("create schema local_test; create table local_test.applied (version text primary key)");
     });
     console.log("fresh: database, Supabase stand-in and pgmq ready");
-  } else if (step === "migrations") {
+  } else if (step === "migrations" || step.startsWith("migrations:")) {
+    const upto = step.includes(":") ? step.split(":")[1] : null;
     const dir = path.join(repo, "supabase", "migrations");
+    const done = new Set((await session((c) => c.query("select version from local_test.applied"))).rows.map((r) => r.version));
+    let applied = 0;
     for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".sql")).sort()) {
+      const version = f.split("_")[0];
+      if (done.has(version) || (upto && version > upto)) continue;
       const sql = read(path.join(dir, f))
         .replace(/^create extension if not exists pgmq;$/m, "-- pgmq: from the stand-in")
         .replace(/^create extension if not exists pg_net with schema extensions;$/m, "-- pg_net: stand-in")
         .replace(/^create extension if not exists pg_cron;$/m, "-- pg_cron: stand-in");
       try {
-        await session((c) => c.query(sql));
+        await session(async (c) => {
+          await c.query(sql);
+          await c.query("insert into local_test.applied (version) values ($1)", [version]);
+        });
+        applied++;
       } catch (e) {
         failures++;
         console.log(`migration FAILED ${f}: ${e.message}`);
         break;
       }
     }
-    console.log("migrations: applied");
+    console.log(`migrations: applied ${applied}${upto ? ` (up to ${upto})` : ""}`);
   } else if (step.startsWith("tests")) {
     const dir = path.join(repo, "supabase", "tests");
     const want = step.includes(":") ? step.split(":")[1].split(",") : ["01", "02", "03", "04", "05", "06"];
@@ -110,15 +122,19 @@ for (const step of process.argv.slice(2)) {
       console.log(`${ok ? "ok  " : "FAIL"} ${f}: ${message}`);
     }
   } else if (step === "pending" || step === "rollback") {
-    const dir = path.join(repo, "supabase", "pending");
-    const suffix = step === "pending" ? "_image_edit_multi_reference.sql" : "_image_edit_multi_reference.rollback.sql";
-    const f = fs.readdirSync(dir).find((x) => x.endsWith(suffix));
-    try {
-      await session((c) => c.query(read(path.join(dir, f))));
-      console.log(`${step}: applied ${f}`);
-    } catch (e) {
-      failures++;
-      console.log(`${step} FAILED ${f}: ${e.message}`);
+    const dir = path.join(repo, "supabase", step === "pending" ? "pending" : "rollbacks");
+    const files = !fs.existsSync(dir)
+      ? []
+      : fs.readdirSync(dir).filter((x) => (step === "pending" ? x.endsWith(".sql") : x.endsWith("_image_edit_multi_reference.rollback.sql"))).sort();
+    if (!files.length) console.log(`${step}: nothing to apply`);
+    for (const f of files) {
+      try {
+        await session((c) => c.query(read(path.join(dir, f))));
+        console.log(`${step}: applied ${f}`);
+      } catch (e) {
+        failures++;
+        console.log(`${step} FAILED ${f}: ${e.message}`);
+      }
     }
   } else if (step.startsWith("sql:")) {
     const r = await session((c) => c.query(read(path.join(here, step.slice(4)))));
