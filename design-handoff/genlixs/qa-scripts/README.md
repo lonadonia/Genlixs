@@ -40,3 +40,18 @@ reaches the server. Create the account with a bcrypt hash generated locally (no 
 
 `live-flows.mjs` needs a temporary confirmed account with the `operations` staff role. It creates a support request and a
 partner application; delete the account and its rows afterwards (see `docs/VERIFICATION.md`).
+
+## v3.4 — Image Edit references, video studio views, Motion Library (`v34/`)
+
+Signed-in studio with a mocked account (user, wallet, quotes, uploads and generations are answered in the browser; pages,
+media and the public catalog come from the app). No generation, upload or charge reaches Supabase or KIE. Test images are
+generated on the fly.
+
+```bash
+npm run build && npx next start -p 3200 &
+export PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=…/axe-core/axe.min.js MSYS_NO_PATHCONV=1
+node v34/image-edit.mjs     # 26 checks: old Edit URL, modes and drafts, several references (append, remove, retry, limits, order)
+node v34/video-studio.mjs   # 38 checks: views, walkthrough carousel, Motion Control banner, Motion Library preview and Recreate
+node v34/shots.mjs          # 8 pages × 1440, 1024, 768, 390, 360 and 1440×700: screenshots, overflow, page errors
+node v34/axe.mjs            # axe-core WCAG 2.1 A/AA on 8 states
+```

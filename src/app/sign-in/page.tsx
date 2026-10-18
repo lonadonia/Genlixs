@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Logo } from "@/components/brand/logo";
+import { AutoplayVideo } from "@/components/ui/autoplay-video";
 import { PreviewBanner } from "@/components/preview-banner";
-import { MEDIA } from "@/lib/media";
 import { SignInForm } from "./sign-in-form";
 import { LIVE } from "@/lib/config";
 
@@ -32,10 +31,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           </main>
         </div>
 
-        {/* Brand panel (desktop): client-supplied image (Genlixs Drive), decorative. */}
+        {/* Brand panel (desktop): a client demo clip, muted and decorative; with reduced motion or Save-Data it stays on its poster. */}
         <aside aria-hidden className="relative hidden overflow-hidden p-3 lg:block">
           <div className="relative h-full overflow-hidden rounded-[28px] border border-white/[0.08] bg-raised">
-            <Image src={MEDIA.seaGown.src} alt="" fill sizes="50vw" className="object-cover object-[50%_30%]" />
+            <AutoplayVideo media="demoNightMarket" decorative className="absolute inset-0 object-[50%_35%]" />
             <div className="absolute inset-0 bg-[linear-gradient(to_top,rgb(15_18_18/0.95)_24%,rgb(15_18_18/0.35)_60%,transparent)]" />
             <div className="absolute inset-x-0 bottom-0 p-10">
               <p className="font-display max-w-md text-[2.25rem] leading-[1.05] font-extrabold text-white">

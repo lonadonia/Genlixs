@@ -8,7 +8,7 @@ const GROUPS = [
     title: "Create",
     links: [
       { href: "/studio/image", label: "Image studio" },
-      { href: "/studio/edit", label: "Edit studio" },
+      { href: "/studio/image?mode=edit", label: "Edit an image" },
       { href: "/studio/video", label: "Video studio" },
       { href: "/#pricing", label: "Pricing" },
     ],

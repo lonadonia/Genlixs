@@ -4,6 +4,27 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 00. UI refinement, Image Edit references, walkthroughs and Motion Library (18 Oct 2026, local)
+
+Windows 11, Node 24.21, Next.js 16.3.8, Chrome through playwright-core. Browser checks ran against the local development
+server and again against the production build (`next build` + `next start`). The account endpoints were answered by a
+local mock (user, wallet, quotes, uploads, generations), so **no generation, upload or charge reached Supabase or KIE**;
+pages, static media and the public catalog were real (production catalog). No live provider run was made in this task.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `npm run build` | `VERIFIED_PASS` (99 pages, no warnings) |
+| `npm run test:contracts` | `VERIFIED_PASS` 65/65 — new: `image-edit.test.ts` (limits, append/remove/retry rules, lower-limit conflict, order in every edit adapter's payload, old-URL redirect), `motion-library.test.ts` (clips usable as motion references and served locally, Recreate request, blocked settings, refused clips/prompts) |
+| SQL, isolated local PostgreSQL 17 (`supabase/local-test`) | `VERIFIED_PASS` — all 25 migrations; tests 01–06 (57 groups) before; pending migration applied to the production state of the five edit models → 01–07 (65 groups); with the old functions 07 fails on the order (R2); re-applying changes nothing; rollback → one image again, prices unchanged, the 8 related function definitions byte-identical to production (md5 of `pg_get_functiondef`), 01–06 pass |
+| Production database | Read only: migration history identical to the repository (25), function definitions identical to the local database, edit models and prices read. **The pending migration was not applied.** |
+| Image studio (26 checks) | `VERIFIED_PASS` — `/studio/edit?ref=abc&ref=def` → `/studio/image?ref=abc&ref=def&mode=edit` (307 in the production build); no Edit item in the navigation; 3 files at once; a later selection appends; removal keeps order; a failed upload blocks the price and Retry recovers it; 10 images then an 8-image model → explained, nothing dropped, 3 compatible models offered; the quote body carries every asset id in the displayed order; drafts kept per mode; production limit `0 / 1` with the extra dropped files named |
+| Video studio (38 checks) | `VERIFIED_PASS` — the three views and their arrow keys; one muted walkthrough player, two blurred previews, Next/Previous/arrow keys replace the player; leaving the view removes it; banner with three cards above the inputs; library posters only (no player on load); preview opens without a quote or job, Escape closes it, removes the player and returns focus; Recreate uploads the library clip's own bytes (857,651 B) as the motion video and the image as the character, the quote carries both and the prompt; a double click sends one request; a refused request shows its reason; a network failure is retried with the same idempotency key; the created job opens in History; a clip that cannot be fetched is reported in its slot and nothing is priced; a 17 s clip switches "Keep the image's pose" to "Follow the video" with an explanation; phone preview fills the screen with Recreate visible |
+| Screenshots (8 pages × 1440×900, 1024×768, 768×1024, 390×844, 360×740, 1440×700) | `VERIFIED_PASS` — no horizontal overflow, no page errors; desktop settings panels scroll with `scrollbar-width: none` |
+| Focus | `VERIFIED_PASS` — every studio control shows a 2 px #6b7cff ring after keyboard focus; the old stray line (focus outline of `<main id="main">`) no longer appears after a click and a key press |
+| Accessibility (axe-core, WCAG 2.1 A/AA) | `VERIFIED_PASS` — 0 violations on image edit, image generate, video motion, library, preview, How it works, sign-in, landing |
+| Media | `VERIFIED_PASS` in Chrome: all new files served (200, `video/mp4`, `image/webp`, `image/png`); H.264 High + AAC MP4 with faststart. Safari and Firefox playback `NOT_TESTED` |
+| Live generation with several references / Recreate | `NOT_TESTED` (cost-bearing; the multi-reference path also needs the pending migration in production) |
+
 ## 0. Generation repair, video modes and real generation (15 Oct 2026, production)
 
 **Why nothing was generated (root causes, in the order they block):**

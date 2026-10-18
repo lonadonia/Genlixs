@@ -47,7 +47,7 @@ export const TOOLS: Record<ToolId, Tool> = {
     label: "Edit image",
     railLabel: "Edit",
     studioTitle: "Edit studio",
-    href: "/studio/edit",
+    href: "/studio/image?mode=edit",
     guestAction: "Open edit studio",
     summary: "Change a reference image with a written instruction.",
     promptLabel: "Describe the change",

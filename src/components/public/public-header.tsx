@@ -114,7 +114,7 @@ export function PublicHeader() {
             <ul className="mb-4">
               {[
                 { href: "/studio/image", label: "Create an image" },
-                { href: "/studio/edit", label: "Edit an image" },
+                { href: "/studio/image?mode=edit", label: "Edit an image" },
                 { href: "/studio/video", label: "Create a short video" },
               ].map((n) => (
                 <li key={n.href}>

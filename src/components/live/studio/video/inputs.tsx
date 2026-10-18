@@ -74,7 +74,7 @@ export function InputThumb({
   // A chosen job (video to extend) is shown through its saved file.
   const moving = item.kind === "video" || (item.kind === "job" && item.mime.startsWith("video/"));
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border bg-canvas", item.status === "error" ? "border-error-on-dark/60" : "border-white/10", large ? "" : "aspect-square")}>
+    <div className={cn("relative overflow-hidden rounded-xl border bg-canvas", item.status === "error" ? "border-error-on-dark/60" : "border-white/10", large ? "" : "aspect-square")}>
       <div className={cn("relative bg-black/40", large ? "aspect-video" : "absolute inset-0")}>
         {url && item.kind === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element -- local object URL or short-lived signed URL
@@ -112,7 +112,7 @@ export function InputThumb({
         </span>
         {onReplace && item.status !== "uploading" ? (
           <>
-            <label htmlFor={replaceId} className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-muted hover:bg-white/10 hover:text-ink" title="Replace">
+            <label htmlFor={replaceId} className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-lg text-muted hover:bg-white/10 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--focus-ring)]" title="Replace">
               <RefreshCw aria-hidden className="size-3.5" />
               <span className="sr-only">Replace {label ?? item.name}</span>
             </label>
@@ -128,7 +128,7 @@ export function InputThumb({
             />
           </>
         ) : null}
-        <button type="button" onClick={onRemove} className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-white/10 hover:text-ink" title="Remove">
+        <button type="button" onClick={onRemove} className="grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-white/10 hover:text-ink" title="Remove">
           <X aria-hidden className="size-3.5" />
           <span className="sr-only">Remove {label ?? item.name}</span>
         </button>
@@ -176,8 +176,8 @@ export function DropArea({
         if (!disabled && e.dataTransfer.files?.length) onFiles([...e.dataTransfer.files]);
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
-        size === "lg" ? "min-h-40 py-6" : "min-h-28 py-4",
+        "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
+        size === "lg" ? "min-h-36 py-5" : "min-h-24 py-3.5",
         drag ? "border-brand-blue-bright bg-[rgb(37_63_246/0.12)]" : invalid ? "border-error-on-dark" : "border-white/15 bg-white/[0.02] hover:border-white/35",
         disabled && "cursor-not-allowed opacity-60",
       )}
@@ -186,14 +186,14 @@ export function DropArea({
         {kinds.map((k) => {
           const Icon = ACCEPT_ICON[k];
           return (
-            <span key={k} className="grid size-9 place-items-center rounded-full border border-white/15 bg-raised text-muted">
+            <span key={k} className="grid size-8 place-items-center rounded-lg border border-white/12 bg-raised text-muted">
               <Icon className="size-4" />
             </span>
           );
         })}
       </span>
-      <span className="text-sm font-semibold text-ink">{title}</span>
-      <span className="text-xs text-muted">{subtitle}</span>
+      <span className="text-[13px] font-semibold text-ink">{title}</span>
+      <span className="text-[11px] text-muted">{subtitle}</span>
       <input
         id={id}
         type="file"
@@ -251,16 +251,16 @@ export function SingleSlot({
         if (e.dataTransfer.files?.length) onFiles([e.dataTransfer.files[0]]);
       }}
       className={cn(
-        "flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-3 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)] sm:aspect-auto sm:min-h-44",
+        "flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-3 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)] sm:aspect-auto sm:min-h-40",
         drag ? "border-brand-blue-bright bg-[rgb(37_63_246/0.12)]" : "border-white/15 bg-white/[0.02] hover:border-white/35",
         disabled && "pointer-events-none opacity-60",
       )}
     >
-      <span className="grid size-10 place-items-center rounded-full border border-white/15 bg-raised text-muted">
+      <span className="grid size-9 place-items-center rounded-lg border border-white/12 bg-raised text-muted">
         <Icon aria-hidden className="size-4" />
       </span>
-      <span className="text-sm font-semibold text-ink">{title}</span>
-      <span className="text-xs text-muted">{hint ?? slotHint(spec)}</span>
+      <span className="text-[13px] font-semibold text-ink">{title}</span>
+      <span className="text-[11px] text-muted">{hint ?? slotHint(spec)}</span>
       <input
         id={id}
         type="file"

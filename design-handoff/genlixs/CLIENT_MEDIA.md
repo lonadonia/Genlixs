@@ -1,5 +1,82 @@
 # Client media record — Genlixs Drive (REQ-063) and local hand-over (REQ-067)
 
+## v3.4 — How it works, demo clips, Motion Library and the new logo (17–18 Oct 2026)
+
+Sources (on the owner's computer, untouched; derivatives only): `Videos/Create Video how it work` (7), `Videos/demo videos`
+(5), `Videos/EXPLORS` (32), `Videos/EXPLORS 2` (27) and `Brand/Website-header-logo.png`. Every clip was screened on
+contact sheets (5–10 frames), probed with ffprobe and checked for duplicates by SHA-256; continuity was measured with
+ffmpeg scene detection (`select='gt(scene,0.32)'`). No creator, prompt or model was supplied with any file, so none is
+shown.
+
+**Processing:** wide clips `scale='min(960,iw)':-2, fps=24, libx264 high CRF 24 (maxrate 2400k), AAC 128k, faststart`,
+poster WebP q80 at a chosen frame, 240 px thumbnail; portrait clips use the v2.2 recipe above (540 px, CRF 26, AAC 96k).
+New files: 7 walkthroughs (16.6 MB), 2 demos (6.3 MB), 3 portrait clips (3.9 MB).
+
+### Walkthroughs — video studio › How it works (`src/lib/tutorials.ts`)
+
+| File | Source | Length | Shown as |
+| --- | --- | --- | --- |
+| `tutorials/scene-ride.mp4` | `main video.mp4` | 8 s | One ride, many versions (wipe between versions of one ride) |
+| `tutorials/fire-sorceress.mp4` | `dds.mp4` (= `demo videos/ddss.mp4`) | 15 s | An action scene, beat by beat |
+| `tutorials/shop-crash.mp4` | `sdsd.mp4` (= `demo videos/sdsd.mp4`) | 11 s | Stunts and falling debris |
+| `tutorials/gummy-spot.mp4` | `sdss.mp4` | 9 s | A product spot in seconds |
+| `tutorials/wafer-ad.mp4` | `ssd.mp4` | 12 s | Style changes inside one ad |
+| `tutorials/edit-character.mp4` | `edit.mp4` | 11 s | Edit Video: replace a character (split-screen) |
+| `tutorials/edit-car.mp4` | `edit (1).mp4` | 24 s | Edit Video: change one detail everywhere (split-screen) |
+
+### Demo clips — sign-in page and the landing page "Video" section (`demoNightMarket`, `demoArmorAlley`)
+
+| File | Source | Use |
+| --- | --- | --- |
+| `demos/night-market.mp4` | `sd.mp4` | Sign-in brand panel (muted loop, poster under reduced motion / Save-Data) and the landing reel |
+| `demos/armor-alley.mp4` | `sddsd.mp4` | Landing reel |
+| — | `ddss.mp4`, `sdsd.mp4` | Duplicates of two walkthroughs (same bytes); used there |
+| — | `ds.mp4` | **Excluded:** carries a sportswear brand's slogan ("JUST DO IT.") as on-screen text |
+
+### Motion Library — video studio (`src/lib/motion-library.ts`, 9 clips)
+
+Selection rule: a clip must be usable as the motion reference of Kling 3.0 Motion Control — one performer whose head,
+shoulders and torso stay visible, one continuous shot, 3–30 s, within the model's size and shape limits (docs.kie.ai,
+re-read 18 Oct 2026). Animals, crowds, cut sequences and product or vehicle clips were left out: they cannot be checked
+against that requirement without a paid run.
+
+| Library clip | File | Source | Length |
+| --- | --- | --- | --- |
+| Pink pyjama dance | `client/pajama-dance.mp4` | EXPLORS `generation (14)` | 17.0 s |
+| Doorway dance | `client/doorway-dance.mp4` | EXPLORS `generation (31)` | 10.0 s |
+| Oversized-tee dance | `client/tee-dance.mp4` | EXPLORS 2 `generation (8)` | 8.0 s |
+| Rollers to waves | `client/hair-rollers.mp4` | EXPLORS 2 `generation (20)` | 14.0 s |
+| Studio session | `client/studio-session-solo.mp4` | EXPLORS 2 `generation (3)`, **excerpt 11.45–16.35 s** | 4.9 s |
+| Leather coat, red brick | `client/leather-coat.mp4` | EXPLORS 2 `generation (14)` | 10.1 s |
+| Pink knit, suede tote | `client/pink-knit-walk.mp4` | EXPLORS 2 `generation (22)` | 15.0 s |
+| Tote by the arches | `client/arcade-tote.mp4` | EXPLORS 2 `generation (4)` | 15.0 s |
+| Money shot | `client/cash-fan.mp4` | EXPLORS 2 `generation (13)` | 15.0 s |
+
+`studio-duo.mp4` (30.04 s, the full "Studio session" on the homepage wall) is over the 30 s motion limit and is a music-video
+edit with 12 cuts between two performers. The library uses a separate excerpt: the longest single-performer shot,
+4.917 s (ffprobe), 0 cuts; the source and the homepage clip are unchanged.
+
+**Not in the library** (EXPLORS 2 clips stay on the homepage wall as before):
+
+| Reason | Files |
+| --- | --- |
+| Cut sequence (2–12 cuts) | EXPLORS `(5)`, `(9)`, `(11)`, `(12)`, `(19)`, `(21)`, `(26)`; EXPLORS 2 `(1)`, `(7)`, `(9)`, `(17)`, `(23)`, `(26)`, `(18)` |
+| Animal performers | EXPLORS `(7)`, `(13)`, `(17)`, `(23)`; EXPLORS 2 `(12)`, `(16)`, `(19)`, `(21)`, `(24)` |
+| Several performers or a crowd | EXPLORS `(8)`, `(16)`, `(29)` |
+| Head not in frame | EXPLORS 2 `(11)` |
+| Performer leaves the frame | EXPLORS `(15)` |
+| Product, vehicle or brand mark | EXPLORS `DD.mp4`, `DDSSDSD.mp4`, `(4)`, `(6)`, `(10)`, `(18)`, `(20)`, `(22)`, `(24)`, `(27)`, `(28)`, `(30)`, `(32)`; EXPLORS 2 `(2)`, `(6)`, `(10)`, `(15)`, `(25)` |
+| No performer | EXPLORS 2 `(5)`, `generation.mp4` |
+| Resembles a third-party cartoon character | EXPLORS `DDD.mp4` |
+| Duplicate | EXPLORS `(25)` = EXPLORS 2 `(24)` |
+
+### Logo
+
+`Brand/Website-header-logo.png` (20171×4487, opaque on rgb(16,18,17)): transparency taken from the near-black field,
+trimmed to 2068×413 (5.007:1), nothing recoloured. `public/brand/genlixs-header-v3-1440.png` is the header, studio and
+sign-in wordmark (`Logo`, served through `next/image`); `genlixs-header-v3-960.png` is the partner-resources download.
+The favicon is unchanged (not requested).
+
 ## v2.2 — local hand-over of the full folders (14 Oct 2026)
 
 The client placed the complete `images` (71 files, renamed `Image_1…71`) and `Videos` (27 files, `generation (N).mp4`) folders next to the project. Every file was screened on contact sheets (each image; 4 frames per clip), with zoomed crops on any label, logo or text. The Drive section further down records the earlier v2.1 round; its 14 images and the knight clip are among the 71 / 27 files and stay in use.

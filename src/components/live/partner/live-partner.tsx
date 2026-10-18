@@ -186,7 +186,7 @@ function AgreementPanel({ a }: { a: Agreement }) {
 
 // --------------------------------------------------------------------- links
 
-const DESTINATIONS = ["/", "/#create", "/#examples", "/#pricing", "/studio/image", "/studio/edit", "/studio/video", "/help", "/partners/apply"];
+const DESTINATIONS = ["/", "/#create", "/#examples", "/#pricing", "/studio/image", "/studio/image?mode=edit", "/studio/video", "/help", "/partners/apply"];
 type LinkRow = { id: string; path: string; destination: string; campaign: string | null; channel: string | null; subId: string | null; isMain: boolean; archivedAt: string | null; clicks: number; signups: number; payingCustomers: number };
 
 export function LivePartnerLinks() {

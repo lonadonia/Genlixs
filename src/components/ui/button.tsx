@@ -6,15 +6,17 @@ import { cn } from "@/lib/format";
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "secondary-light" | "ghost-light" | "outline-on-color" | "inverse";
 type Size = "sm" | "md" | "lg" | "xl";
 
+// Rounded rectangles with a restrained lower edge (refinement of 18 Oct 2026): pressing moves the label down 1 px and
+// flattens the edge; disabled controls lose depth. Heights 32 / 40 / 44 / 48 px.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition-colors duration-150 select-none disabled:cursor-not-allowed aria-disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 select-none active:translate-y-px disabled:cursor-not-allowed disabled:active:translate-y-0 aria-disabled:cursor-not-allowed";
 
 const variants: Record<Variant, string> = {
   // Electric blue #253FF6 is the brand's primary colour: white label 6.7:1 (8.4:1 on hover), soft blue glow on dark.
   primary:
-    "btn-primary bg-brand-blue text-white shadow-[0_10px_30px_-12px_rgb(37_63_246/0.75)] hover:bg-brand-blue-hover disabled:bg-elevated disabled:text-subtle disabled:shadow-none aria-disabled:bg-elevated aria-disabled:text-subtle",
+    "btn-primary bg-brand-blue text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14),inset_0_-2px_0_rgb(0_0_0/0.24),0_8px_24px_-12px_rgb(37_63_246/0.8)] hover:bg-brand-blue-hover active:shadow-[inset_0_1px_0_rgb(255_255_255/0.1),inset_0_-1px_0_rgb(0_0_0/0.2)] disabled:bg-elevated disabled:text-subtle disabled:shadow-none aria-disabled:bg-elevated aria-disabled:text-subtle",
   secondary:
-    "border border-white/25 bg-white/[0.04] text-ink hover:border-white/50 hover:bg-white/[0.08] disabled:text-subtle disabled:opacity-70",
+    "control-raised border border-white/[0.14] bg-white/[0.04] text-ink hover:border-white/30 hover:bg-white/[0.07] disabled:text-subtle disabled:opacity-70",
   ghost: "text-ink hover:bg-white/[0.07] disabled:text-subtle",
   danger: "bg-error text-white hover:bg-[#b92a44] disabled:opacity-60",
   "secondary-light":
@@ -27,10 +29,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-3.5 text-sm",
-  md: "h-11 px-5 text-[15px]",
-  lg: "h-12 px-6 text-base",
-  xl: "h-14 px-8 text-[17px]",
+  sm: "h-8 rounded-[10px] px-3 text-[13px]",
+  md: "h-10 rounded-xl px-4 text-sm",
+  lg: "h-11 rounded-xl px-5 text-[15px]",
+  xl: "h-12 rounded-[14px] px-7 text-base",
 };
 
 type Common = { variant?: Variant; size?: Size; busy?: boolean; icon?: ReactNode; children: ReactNode };

@@ -3,16 +3,16 @@ import Link from "next/link";
 import { cn } from "@/lib/format";
 
 /**
- * Genlixs logo v2 (supplied 13 Oct 2026), exported without redrawing (brand/export_logo.py):
- * - "header": white tile mark + white wordmark — the supplied website-header logo, for dark surfaces
- * - "color":  electric-blue mark + white wordmark, for dark surfaces
- * - "dark":   electric-blue mark + night wordmark, for light surfaces
- * - "mono":   all-white mark + wordmark, for photos and colour fields
- * Trimmed ratio ≈ 4.87 : 1.
+ * Genlixs logos, exported without redrawing:
+ * - "header": the updated website-header logo (Website-header-logo.png, 15 Oct 2026) — white tile mark + white
+ *   wordmark. The supplied file is opaque on a near-black field; the web copy takes its transparency from that field
+ *   (white kept white, nothing recoloured) and is trimmed. Ratio 5.007 : 1.
+ * - "color" / "dark" / "mono": logo v2 (13 Oct 2026, brand/export_logo.py), ratio ≈ 4.87 : 1 — electric-blue mark on
+ *   dark, blue mark with night wordmark on light, all-white on photos.
  */
-const RATIO = 960 / 197;
+const RATIO = { header: 2068 / 413, color: 960 / 197, dark: 960 / 197, mono: 960 / 197 } as const;
 const SRC = {
-  header: "/brand/genlixs-header-white-960.png",
+  header: "/brand/genlixs-header-v3-1440.png",
   color: "/brand/genlixs-logo-color-960.png",
   dark: "/brand/genlixs-logo-dark-960.png",
   mono: "/brand/genlixs-logo-mono-white-960.png",
@@ -35,7 +35,7 @@ export function Logo({
   priority?: boolean;
   label?: string;
 }) {
-  const height = Math.round(width / RATIO);
+  const height = Math.round(width / RATIO[variant]);
   const img = (
     <Image
       src={SRC[variant]}

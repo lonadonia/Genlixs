@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Resources" };
 // Brand v2 exports (public/brand): the header logo is the supplied white wordmark for dark backgrounds;
 // the electric-blue symbol is the one that stays visible on light backgrounds.
 const LOGOS = [
-  { file: "/brand/genlixs-header-white-960.png", name: "Logo — white wordmark (PNG, 960 px)", bg: "bg-canvas", use: "Dark backgrounds" },
+  { file: "/brand/genlixs-header-v3-960.png", name: "Logo — white wordmark (PNG, 960 px)", bg: "bg-canvas", use: "Dark backgrounds" },
   { file: "/brand/genlixs-logo-dark-960.png", name: "Logo — dark wordmark (PNG, 960 px)", bg: "bg-paper", use: "Light backgrounds" },
   { file: "/brand/genlixs-symbol-color-512.png", name: "Symbol only (PNG, 512 px)", bg: "bg-paper", use: "Avatars and small spaces" },
 ];

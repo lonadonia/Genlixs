@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
-import { Workspace } from "@/components/studio/workspace";
-import { LiveWorkspace } from "@/components/live/studio/live-workspace";
-import { LIVE } from "@/lib/config";
+import { redirect } from "next/navigation";
+import { imageEditRedirect } from "@/lib/studio-routes";
 
-export const metadata: Metadata = { title: "Edit studio" };
-
-export default function EditStudioPage() {
-  return LIVE ? <LiveWorkspace tool="edit" /> : <Workspace tool="edit" />;
+/** Image editing now lives inside the Image studio (Generate / Edit); earlier links land there with Edit selected. */
+export default async function EditStudioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(imageEditRedirect(await searchParams));
 }

@@ -23,6 +23,11 @@ import { cn } from "@/lib/format";
 const ex = (id: string) => EXAMPLES.find((e) => e.id === id)!;
 const wrap = "mx-auto max-w-[1360px] px-4 sm:px-6 lg:px-10";
 
+const REEL: { media: MediaKey; title: string; caption: string }[] = [
+  { media: "demoNightMarket", title: "Night market", caption: "A quiet night market turns: the woman with the bubble tea becomes an ice figure as a beast charges through the stalls." },
+  { media: "demoArmorAlley", title: "Armour alley", caption: "A chase through a ruined alley: armour spreads over the runner as the brute closes in." },
+];
+
 function meta(e: Example) {
   const m = modelById(e.settings.modelId);
   const parts = [TOOLS[e.tool].label, m?.name, e.settings.ratio !== "Original" ? e.settings.ratio : undefined, e.settings.duration ? `${e.settings.duration}s` : undefined];
@@ -373,6 +378,36 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      {/* 6b · Video showcase: two client demo clips (muted while on screen, sound on tap) */}
+      <section id="reel" aria-labelledby="reel-title" className="scroll-mt-24 border-t border-white/[0.06] py-16 lg:py-24" data-reveal>
+        <div className={wrap}>
+          <SectionHead
+            id="reel-title"
+            eyebrow="Video"
+            title={
+              <>
+                A scene that turns, <span className="text-brand-blue-bright">in one clip.</span>
+              </>
+            }
+            intro="Clips play silently while they are on screen. Click or tap one to hear it."
+          />
+          <div className="mt-10 grid gap-4 lg:grid-cols-2">
+            {REEL.map((r) => (
+              <figure key={r.media} className="overflow-hidden rounded-[var(--radius-panel)] border border-white/[0.08] bg-surface">
+                <div className="relative aspect-video">
+                  <ShowcaseVideo media={r.media} className="absolute inset-0" controlClassName="right-3 bottom-3" />
+                </div>
+                <figcaption className="px-5 py-4">
+                  <p className="text-[15px] font-semibold text-ink">{r.title}</p>
+                  <p className="mt-1 text-sm text-muted">{r.caption}</p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <p className="mt-6 max-w-3xl text-[13px] text-muted">Clips supplied by Genlixs for this preview; their rights and generation records are still being confirmed.</p>
         </div>
       </section>
 

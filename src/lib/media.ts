@@ -46,6 +46,22 @@ const clientImage = (file: string, width: number, height: number, title: string,
   credit: CLIENT_CREDIT,
 });
 
+/** Wide client clips: 960×540 H.264 + AAC from the "demo videos" and "Create Video how it work" folders (17 Oct 2026). */
+const wideClip = (dir: "demos" | "tutorials", file: string, duration: number, title: string, alt: string): MediaItem => ({
+  id: `${dir}-${file}`,
+  src: `/media/${dir}/${file}.mp4`,
+  poster: `/media/${dir}/${file}-poster.webp`,
+  width: 960,
+  height: 540,
+  duration,
+  audio: true,
+  title,
+  alt,
+  kind: "video",
+  placeholder: false,
+  credit: CLIENT_CREDIT,
+});
+
 /** Vertical client clips: 540×960 H.264, poster taken at 0.8 s. */
 const clientClip = (file: string, duration: number, audio: boolean, title: string, alt: string): MediaItem => ({
   id: `client-${file}`,
@@ -349,6 +365,15 @@ export const MEDIA = {
   glitchDancer: clientClip("glitch-dancer", 12, true, "Glitch dancer", "A masked dancer moves through a parking garage with glitch and colour-split effects"),
   alleyCats: clientClip("alley-cats", 15, true, "Alley-cat crew", "A group of cats dance together on their hind legs in a brick alley with graffiti"),
   patchworkCoat: clientClip("patchwork-coat", 13, false, "Patchwork coat", "A man in a patchwork coat and beret strides down a city street as the camera whips past"),
+
+  /* Client clips (EXPLORS hand-over, 17 Oct 2026) and a single-shot excerpt of "Studio session" for the Motion Library */
+  pajamaDance: clientClip("pajama-dance", 17, true, "Pink pyjama dance", "A young woman in pink checked pyjamas dances in a bright bedroom"),
+  doorwayDance: clientClip("doorway-dance", 10, true, "Doorway dance", "A young woman in a black sports top and leggings dances in an open white doorway"),
+  studioSessionSolo: clientClip("studio-session-solo", 5, true, "Studio session", "A man in a black shirt and silver chains sings and gestures in front of an orange studio wall beside a hanging microphone"),
+
+  /* Demo clips (16:9) */
+  demoNightMarket: wideClip("demos", "night-market", 15, "Night market", "At a rainy night market, a young woman sipping bubble tea turns into an ice figure as a huge beast charges through the stalls"),
+  demoArmorAlley: wideClip("demos", "armor-alley", 15, "Armour alley", "A blue-haired woman runs through a ruined alley from a red armoured brute as dark armour spreads over her body"),
 
   /* Client images (local hand-over, 14 Oct 2026) */
   pandaPoster: clientImage("panda-poster", 1600, 1063, "Panda poster", "Vintage Japanese-style poster of a roaring giant panda in cream, teal and red with bold kanji lettering"),

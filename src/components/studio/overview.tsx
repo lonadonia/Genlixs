@@ -64,8 +64,8 @@ export function Overview() {
           </h2>
           <ul className="grid gap-4 md:grid-cols-3">
             <Promo
-              href="/studio/edit"
-              eyebrow="Edit studio"
+              href="/studio/image?mode=edit"
+              eyebrow="Image · Edit"
               title="Change a scene with one sentence"
               icon={WandSparkles}
               placeholder
@@ -264,7 +264,7 @@ function QuickCreate() {
   const submit = () => {
     if (tool === "edit") {
       write({});
-      router.push("/studio/edit");
+      router.push("/studio/image?mode=edit");
       return;
     }
     if (prompt.trim().length < 3) {
@@ -318,7 +318,7 @@ function QuickCreate() {
         <div className="flex gap-3 sm:gap-4">
           {tool === "edit" ? (
             <Link
-              href="/studio/edit"
+              href="/studio/image?mode=edit"
               onClick={() => write({})}
               className="group grid size-[84px] shrink-0 place-items-center rounded-2xl border border-dashed border-white/30 bg-white/[0.03] text-muted transition-colors hover:border-brand-blue-bright hover:text-ink sm:size-24"
             >

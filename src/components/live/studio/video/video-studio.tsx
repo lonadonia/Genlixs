@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Clock3, Coins, FlaskConical, Gem, History, Info, Plus, RectangleHorizontal, Type, Volume2, VolumeX } from "lucide-react";
+import { Clock3, Coins, FlaskConical, Gem, Info, Plus, RectangleHorizontal, Type, Volume2, VolumeX } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { api, ApiClientError, errorMessage, newIdempotencyKey } from "@/lib/live/api";
@@ -37,18 +37,25 @@ import {
   type TabId,
 } from "@/lib/live/video-studio";
 import { stillOf } from "@/lib/media";
+import { recreatePlan, type MotionItem } from "@/lib/motion-library";
 import { cn, fmtCredits, fmtNum } from "@/lib/format";
 import { HistoryTile, prefetchOutputs, type UseAction } from "../preview/generation-card";
 import { EmptyPreview, LiveJobCard } from "../preview/job-card";
 import { DropArea, InputThumb, SingleSlot, localMediaFacts, slotHint, useRevokeUrls } from "./inputs";
-import { ModelPicker, type PickerModel } from "./model-picker";
-import { ChoiceBar, Disclosure, ModeBanner, OptionChip, OptionRow, Steps } from "./controls";
+import { ModelPicker, type PickerModel } from "../model-picker";
+import { ChoiceBar, Disclosure, ModeBanner, OptionChip, OptionRow } from "./controls";
+import { CanvasTabs, type CanvasView } from "./canvas-tabs";
+import { HowItWorks } from "./how-it-works";
+import { MotionBanner } from "./motion-banner";
+import { MotionLibraryGrid, MotionPreview } from "./motion-library";
 
 export type VideoStudioProps = {
   initialDraft?: DraftKey;
   initialJobId?: string | null;
   /** Opened from "Use as …" on a saved result: put that file into a slot once. */
   use?: { assetId: string; slot: string; draft: DraftKey; mode?: string | null } | null;
+  /** Canvas view: History (default), Motion Library or How it works (`?view=library|how`). */
+  initialView?: CanvasView;
 };
 
 const TABS: { id: TabId; label: string }[] = [
@@ -110,7 +117,8 @@ const MODE_HELP: Record<string, string> = {
 function reveal(id: string) {
   if (!window.matchMedia("(max-width: 1023px)").matches) return;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  // One frame later, so a view that was just switched on exists.
+  window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }));
 }
 
 /** Clock reads for event handlers (kept out of render). */
@@ -140,7 +148,7 @@ export function VideoStudio(props: VideoStudioProps) {
   return <Studio key={acct.me.id} userId={acct.me.id} {...props} />;
 }
 
-function Studio({ userId, initialDraft = "create", initialJobId = null, use = null }: VideoStudioProps & { userId: string }) {
+function Studio({ userId, initialDraft = "create", initialJobId = null, use = null, initialView = "history" }: VideoStudioProps & { userId: string }) {
   const acct = useAccount();
   const catalog = useApi<Catalog>("/api/catalog");
   const canTest = Boolean(acct.me?.capabilities?.includes("catalog.test"));
@@ -168,7 +176,8 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   }, [drafts, userId]);
 
   const [jobId, setJobId] = useState<string | null>(isUuid(initialJobId) ? initialJobId : null);
-  const [help, setHelp] = useState(false);
+  const [view, setViewState] = useState<CanvasView>(initialView);
+  const [preview, setPreview] = useState<{ item: MotionItem; from: HTMLElement } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<ApiClientError | null>(null);
@@ -223,18 +232,31 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const allItems = useMemo(() => DRAFT_KEYS.flatMap((k) => Object.values(drafts[k].slots).flat()), [drafts]);
   useRevokeUrls(allItems);
 
-  /** Upload one file into a slot: local checks, private upload with progress, then server verification. */
+  /**
+   * Upload one file into a slot: local checks, private upload with progress, then server verification. `into` reuses a
+   * placeholder already shown in the slot (a Motion Library clip that is still being fetched).
+   */
   const upload = useCallback(
-    async (key: DraftKey, m: CatalogModel, slot: string, spec: InputSlotSpec, file: File) => {
+    async (key: DraftKey, m: CatalogModel, slot: string, spec: InputSlotSpec, file: File, into?: { itemKey: string; name: string }) => {
       const check = precheck(file, spec.mime, spec.maxBytes);
       const mime = "mime" in check ? check.mime : file.type || "application/octet-stream";
       const kind = kindOf(mime);
-      const itemKey = newIdempotencyKey();
+      const itemKey = into?.itemKey ?? newIdempotencyKey();
       const previewUrl = "mime" in check && (kind === "image" || kind === "video") ? URL.createObjectURL(file) : undefined;
-      const item: DraftInput = { key: itemKey, status: "error" in check ? "error" : "uploading", progress: 0, name: file.name, mime, kind, previewUrl, error: "error" in check ? check.error : undefined };
+      const item: DraftInput = {
+        key: itemKey,
+        status: "error" in check ? "error" : "uploading",
+        progress: 0,
+        name: into?.name ?? file.name,
+        mime,
+        kind,
+        previewUrl,
+        error: "error" in check ? check.error : undefined,
+      };
       update(key, (d) => {
-        const kept = spec.max === 1 ? [] : (d.slots[slot] ?? []);
-        if (spec.max === 1) for (const old of d.slots[slot] ?? []) controllers.current.get(old.key)?.abort();
+        const others = (d.slots[slot] ?? []).filter((i) => i.key !== itemKey);
+        const kept = spec.max === 1 ? [] : others;
+        if (spec.max === 1) for (const old of others) controllers.current.get(old.key)?.abort();
         return { ...d, slots: { ...d.slots, [slot]: [...kept, item] } };
       });
       if ("error" in check) return;
@@ -308,6 +330,14 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     },
     [setUrl],
   );
+  const setView = useCallback(
+    (v: CanvasView, bringIntoView = false) => {
+      setViewState(v);
+      setUrl({ view: v === "history" ? null : v });
+      if (bringIntoView) reveal("video-canvas");
+    },
+    [setUrl],
+  );
 
   // ------------------------------------------------------------------ results
   const refreshWallet = acct.refreshWallet;
@@ -377,6 +407,63 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     [modelsFor, startUse, extendable],
   );
 
+  // ------------------------------------------------------------------ Motion Library → Motion Control
+  const motionModel = useMemo(() => {
+    const list = modelsFor("motion");
+    return list.find((x) => x.id === drafts.motion.modelId) ?? list[0] ?? null;
+  }, [modelsFor, drafts.motion.modelId]);
+  const closePreview = useCallback(() => setPreview(null), []);
+
+  /**
+   * Recreate from the Motion Library: the library clip itself becomes the motion video (fetched from this site and
+   * uploaded privately like any file, so the server verifies it), the customer's image becomes the character and their
+   * text the prompt. Motion Control then prices this exact request; nothing runs until Generate. Returns why it
+   * cannot, or null.
+   */
+  const recreate = useCallback(
+    (clip: MotionItem, image: File, prompt: string): string | null => {
+      const m = motionModel;
+      const plan = recreatePlan(m, drafts.motion, clip, prompt);
+      if ("error" in plan) return plan.error;
+      if (!m?.inputs) return "Motion Control is not available right now.";
+      const videoSpec = m.inputs[plan.videoSlot];
+      const imageSpec = m.inputs[plan.imageSlot];
+      const itemKey = newIdempotencyKey();
+      const name = `Motion Library · ${clip.title}`;
+      for (const old of drafts.motion.slots[plan.videoSlot] ?? []) controllers.current.get(old.key)?.abort();
+      update("motion", (d) => ({
+        ...d,
+        modelId: plan.modelId,
+        modeId: modesOf(m).find((x) => x.uses.includes(plan.videoSlot))?.id ?? d.modeId,
+        options: plan.options,
+        prompt: plan.prompt,
+        slots: {
+          ...d.slots,
+          [plan.videoSlot]: [{ key: itemKey, status: "uploading", progress: 0, name, mime: "video/mp4", kind: "video", durationMs: clip.durationMs, width: clip.width, height: clip.height }],
+        },
+      }));
+      changeTab("motion");
+      setView("history");
+      setNotice(
+        [`Motion from the library: ${clip.title}.`, ...plan.notes, "The price appears once both files are checked; nothing runs until you press Generate."].join(" "),
+      );
+      void upload("motion", m, plan.imageSlot, imageSpec, image);
+      void (async () => {
+        try {
+          const res = await fetch(clip.src);
+          if (!res.ok) throw new Error(String(res.status));
+          const file = new File([await res.blob()], `${clip.id}.mp4`, { type: "video/mp4" });
+          await upload("motion", m, plan.videoSlot, videoSpec, file, { itemKey, name });
+        } catch {
+          patchItem("motion", plan.videoSlot, itemKey, { status: "error", error: "The library clip could not be loaded. Check the connection and press Recreate again." });
+        }
+      })();
+      reveal("video-composer");
+      return null;
+    },
+    [motionModel, drafts.motion, update, changeTab, setView, upload, patchItem],
+  );
+
   // ------------------------------------------------------------------ price and submission
   const missing = missingReason(model, draft);
   const request = model ? quoteRequest(model, draft) : null;
@@ -403,6 +490,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     try {
       const r = await api<{ job: Job }>("/api/generations", { body: { quoteId: quote.quoteId }, idempotencyKey: key });
       selectJob(r.job.id);
+      setView("history");
       renew();
       void acct.refreshWallet();
       recent.reload();
@@ -432,6 +520,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
       keys.current.delete(signature);
       setConfirmTest(false);
       selectJob(r.job.id);
+      setView("history");
       reveal("video-result");
     } catch (e) {
       setConfirmTest(false);
@@ -485,8 +574,8 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   };
 
   const promptBox = model ? (
-    <div className="rounded-2xl bg-raised ring-1 ring-white/[0.06] focus-within:ring-brand-blue-bright/70">
-      <label htmlFor="video-prompt" className="block px-3.5 pt-3 text-[11px] font-semibold text-muted">
+    <div className="rounded-xl bg-raised ring-1 ring-white/[0.06] focus-within:ring-brand-blue-bright/70">
+      <label htmlFor="video-prompt" className="block px-3 pt-2.5 text-[11px] font-medium text-muted">
         {promptOptional ? "Scene description (optional)" : "Prompt"}
       </label>
       <textarea
@@ -497,7 +586,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         maxLength={model.prompt?.max ?? 4000}
         onChange={(e) => update(dk, (d) => ({ ...d, prompt: e.target.value }))}
         placeholder={PLACEHOLDER[dk] + (mentions.length ? " Mention elements with @element1." : "")}
-        className="block max-h-64 min-h-[104px] w-full resize-y bg-transparent px-3.5 py-2 text-[15px] leading-relaxed text-ink placeholder:text-subtle focus:outline-none"
+        className="field-bare block max-h-64 min-h-[92px] w-full resize-y bg-transparent px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-subtle focus:outline-none"
       />
       <div className="flex flex-wrap items-center gap-1.5 px-2.5 pb-2.5">
         {mentions.map(([name, s]) => (
@@ -505,7 +594,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
             key={name}
             type="button"
             onClick={() => insertMention(s.mention!)}
-            className="h-8 rounded-full bg-white/[0.06] px-2.5 text-xs font-semibold text-ink hover:bg-white/[0.12]"
+            className="h-7 rounded-lg bg-white/[0.06] px-2 text-xs font-semibold text-ink hover:bg-white/[0.12]"
             title={`Insert ${s.mention} into the prompt`}
           >
             {s.mention}
@@ -516,7 +605,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
             type="button"
             aria-pressed={options.audio === "on"}
             onClick={() => setOption("audio", options.audio === "on" ? "off" : "on")}
-            className={cn("flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold", options.audio === "on" ? "bg-[rgb(37_63_246/0.22)] text-ink" : "bg-white/[0.06] text-muted")}
+            className={cn("flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold", options.audio === "on" ? "bg-[rgb(37_63_246/0.22)] text-ink" : "bg-white/[0.06] text-muted")}
             title={audio.label}
           >
             {options.audio === "on" ? <Volume2 aria-hidden className="size-3.5" /> : <VolumeX aria-hidden className="size-3.5" />}
@@ -537,7 +626,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         <OptionRow key={k} optionKey={k} spec={o} value={options[k]} onChange={(v) => setOption(k, v)} label={k === "mode" ? "Quality" : undefined} />
       ))}
       {chips.length ? (
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           {chips.map(([k, o]) => (
             <OptionChip
               key={k}
@@ -545,7 +634,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
               spec={o}
               value={options[k]}
               onChange={(v) => setOption(k, v)}
-              icon={k === "duration" ? <Clock3 aria-hidden className="size-4" /> : k === "aspect_ratio" ? <RectangleHorizontal aria-hidden className="size-4" /> : <Gem aria-hidden className="size-4" />}
+              icon={k === "duration" ? <Clock3 aria-hidden className="size-3.5" /> : k === "aspect_ratio" ? <RectangleHorizontal aria-hidden className="size-3.5" /> : <Gem aria-hidden className="size-3.5" />}
             />
           ))}
         </div>
@@ -610,16 +699,16 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         const items = draft.slots[name] ?? [];
         const room = spec.max - items.filter((i) => i.status !== "error").length;
         return (
-          <div key={name} className="rounded-2xl bg-raised p-2.5 ring-1 ring-white/[0.06]">
+          <div key={name} className="rounded-xl bg-raised p-2.5 ring-1 ring-white/[0.06]">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-ink">{spec.label}</span>
+              <span className="text-[13px] font-semibold text-ink">{spec.label}</span>
               {spec.mention ? (
                 <button type="button" onClick={() => insertMention(spec.mention!)} className="rounded-md bg-white/[0.06] px-2 py-1 text-[11px] font-semibold text-link hover:bg-white/[0.12]">
                   Insert {spec.mention}
                 </button>
               ) : null}
             </div>
-            <ul className="grid grid-cols-4 gap-2">
+            <ul className="grid grid-cols-4 gap-1.5">
               {items.map((it) => (
                 <li key={it.key}>
                   <InputThumb item={it} onRemove={() => removeItem(dk, name, it.key)} />
@@ -652,7 +741,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl border border-dashed border-white/15 px-3 py-4 text-center text-xs text-muted">No compatible videos yet. Create one first, then extend it here.</p>
+        <p className="rounded-xl border border-dashed border-white/15 px-3 py-3.5 text-center text-xs text-muted">No compatible videos yet. Create one first, then extend it here.</p>
       )}
     </div>
   ) : null;
@@ -688,7 +777,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
             onFiles={(files) => addFiles(files, multis.map(([n]) => n))}
           />
           {multiItems.length ? (
-            <ul className="grid grid-cols-4 gap-2">
+            <ul className="grid grid-cols-4 gap-1.5">
               {multiItems.map(({ slot, item }) => (
                 <li key={item.key}>
                   <InputThumb item={item} onRemove={() => removeItem(dk, slot, item.key)} />
@@ -704,7 +793,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
       {extendSource}
 
       {notice ? (
-        <p role="status" className="flex items-start gap-2 rounded-xl bg-[rgb(255_181_71/0.08)] px-3 py-2 text-xs text-orange-on-dark">
+        <p role="status" className="flex items-start gap-2 rounded-lg bg-[rgb(255_181_71/0.08)] px-2.5 py-2 text-xs text-orange-on-dark">
           <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" /> <span className="flex-1">{notice}</span>
           <button type="button" onClick={() => setNotice(null)} className="font-semibold underline">
             OK
@@ -717,16 +806,16 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const unavailable = !model && !loadingTests;
 
   return (
-    <div className="lg:flex lg:items-start lg:gap-6 lg:pr-6 lg:pb-3">
+    <div className="lg:flex lg:items-start lg:gap-5 lg:pr-5 lg:pb-3">
       <section
         id="video-composer"
         aria-label="Video composer"
-        className="scroll-thin scroll-mt-16 border-y border-white/[0.07] bg-surface lg:sticky lg:top-[68px] lg:flex lg:h-[calc(100dvh-80px)] lg:w-[400px] lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:rounded-[24px] lg:border"
+        className="panel-scroll scroll-mt-16 border-y border-white/[0.07] bg-surface lg:sticky lg:top-[64px] lg:flex lg:h-[calc(100dvh-76px)] lg:w-[380px] lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:rounded-[20px] lg:border"
       >
         <div className="z-10 bg-surface lg:sticky lg:top-0">
           <Tabs value={tab} onChange={(t) => changeTab(t)} />
           {canTest ? (
-            <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2">
+            <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-3.5 py-2">
               <span className="flex items-center gap-2 text-xs text-muted">
                 <FlaskConical aria-hidden className="size-4 text-orange-on-dark" /> Private test · staff only
               </span>
@@ -735,8 +824,12 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
           ) : null}
         </div>
 
-        <div role="tabpanel" id="video-panel" aria-labelledby={`video-tab-${tab}`} key={`${dk}-${testMode}`} className="animate-fade-up space-y-3 p-3 sm:p-4">
-          <ModeBanner title={banner.title} subtitle={banner.subtitle} poster={banner.poster} onHelp={() => setHelp(true)} />
+        <div role="tabpanel" id="video-panel" aria-labelledby={`video-tab-${tab}`} key={`${dk}-${testMode}`} className="animate-fade-up space-y-3 p-3 sm:p-3.5">
+          {dk === "motion" ? (
+            <MotionBanner onLibrary={() => setView("library", true)} onHelp={() => setView("how", true)} />
+          ) : (
+            <ModeBanner title={banner.title} subtitle={banner.subtitle} poster={banner.poster} onHelp={() => setView("how", true)} />
+          )}
           {tab === "create" ? (
             <ChoiceBar
               label="Create from"
@@ -749,17 +842,17 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
             />
           ) : null}
           {paused ? (
-            <p role="status" className="flex gap-2 rounded-2xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] p-3 text-sm text-orange-on-dark">
+            <p role="status" className="flex gap-2 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] p-2.5 text-[13px] text-orange-on-dark">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0" /> New generations are paused for maintenance. Running jobs continue.
             </p>
           ) : null}
 
-          {loadingTests ? <div className="h-40 animate-pulse-soft rounded-2xl bg-raised" role="status" aria-label="Loading test models" /> : null}
+          {loadingTests ? <div className="h-40 animate-pulse-soft rounded-xl bg-raised" role="status" aria-label="Loading test models" /> : null}
 
           {unavailable ? (
-            <div className="rounded-2xl border border-white/[0.08] bg-raised p-4">
-              <p className="font-semibold text-ink">{MODE_NAME[dk]} is not available yet</p>
-              <p className="mt-1 text-sm text-muted">
+            <div className="rounded-xl border border-white/[0.08] bg-raised p-3.5">
+              <p className="text-sm font-semibold text-ink">{MODE_NAME[dk]} is not available yet</p>
+              <p className="mt-1 text-[13px] text-muted">
                 {testMode
                   ? "No model for this mode has an integration in this release."
                   : "It opens as soon as a model for it has passed our checks and its price is published. Nothing is charged until then."}
@@ -774,14 +867,14 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
 
           {model ? (
             <>
-              {model.note ? <p className="px-1 text-sm text-orange-on-dark">{model.note}</p> : null}
+              {model.note ? <p className="px-1 text-[13px] text-orange-on-dark">{model.note}</p> : null}
               {inputs}
               {dk === "motion" ? null : promptBox}
               {settings}
               {orientation ? (
-                <fieldset className="space-y-2 rounded-2xl bg-raised p-3 ring-1 ring-white/[0.06]">
+                <fieldset className="space-y-2 rounded-xl bg-raised p-3 ring-1 ring-white/[0.06]">
                   <legend className="sr-only">{orientation.label}</legend>
-                  <p className="text-sm font-semibold text-ink" aria-hidden>
+                  <p className="text-[13px] font-semibold text-ink" aria-hidden>
                     {orientation.label}
                   </p>
                   <ChoiceBar
@@ -811,7 +904,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
           ) : null}
         </div>
 
-        <div className="gen-bar sticky bottom-0 mt-auto border-t border-white/[0.07] bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+        <div className="gen-bar sticky bottom-0 mt-auto border-t border-white/[0.07] bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-3.5">
           {testMode ? (
             <p className="mb-2 flex items-start gap-2 text-xs text-muted">
               <FlaskConical aria-hidden className="mt-0.5 size-3.5 shrink-0 text-orange-on-dark" /> Private test: paid from the KIE account, no customer credits. The result is visible to staff only.
@@ -829,19 +922,19 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
           )}
 
           {!testMode && (quoteError || quoteState.status === "timeout") ? (
-            <div role="alert" className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm">
+            <div role="alert" className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-2.5 py-1.5 text-[13px]">
               <span className="text-orange-on-dark">{quoteError ? quoteError.message : "The price check is taking longer than usual."}</span>
               <Button variant="secondary" size="sm" onClick={renew}>
                 Try again
               </Button>
             </div>
           ) : !testMode && insufficient ? (
-            <p className="mb-2 rounded-xl border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-3 py-2 text-sm text-orange-on-dark">
+            <p className="mb-2 rounded-lg border border-[rgb(255_181_71/0.35)] bg-[rgb(255_181_71/0.08)] px-2.5 py-1.5 text-[13px] text-orange-on-dark">
               You need {fmtCredits((cost ?? 0) - available)} more for this video.
             </p>
           ) : null}
           {submitError ? (
-            <div role="alert" className="mb-2 rounded-xl border border-[rgb(239_68_68/0.4)] bg-[rgb(239_68_68/0.12)] px-3 py-2 text-sm text-error-on-dark">
+            <div role="alert" className="mb-2 rounded-lg border border-[rgb(239_68_68/0.4)] bg-[rgb(239_68_68/0.12)] px-2.5 py-1.5 text-[13px] text-error-on-dark">
               {submitError.message}
               {submitError.code === "NETWORK" ? " Pressing the button again resumes the same request — it is never charged twice." : null}
               {submitError.code === "TEST_IN_PROGRESS" && typeof submitError.details?.jobId === "string" ? (
@@ -861,49 +954,62 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
               {quote && cost !== null ? `Generate · ${fmtCredits(cost)}` : quoting ? "Checking the price…" : request ? "Price unavailable" : model ? (missing ?? "Generate") : "Not available yet"}
             </Button>
           )}
-          {!testMode && model ? <p className="mt-2 text-center text-[11px] text-muted">Credits are reserved now and charged only when the video is saved. Failed jobs return them.</p> : null}
+          {!testMode && model ? <p className="mt-1.5 text-center text-[11px] text-muted">Credits are reserved now and charged only when the video is saved. Failed jobs return them.</p> : null}
         </div>
       </section>
 
-      <div className="min-w-0 flex-1 p-4 sm:p-6 lg:px-0 lg:pt-1">
+      <div id="video-canvas" className="min-w-0 flex-1 scroll-mt-16 p-3 sm:p-5 lg:px-0 lg:pt-1">
         <h1 className="sr-only">Video studio</h1>
-        <div className="mb-3 flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" icon={<History aria-hidden className="size-4" />} onClick={() => document.getElementById("video-history")?.scrollIntoView({ block: "start" })}>
-            History
-          </Button>
-          <Button variant="ghost" size="sm" icon={<BookOpen aria-hidden className="size-4" />} onClick={() => setHelp(true)}>
-            How it works
-          </Button>
+        <div className="mb-3">
+          <CanvasTabs value={view} onChange={(v) => setView(v)} />
         </div>
-        <div id="video-result" className="scroll-mt-20">
-          {jobId ? <LiveJobCard jobId={jobId} uses={uses} onSettled={onSettled} onGone={() => selectJob(null)} /> : <EmptyPreview kind="video" hint={EMPTY_HINT[dk]} />}
-        </div>
-        <section id="video-history" aria-labelledby="video-history-h" className="mt-8 scroll-mt-20 border-t border-white/[0.07] pt-6">
-          <div className="flex items-center justify-between">
-            <h2 id="video-history-h" className="text-sm font-semibold text-ink">
-              Recent videos
-            </h2>
-            <ButtonLink href="/studio/library" variant="ghost" size="sm">
-              Open library
-            </ButtonLink>
+        {view === "library" ? (
+          <div role="tabpanel" id="canvas-panel-library" aria-labelledby="canvas-tab-library">
+            <MotionLibraryGrid onOpen={(item, from) => setPreview({ item, from })} />
           </div>
-          {recent.data && recent.data.length ? (
-            <ul className="mt-3 flex flex-wrap gap-3">
-              {recent.data.map((h) => (
-                <li key={h.id}>
-                  <HistoryTile job={h} selected={jobId === h.id} onSelect={() => selectJob(h.id)} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted">{recent.loading ? "Loading…" : "Your videos appear here."}</p>
-          )}
-        </section>
+        ) : view === "how" ? (
+          <div role="tabpanel" id="canvas-panel-how" aria-labelledby="canvas-tab-how">
+            <HowItWorks steps={HOW[dk]} modeTitle={banner.title} />
+          </div>
+        ) : (
+          <div role="tabpanel" id="canvas-panel-history" aria-labelledby="canvas-tab-history">
+            <div id="video-result" className="scroll-mt-20">
+              {jobId ? <LiveJobCard jobId={jobId} uses={uses} onSettled={onSettled} onGone={() => selectJob(null)} /> : <EmptyPreview kind="video" hint={EMPTY_HINT[dk]} />}
+            </div>
+            <section id="video-history" aria-labelledby="video-history-h" className="mt-7 scroll-mt-20 border-t border-white/[0.07] pt-5">
+              <div className="flex items-center justify-between">
+                <h2 id="video-history-h" className="text-sm font-semibold text-ink">
+                  Recent videos
+                </h2>
+                <ButtonLink href="/studio/library" variant="ghost" size="sm">
+                  Open library
+                </ButtonLink>
+              </div>
+              {recent.data && recent.data.length ? (
+                <ul className="mt-3 flex flex-wrap gap-2.5">
+                  {recent.data.map((h) => (
+                    <li key={h.id}>
+                      <HistoryTile job={h} selected={jobId === h.id} onSelect={() => selectJob(h.id)} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-muted">{recent.loading ? "Loading…" : "Your videos appear here."}</p>
+              )}
+            </section>
+          </div>
+        )}
       </div>
 
-      <Dialog open={help} onClose={() => setHelp(false)} title={`How it works · ${banner.title}`} description={banner.subtitle}>
-        <Steps steps={HOW[dk]} />
-      </Dialog>
+      <MotionPreview
+        key={preview?.item.id ?? "none"}
+        item={preview?.item ?? null}
+        model={motionModel}
+        draft={drafts.motion}
+        returnFocus={preview?.from ?? null}
+        onClose={closePreview}
+        onRecreate={recreate}
+      />
       <Dialog
         open={confirmTest}
         onClose={() => setConfirmTest(false)}
@@ -960,7 +1066,7 @@ function Tabs({ value, onChange }: { value: TabId; onChange: (t: TabId) => void 
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => onKey(e, i)}
-            className={cn("relative h-12 shrink-0 px-2.5 text-sm font-semibold whitespace-nowrap transition-colors", on ? "text-ink" : "text-muted hover:text-ink")}
+            className={cn("relative h-11 shrink-0 px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors", on ? "text-ink" : "text-muted hover:text-ink")}
           >
             {t.label}
             <span aria-hidden className={cn("absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-brand-blue-bright transition-opacity duration-200", on ? "opacity-100" : "opacity-0")} />
@@ -988,7 +1094,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 
 function AddTile({ accept, label, onFiles }: { accept: string[]; label: string; onFiles: (files: File[]) => void }) {
   return (
-    <label className="grid aspect-square cursor-pointer place-items-center rounded-2xl border border-dashed border-white/15 text-muted hover:border-white/35 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]">
+    <label className="grid aspect-square cursor-pointer place-items-center rounded-xl border border-dashed border-white/15 text-muted hover:border-white/35 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]">
       <Plus aria-hidden className="size-5" />
       <span className="sr-only">{label}</span>
       <input
@@ -1015,8 +1121,8 @@ const EMPTY_HINT: Record<DraftKey, string> = {
 function StudioSkeleton() {
   return (
     <div className="p-4 sm:p-6 lg:flex lg:gap-6" role="status" aria-busy="true" aria-label="Loading">
-      <div className="h-[560px] animate-pulse-soft rounded-[24px] bg-surface lg:w-[400px]" />
-      <div className="mt-4 aspect-video flex-1 animate-pulse-soft rounded-[24px] bg-surface lg:mt-0" />
+      <div className="h-[560px] animate-pulse-soft rounded-[20px] bg-surface lg:w-[380px]" />
+      <div className="mt-4 aspect-video flex-1 animate-pulse-soft rounded-[20px] bg-surface lg:mt-0" />
     </div>
   );
 }

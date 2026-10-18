@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useId, useRef, useState, type ReactNode } from "react";
-import { BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import type { OptionSpec } from "@/lib/live/types";
 import { cn } from "@/lib/format";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Mutually exclusive choice as a radio group (References | Extend video, input combination, orientation…).
@@ -33,7 +34,7 @@ export function ChoiceBar<T extends string>({
     refs.current[next]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} className="flex gap-1 rounded-2xl bg-canvas/70 p-1 ring-1 ring-white/[0.06]">
+    <div role="radiogroup" aria-label={label} className="flex gap-1 rounded-xl bg-canvas/70 p-[3px] ring-1 ring-white/[0.06]">
       {options.map((o, i) => {
         const on = o.id === value;
         return (
@@ -50,9 +51,9 @@ export function ChoiceBar<T extends string>({
             onClick={() => onChange(o.id)}
             onKeyDown={(e) => onKey(e, i)}
             className={cn(
-              "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 font-semibold transition-colors",
-              size === "sm" ? "h-9 text-[13px]" : "h-10 text-sm",
-              on ? "bg-raised text-ink shadow-[0_1px_0_rgb(255_255_255/0.06)_inset]" : "text-muted hover:text-ink",
+              "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[9px] px-2 font-semibold transition-colors",
+              size === "sm" ? "h-8 text-[12.5px]" : "h-9 text-[13px]",
+              on ? "control-raised bg-elevated text-ink" : "text-muted hover:text-ink",
             )}
           >
             {o.icon}
@@ -67,10 +68,7 @@ export function ChoiceBar<T extends string>({
 const valueLabel = (spec: OptionSpec, v: string | number, key: string) =>
   spec.labels?.[String(v)] ?? (key === "duration" || key === "seconds" ? `${v}s` : String(v).replace(/^4k$/i, "4K"));
 
-/**
- * Compact setting chip (length, shape, resolution) backed by a native select: one tap opens the platform's own
- * picker on phones, and keyboard and screen readers get a standard control.
- */
+/** Compact setting chip (length, shape, resolution); opens the shared dark select popover. */
 export function OptionChip({
   optionKey,
   spec,
@@ -86,33 +84,28 @@ export function OptionChip({
 }) {
   const fixed = spec.values.length < 2;
   return (
-    <label
+    <SelectMenu
+      label={spec.label}
+      value={value}
+      options={spec.values.map((v) => ({ value: v, label: valueLabel(spec, v, optionKey) }))}
+      onChange={onChange}
       className={cn(
-        "relative flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-raised px-2.5 text-sm font-semibold text-ink ring-1 ring-white/[0.06] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
-        fixed ? "text-muted" : "cursor-pointer hover:ring-white/20",
+        "control-raised flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-white/[0.07] bg-raised px-2 text-[13px] font-semibold text-ink transition-colors",
+        fixed ? "text-muted" : "hover:border-white/[0.18] aria-expanded:border-brand-blue-bright/70 aria-expanded:bg-elevated",
       )}
-      title={spec.label}
     >
-      <span className="text-muted">{icon}</span>
-      <span className="truncate tabular">{valueLabel(spec, value, optionKey)}</span>
-      <select
-        aria-label={spec.label}
-        value={String(value)}
-        disabled={fixed}
-        onChange={(e) => onChange(typeof spec.values[0] === "number" ? Number(e.target.value) : e.target.value)}
-        className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 disabled:cursor-default"
-      >
-        {spec.values.map((v) => (
-          <option key={String(v)} value={String(v)}>
-            {valueLabel(spec, v, optionKey)}
-          </option>
-        ))}
-      </select>
-    </label>
+      {(selected, open) => (
+        <>
+          <span className="text-muted">{icon}</span>
+          <span className="truncate tabular">{selected?.label ?? valueLabel(spec, value, optionKey)}</span>
+          {fixed ? null : <ChevronDown aria-hidden className={cn("size-3.5 shrink-0 text-subtle transition-transform", open && "rotate-180")} />}
+        </>
+      )}
+    </SelectMenu>
   );
 }
 
-/** A labelled row (Model, Quality, Tier…) in the panel's list style; the value opens a native picker. */
+/** A labelled row (Quality, Tier…) in the panel's list style; the value opens the shared dark select popover. */
 export function OptionRow({
   optionKey,
   spec,
@@ -128,31 +121,26 @@ export function OptionRow({
 }) {
   const fixed = spec.values.length < 2;
   return (
-    <label
+    <SelectMenu
+      label={label ?? spec.label}
+      value={value}
+      options={spec.values.map((v) => ({ value: v, label: valueLabel(spec, v, optionKey) }))}
+      onChange={onChange}
       className={cn(
-        "relative flex items-center justify-between gap-3 rounded-2xl bg-raised px-3.5 py-2.5 ring-1 ring-white/[0.06] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
-        fixed ? "" : "cursor-pointer hover:ring-white/20",
+        "control-raised flex w-full items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-raised px-3 py-2 text-left transition-colors",
+        fixed ? "" : "hover:border-white/[0.18] aria-expanded:border-brand-blue-bright/70",
       )}
     >
-      <span className="min-w-0">
-        <span className="block text-[11px] font-semibold text-muted">{label ?? spec.label}</span>
-        <span className="block truncate text-[15px] font-semibold text-ink">{valueLabel(spec, value, optionKey)}</span>
-      </span>
-      {fixed ? null : <ChevronRight aria-hidden className="size-4 shrink-0 text-muted" />}
-      <select
-        aria-label={label ?? spec.label}
-        value={String(value)}
-        disabled={fixed}
-        onChange={(e) => onChange(typeof spec.values[0] === "number" ? Number(e.target.value) : e.target.value)}
-        className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 disabled:cursor-default"
-      >
-        {spec.values.map((v) => (
-          <option key={String(v)} value={String(v)}>
-            {valueLabel(spec, v, optionKey)}
-          </option>
-        ))}
-      </select>
-    </label>
+      {(selected, open) => (
+        <>
+          <span className="min-w-0">
+            <span className="block text-[11px] font-medium text-muted">{label ?? spec.label}</span>
+            <span className="block truncate text-sm font-semibold text-ink">{selected?.label ?? valueLabel(spec, value, optionKey)}</span>
+          </span>
+          {fixed ? null : <ChevronDown aria-hidden className={cn("size-4 shrink-0 text-muted transition-transform", open && "rotate-180")} />}
+        </>
+      )}
+    </SelectMenu>
   );
 }
 
@@ -167,7 +155,7 @@ export function Disclosure({ title, children, defaultOpen = false }: { title: st
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 w-full items-center justify-between rounded-xl px-1 text-sm font-semibold text-ink hover:text-white"
+        className="flex h-10 w-full items-center justify-between rounded-xl px-1 text-[13px] font-semibold text-ink hover:text-white"
       >
         {title}
         <ChevronDown aria-hidden className={cn("size-4 text-muted transition-transform", open && "rotate-180")} />
@@ -184,19 +172,19 @@ export function Disclosure({ title, children, defaultOpen = false }: { title: st
 /** Restrained mode banner: a project-owned still, the mode's name and one line of help. */
 export function ModeBanner({ title, subtitle, poster, onHelp }: { title: string; subtitle: string; poster: string; onHelp: () => void }) {
   return (
-    <div className="relative h-[116px] overflow-hidden rounded-2xl ring-1 ring-white/[0.06] sm:h-[128px]">
+    <div className="relative h-[104px] overflow-hidden rounded-[14px] ring-1 ring-white/[0.06] sm:h-[112px]">
       <Image src={poster} alt="" fill sizes="(min-width: 1024px) 400px, 100vw" className="object-cover object-[center_32%]" priority={false} />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[rgb(8_10_10/0.92)] via-[rgb(8_10_10/0.45)] to-[rgb(8_10_10/0.05)]" />
       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(90%_120%_at_0%_100%,rgb(37_63_246/0.35),transparent_60%)]" />
       <button
         type="button"
         onClick={onHelp}
-        className="absolute top-2.5 right-2.5 flex h-8 items-center gap-1.5 rounded-full bg-black/55 px-3 text-xs font-semibold text-white backdrop-blur hover:bg-black/70"
+        className="absolute top-2 right-2 flex h-7 items-center gap-1.5 rounded-lg bg-black/55 px-2.5 text-xs font-semibold text-white ring-1 ring-white/10 backdrop-blur hover:bg-black/70"
       >
         <BookOpen aria-hidden className="size-3.5" /> How it works
       </button>
-      <div className="absolute inset-x-4 bottom-3">
-        <p className="font-display text-xl leading-none font-extrabold tracking-tight text-white uppercase sm:text-[22px]">{title}</p>
+      <div className="absolute inset-x-3.5 bottom-2.5">
+        <p className="font-display text-lg leading-none font-extrabold tracking-tight text-white uppercase sm:text-xl">{title}</p>
         <p className="mt-1 truncate text-xs text-white/80">{subtitle}</p>
       </div>
     </div>

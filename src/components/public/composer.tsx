@@ -73,7 +73,7 @@ export function Composer() {
 
   const requestReference = () => {
     write({ keepExample: true });
-    router.push(authed ? "/studio/edit" : `/sign-in?next=${encodeURIComponent("/studio/edit")}&reason=reference`);
+    router.push(authed ? "/studio/image?mode=edit" : `/sign-in?next=${encodeURIComponent("/studio/image?mode=edit")}&reason=reference`);
   };
 
   const available = modelsFor(tool).filter((m) => m.availability !== "maintenance");
