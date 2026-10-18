@@ -12,6 +12,7 @@ import {
   Gauge,
   LayoutDashboard,
   LifeBuoy,
+  Network,
   ScrollText,
   Search,
   ShieldCheck,
@@ -41,6 +42,7 @@ const LIVE_GROUPS: NavGroup[] = [
       { href: "/admin/catalog", label: "Models", icon: Boxes },
       { href: "/admin/pricing", label: "Pricing & packages", icon: Tag },
       { href: "/admin/kie", label: "KIE balance", icon: Gauge },
+      { href: "/admin/providers", label: "Providers & routing", icon: Network },
     ],
   },
   {

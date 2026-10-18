@@ -4,6 +4,15 @@ A rollback is written and tested with its migration but is **not applied**. To u
 as a new migration (Supabase MCP `apply_migration` or `supabase db push`) with the owner's agreement, then run the
 matching test in `supabase/tests/`.
 
+## 20261018181012_multi_provider_routing
+
+Undoes the twelve parts `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` (applied 18 Oct 2026).
+Restores the previous quote, job creation, staff test, public catalog and KIE balance-reading functions and switches every
+non-original supplier offer off, so only each model's original KIE route is used again. The new tables (offers, prices,
+keys, cost ledger, balances) and the worker functions for routed attempts stay, so jobs already sent to another supplier
+finish and nothing financial is lost. Tested locally: migrations → test 08 → rollback → tests 01–07 pass. Deploy the
+previous release after applying it.
+
 ## 20261018013256_image_edit_multi_reference
 
 The migration (applied on 18 Oct 2026 with the owner's go-ahead) lets Image Edit take several reference images:

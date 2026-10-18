@@ -6,11 +6,14 @@ import { adminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
 import { sha256Hex } from "@/lib/server/crypto";
 import { ApiError, fromPostgrest } from "@/lib/server/http";
-import { generationProvider, providerConfigured } from "@/lib/providers";
+import { paidSubmissionsAllowed } from "@/lib/providers";
 import { balanceReadable, readAndRecordBalance } from "@/lib/providers/balance";
+import { credentialFor } from "@/lib/providers/credentials";
 import { FAKE_RESULT_PREFIX, FAKE_SAMPLES } from "@/lib/providers/fake";
 import { parseCallbackUrl } from "@/lib/providers/kie/webhook";
-import { TransientProviderError, type ClaimContext, type TaskDetail } from "@/lib/providers/types";
+import { providerClient } from "@/lib/providers/registry";
+import { syncProviderBalances } from "@/lib/providers/sync";
+import { TransientProviderError, type AttemptRoute, type ClaimContext, type SubmitOutcome, type TaskDetail } from "@/lib/providers/types";
 import { FetchRejected, safeDownload } from "@/lib/media/safe-fetch";
 import { imageDimensionsOk, sniff } from "@/lib/media/sniff";
 import { probeMedia } from "@/lib/media/probe";
@@ -56,18 +59,39 @@ const jitter = (base: number) => base + Math.floor(Math.random() * Math.max(5, b
 
 // ------------------------------------------------------------------ handlers
 
+/** Secrets present in this deployment's environment (names only), so the router skips a KIE route without its key. */
+const runtime = () => ({ envSecrets: env.kieApiKey() || env.fakeProvider() ? ["KIE_API_KEY"] : [] });
+
 async function handleSubmit(db: SupabaseClient, c: Claim): Promise<string> {
-  if (!providerConfigured() || env.generationPaused()) {
+  if (!paidSubmissionsAllowed() || env.generationPaused()) {
     // Fail closed before any attempt exists: the job stays queued until configuration, un-pause or its deadline.
-    const why = env.generationPaused() ? "generation paused by environment" : "generation provider not configured";
+    const why = env.generationPaused() ? "generation paused by environment" : "paid provider calls are disabled on this deployment";
     await call(db, "worker_defer", { ...lease(c), p_seconds: 300, p_error: why });
     return "deferred:not_configured";
   }
-  const begin = await call<{ action: string; attemptId?: string; correlationToken?: string }>(db, "worker_begin_submission", lease(c));
+  // The database chooses the cheapest eligible offer for the job's frozen settings and pins it to the attempt.
+  const begin = await call<{ action: string; attemptId?: string; correlationToken?: string; route?: AttemptRoute }>(db, "worker_begin_submission_v2", {
+    ...lease(c), p_runtime: runtime(),
+  });
   if (begin.action !== "submit") return `submit:${begin.action}`;
+  const route = begin.route!;
 
-  const provider = generationProvider();
-  const context = { ...c.context, attempt: { id: begin.attemptId!, ordinal: 0, state: "submitting", taskId: null } };
+  const record = (outcome: SubmitOutcome) => call<{ action: string }>(db, "worker_record_submission", { ...lease(c), p_attempt_id: begin.attemptId, p_outcome: outcome });
+  let key: string;
+  try {
+    key = await credentialFor(route);
+  } catch (e) {
+    // Nothing was sent: a missing or unreadable key is a refusal of this account (circuit breaker, then rerouting).
+    await record({ kind: "rejected_account", code: "CREDENTIAL_UNAVAILABLE", message: redact(e instanceof Error ? e.message : "credential unavailable") });
+    return "submit:credential_unavailable";
+  }
+  const provider = providerClient(route.provider);
+  // Adapter and provider model come from the route (for the original KIE route they equal the job's own).
+  const context = {
+    ...c.context,
+    model: { ...c.context.model, adapter: route.adapter, providerModelId: route.upstreamModelId, providerAccountId: route.accountId },
+    attempt: { id: begin.attemptId!, ordinal: 0, state: "submitting", taskId: null },
+  };
   let referenceUrls: string[] = [];
   const inputUrls: Record<string, string[]> = {};
   const sourceTasks: Record<string, string[]> = {};
@@ -95,26 +119,31 @@ async function handleSubmit(db: SupabaseClient, c: Claim): Promise<string> {
     }
   } catch {
     // Nothing was sent yet: this is a definite non-submission, safe to retry with backoff.
-    await call(db, "worker_record_submission", {
-      ...lease(c), p_attempt_id: begin.attemptId, p_outcome: { kind: "rejected_retryable", code: "REFERENCE_URL", message: "reference link failed" },
-    });
+    await record({ kind: "rejected_retryable", code: "REFERENCE_URL", message: "reference link failed" });
     return "submit:reference_retry";
   }
+  // Only KIE callbacks are verified (attempt + correlation token); other providers are polled.
   const base = env.kieCallbackBaseUrl() ?? env.appBaseUrl();
-  const callBackUrl = base
+  const callBackUrl = base && route.provider === "kie"
     ? `${base}/api/webhooks/kie?attempt=${encodeURIComponent(begin.attemptId!)}&correlation=${encodeURIComponent(begin.correlationToken!)}`
     : null;
 
-  let outcome;
+  let outcome: SubmitOutcome;
   try {
-    outcome = await provider.submit({ context, referenceUrls, inputUrls, sourceTasks, callBackUrl });
+    if (!env.fakeProvider() && !provider.adapters.includes(route.adapter)) throw new Error(`adapter ${route.adapter} is not in this release`);
+    outcome = await provider.submit({ context, referenceUrls, inputUrls, sourceTasks, callBackUrl, route, key, idempotencyKey: `genlixs-${begin.attemptId}` });
   } catch (e) {
     // Local failure building the request (before any network send) is terminal for this input.
     outcome = { kind: "rejected_terminal" as const, code: "ADAPTER", message: redact(String(e instanceof Error ? e.message : e)),
       publicCode: "INVALID_REQUEST", publicMessage: "This request could not be prepared for the generation service." };
   }
-  const r = await call<{ action: string }>(db, "worker_record_submission", { ...lease(c), p_attempt_id: begin.attemptId, p_outcome: outcome });
+  const r = await record(outcome);
   return `submit:${r.action}`;
+}
+
+/** The route pinned to the job's latest attempt; status reads and downloads always use that supplier and key. */
+async function attemptRoute(db: SupabaseClient, c: Claim): Promise<AttemptRoute | null> {
+  return call<AttemptRoute | null>(db, "worker_attempt_route", lease(c));
 }
 
 function observation(d: TaskDetail, source: string) {
@@ -133,7 +162,13 @@ async function handleCheck(db: SupabaseClient, c: Claim): Promise<string> {
   }
   let detail: TaskDetail;
   try {
-    detail = await generationProvider().getTask(taskId);
+    const route = await attemptRoute(db, c);
+    if (!route) throw new TransientProviderError("no attempt route");
+    const key = await credentialFor(route).catch((e: unknown) => {
+      // A revoked or missing key is an operational problem to fix, never a generation failure.
+      throw new TransientProviderError(e instanceof Error ? e.message : "credential unavailable");
+    });
+    detail = await providerClient(route.provider).getTask(taskId, { route, key });
   } catch (e) {
     if (e instanceof TransientProviderError) {
       await call(db, "worker_defer", { ...lease(c), p_seconds: jitter(30), p_error: redact(e.message) });
@@ -151,7 +186,16 @@ async function handleBind(db: SupabaseClient, c: Claim): Promise<string> {
   const taskId = String(c.payload.taskId ?? "");
   let detail: TaskDetail;
   try {
-    detail = await generationProvider().getTask(taskId);
+    // Binding evidence (the callBackUrl recorded with the task) exists only on KIE, the provider whose callbacks we use.
+    const route = await attemptRoute(db, c);
+    if (!route || (route.provider !== "kie" && !env.fakeProvider())) {
+      await call(db, "worker_complete", { ...lease(c), p_note: "task binding applies to KIE callbacks only" });
+      return "bind:not_applicable";
+    }
+    const key = await credentialFor(route).catch((e: unknown) => {
+      throw new TransientProviderError(e instanceof Error ? e.message : "credential unavailable");
+    });
+    detail = await providerClient(route.provider).getTask(taskId, { route, key });
   } catch (e) {
     if (e instanceof TransientProviderError) {
       await call(db, "worker_defer", { ...lease(c), p_seconds: jitter(30), p_error: redact(e.message) });
@@ -168,15 +212,22 @@ async function handleBind(db: SupabaseClient, c: Claim): Promise<string> {
   return `bind:${r.action}`;
 }
 
-async function fetchResult(url: string, maxBytes: number): Promise<Uint8Array> {
+async function fetchResult(url: string, maxBytes: number, allowedHosts: string[]): Promise<Uint8Array> {
   if (url.startsWith(FAKE_RESULT_PREFIX)) {
     if (!env.fakeProvider()) throw new FetchRejected("fake result outside fake mode", false);
     const rel = FAKE_SAMPLES[url.slice(FAKE_RESULT_PREFIX.length)];
     if (!rel) throw new FetchRejected("unknown fake sample", false);
     return new Uint8Array(await readFile(path.join(process.cwd(), "public", rel)));
   }
-  const { bytes } = await safeDownload(url, { allowedHosts: env.mediaAllowedHosts(), maxBytes, timeoutMs: 180_000 });
+  const { bytes } = await safeDownload(url, { allowedHosts, maxBytes, timeoutMs: 180_000 });
   return bytes;
+}
+
+/** Download hosts for the supplier that produced the job: its documented hosts plus reviewed additions from settings. */
+async function importHosts(db: SupabaseClient, c: Claim): Promise<string[]> {
+  const route = await attemptRoute(db, c).catch(() => null);
+  const own = route && !env.fakeProvider() ? providerClient(route.provider).resultHosts : [];
+  return [...new Set([...env.mediaAllowedHosts(), ...own])];
 }
 
 async function handleImport(db: SupabaseClient, c: Claim): Promise<string> {
@@ -189,12 +240,13 @@ async function handleImport(db: SupabaseClient, c: Claim): Promise<string> {
     return `import:${r.action}`;
   };
   if (urls.length < expected) return fail("result manifest incomplete", false);
+  const hosts = await importHosts(db, c);
 
   const assets = [];
   for (let i = 0; i < expected; i++) {
     let bytes: Uint8Array;
     try {
-      bytes = await fetchResult(urls[i], out.maxBytes);
+      bytes = await fetchResult(urls[i], out.maxBytes, hosts);
     } catch (e) {
       if (e instanceof FetchRejected) return fail(e.message, e.retryable);
       return fail("download failed", true);
@@ -295,8 +347,12 @@ export async function runWorker(kind: QueueKind, opts: { budgetMs?: number; work
   return { queue, processed, outcomes, stoppedBy: "budget" };
 }
 
-/** Records the supplier balance observation (§12.5), success or failure. Stale/missing is distinct from zero. */
+/**
+ * Records the supplier balance observations (§12.5), success or failure. Stale/missing is distinct from zero. The KIE
+ * environment key keeps its existing reading; accounts with Admin keys are refreshed a few at a time.
+ */
 export async function recordProviderBalance(): Promise<number | null> {
+  await syncProviderBalances(6).catch(() => 0);
   if (!balanceReadable()) return null;
   const read = await readAndRecordBalance("worker");
   return read.ok ? read.credits : null;

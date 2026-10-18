@@ -75,6 +75,79 @@ export interface GenerationProvider {
   readBalance(): Promise<BalanceRead>;
 }
 
+// ------------------------------------------------------------------ multi-provider routing
+
+export type ProviderName = "kie" | "fake" | "duomi" | "poyo" | "nezhagate" | "cuddler" | "apimart";
+export const PROVIDER_NAMES: readonly ProviderName[] = ["kie", "duomi", "poyo", "nezhagate", "cuddler", "apimart"];
+
+/**
+ * The route the database chose (worker_begin_submission_v2) or pinned for an attempt (worker_attempt_route).
+ * Amounts are decimal text, never binary floats. The key itself is never part of a route.
+ */
+export type AttemptRoute = {
+  attemptId?: string;
+  provider: ProviderName;
+  accountId: string;
+  offerId: string | null;
+  legacy?: boolean;
+  adapter: string;
+  upstreamModelId: string;
+  credentialVersion: number;
+  credentialSource: "vault" | "environment" | "none";
+  secretRef: string | null;
+  /** Fixed request parameters of the offer (for example a provider "variant"). */
+  request?: Record<string, string | number | boolean> | null;
+  unit?: string | null;
+  estimate?: { native: string | number | null; nominalUsd: string | number | null; effectiveUsd: string | number | null } | null;
+};
+
+/** A submit through a routed provider: the regular request plus the route, its key and an idempotency key. */
+export type RoutedSubmit = SubmitRequest & { route: AttemptRoute; key: string; idempotencyKey: string };
+
+/**
+ * One balance read. Optional fields stay null when the provider does not report them: unknown is never zero.
+ * `scope` separates an account wallet from an API-key allowance; an unlimited key is not an unlimited wallet.
+ */
+export type ProviderBalance =
+  | {
+      ok: true;
+      total: string | null;
+      available: string | null;
+      held: string | null;
+      unit: string;
+      scope: "wallet" | "key";
+      unlimited?: boolean;
+      note?: string | null;
+    }
+  | { ok: false; error: string; state: "failed" | "unauthorized" | "unsupported" };
+
+/** Account-level usage reported by a provider (may include other applications on the same account). */
+export type UsageReport = {
+  scope: "key" | "account";
+  from: string;
+  to: string;
+  timezone: string;
+  amountUsd: string | null;
+  nativeAmount: string | null;
+  nativeUnit: string | null;
+  requests: number | null;
+};
+
+/** Shared adapter interface around one supplier. Hosts and paths are fixed in code; nothing here is configurable. */
+export interface ProviderClient {
+  readonly name: ProviderName;
+  /** Request builders implemented by this release (must equal the migration's provider_adapters rows). */
+  readonly adapters: readonly string[];
+  /** Hosts results may be downloaded from (redirects are checked against the same list). */
+  readonly resultHosts: readonly string[];
+  /** Whether a documented read-only balance call exists (used as the connection test). */
+  readonly balanceSupport: "api" | "none";
+  submit(req: RoutedSubmit): Promise<SubmitOutcome>;
+  getTask(taskId: string, ctx: { route: AttemptRoute; key: string }): Promise<TaskDetail>;
+  readBalance(key: string): Promise<ProviderBalance>;
+  readUsage?(key: string, range: { from: Date; to: Date }): Promise<UsageReport | null>;
+}
+
 /** Transient read failure: retry later, never interpret as a generation failure. */
 export class TransientProviderError extends Error {
   constructor(message: string) {

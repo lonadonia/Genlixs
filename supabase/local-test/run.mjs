@@ -7,7 +7,7 @@
 //                  (pgmq, pg_net and pg_cron come from the stand-in)
 //   tests[:01,07]  run supabase/tests: 00_helpers + each file in its own session (default 01-06)
 //   pending        apply supabase/pending/*.sql, if any (migrations written but not applied anywhere yet)
-//   rollback       apply supabase/rollbacks/*_image_edit_multi_reference.rollback.sql
+//   rollback[:v]   apply supabase/rollbacks/<v>_*.rollback.sql (default: the image edit multi-reference rollback)
 //   sql:<file>     run a SQL file (relative to this folder) and print the rows of its last statement
 //   stop           stop the local server
 import crypto from "node:crypto";
@@ -121,11 +121,12 @@ for (const step of process.argv.slice(2)) {
       if (!ok) failures++;
       console.log(`${ok ? "ok  " : "FAIL"} ${f}: ${message}`);
     }
-  } else if (step === "pending" || step === "rollback") {
+  } else if (step === "pending" || step === "rollback" || step.startsWith("rollback:")) {
     const dir = path.join(repo, "supabase", step === "pending" ? "pending" : "rollbacks");
+    const which = step.startsWith("rollback:") ? `${step.slice(9)}_` : null;
     const files = !fs.existsSync(dir)
       ? []
-      : fs.readdirSync(dir).filter((x) => (step === "pending" ? x.endsWith(".sql") : x.endsWith("_image_edit_multi_reference.rollback.sql"))).sort();
+      : fs.readdirSync(dir).filter((x) => (step === "pending" ? x.endsWith(".sql") : which ? x.startsWith(which) && x.endsWith(".rollback.sql") : x.endsWith("_image_edit_multi_reference.rollback.sql"))).sort();
     if (!files.length) console.log(`${step}: nothing to apply`);
     for (const f of files) {
       try {

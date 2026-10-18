@@ -17,9 +17,19 @@ node supabase/local-test/run.mjs fresh migrations:20261015032953 tests \
   rollback tests:01,02,03,04,05,06 stop
 ```
 
+Multi-provider routing (migrations `20261018181012`…`20261018182418`, parts 01–12): all suites, then its rollback and
+the earlier suites again:
+
+```sh
+node supabase/local-test/run.mjs fresh migrations tests:01,02,03,04,05,06,07,08 \
+  rollback:20261018181012 tests:01,02,03,04,05,06,07 stop
+```
+
+`rollback:<version>` applies `supabase/rollbacks/<version>_*.rollback.sql`; plain `rollback` keeps applying the Image Edit rollback.
+
 `shim.sql` stands in for the Supabase platform pieces the migrations use: the `anon` / `authenticated` /
 `service_role` roles and default grants, `auth.users` with `auth.uid()` / `auth.jwt()`, the storage tables and
-`storage.foldername`, `vault.decrypted_secrets`, and inert `cron.schedule` / `net.http_post` (nothing is scheduled or
+`storage.foldername`, `vault.decrypted_secrets` with `vault.create_secret` / `vault.update_secret` (plain text here, encrypted on Supabase), and inert `cron.schedule` / `net.http_post` (nothing is scheduled or
 sent). pgmq 1.4.4 is installed from its published plain-SQL script (pinned URL and SHA-256). The local server runs as a
 superuser; tests switch roles exactly as on Supabase (`supabase/tests/00_helpers.sql`).
 

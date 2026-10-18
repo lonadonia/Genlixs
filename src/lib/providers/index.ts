@@ -21,3 +21,12 @@ export function providerConfigured() {
   if (!env.kieApiKey()) return false;
   return isProductionDeployment() || env.allowPaidProviderTests();
 }
+
+/**
+ * Whether this deployment may send paid work at all (multi-provider routing). Which supplier, and whether its key
+ * exists, is decided per job by the database router; the KIE environment key is only one possible credential.
+ */
+export function paidSubmissionsAllowed() {
+  if (env.fakeProvider()) return true;
+  return isProductionDeployment() || env.allowPaidProviderTests();
+}

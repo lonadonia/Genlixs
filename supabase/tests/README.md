@@ -23,3 +23,8 @@ Test 07 (`07_image_edit_references_tests.sql`) checks migration `20261018013256_
 18 Oct 2026): `PASS: 8 image-edit reference test groups` on production and locally; on a database without that
 migration it stops at `R1 limit …` by design. All tests can also run on an isolated local database: see
 `supabase/local-test/README.md`.
+
+Test 08 (`08_multi_provider_routing_tests.sql`) checks migrations `20261018181012`…`20261018182418` (multi-provider
+routing, parts 01–12, applied 18 Oct 2026; run locally — on production it would lock every model and provider row): the 14
+acceptance items of the multi-provider brief (`PASS: 14 multi-provider test groups`). It creates test models `tst-*` and
+supplier offers inside its transaction; everything is rolled back.

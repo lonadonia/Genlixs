@@ -167,8 +167,11 @@ export function normalizeRecord(taskId: string, httpStatus: number, body: string
 export class KieProvider implements GenerationProvider {
   readonly name = "kie";
 
+  /** A key saved in Admin (Vault) for routed attempts; without one, the server's KIE_API_KEY is used as before. */
+  constructor(private readonly apiKey?: string) {}
+
   private config() {
-    const key = env.kieApiKey();
+    const key = this.apiKey ?? env.kieApiKey();
     if (!key) throw new ConfigError("Generation provider", ["KIE_API_KEY"]);
     // Fixed allowlisted origin: the bearer key is only ever sent here.
     const base = env.kieBaseUrl().replace(/\/+$/, "");

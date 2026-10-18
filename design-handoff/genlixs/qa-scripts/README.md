@@ -54,4 +54,7 @@ node v34/image-edit.mjs     # 26 checks: old Edit URL, modes and drafts, several
 node v34/video-studio.mjs   # 42 checks: opens on How it works, views, walkthrough carousel, Motion Control banner, Motion Library preview and Recreate
 node v34/shots.mjs          # 8 pages × 1440, 1024, 768, 390, 360 and 1440×700: screenshots, overflow, page errors
 node v34/axe.mjs            # axe-core WCAG 2.1 A/AA on 8 states
+# Admin › Providers & routing (33 checks incl. axe when AXE_PATH is set). FIXTURES = admin API replies built from the
+# isolated local database (see docs/PROVIDERS_AND_ROUTING.md); nothing is sent to a supplier.
+FIXTURES=providers-fixtures.json AXE_PATH=node_modules/axe-core/axe.min.js node v34/providers-admin.mjs
 ```

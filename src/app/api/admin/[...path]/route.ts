@@ -5,9 +5,13 @@ import { env } from "@/lib/server/env";
 import { requireGateway } from "@/lib/billing";
 import { adminClient } from "@/lib/supabase/admin";
 import { kickWorker } from "@/lib/jobs/kick";
-import { providerConfigured } from "@/lib/providers";
+import { paidSubmissionsAllowed, providerConfigured } from "@/lib/providers";
 import { balanceReadable, readAndRecordBalance } from "@/lib/providers/balance";
 import { supportedAdapters } from "@/lib/providers/kie/adapters";
+import { providerCapabilities } from "@/lib/providers/registry";
+import { checkProvider, refreshUsage, type CheckTarget } from "@/lib/providers/sync";
+import { usageCsv, type UsageRow } from "@/lib/providers/usage-csv";
+import { PROVIDER_NAMES } from "@/lib/providers/types";
 import { pipelineConfig } from "@/lib/server/pipeline-config";
 
 /**
@@ -116,13 +120,56 @@ const credentialsMissing = () =>
     409,
   );
 
+// ------------------------------------------------------------------ providers
+
+/** What this deployment can do with suppliers (no secret values): paid calls allowed, KIE env key, adapters. */
+const providersRuntime = () => ({
+  paidSubmissionsAllowed: paidSubmissionsAllowed(),
+  kieEnvironmentKey: Boolean(env.kieApiKey()),
+  fakeProvider: env.fakeProvider(),
+  providers: providerCapabilities(),
+});
+const accountId = (v: unknown) => input.uuid(v, "Provider account")!;
+const offerId = (v: unknown) => input.uuid(v, "Offer")!;
+/** A JSON object of bounded size (patches, capability objects, price schedules); validated again in the database. */
+function jsonObject(v: unknown, name: string, maxKeys = 50): Record<string, unknown> {
+  if (!v || typeof v !== "object" || Array.isArray(v) || Object.keys(v).length > maxKeys) throw new ApiError("INVALID_INPUT", `${name} is not valid.`, 422);
+  return v as Record<string, unknown>;
+}
+/** Signed exact decimal text ("-1.25"); corrections may be negative. */
+function signedDecimal(v: unknown, name: string): string {
+  const t = typeof v === "number" && Number.isFinite(v) ? String(v) : typeof v === "string" ? v.trim() : "";
+  if (!/^-?\d{1,12}(\.\d{1,10})?$/.test(t)) throw new ApiError("INVALID_INPUT", `${name} must be a number.`, 422);
+  return t;
+}
+const usageFilters = (q: URLSearchParams) => {
+  const date = (k: string) => {
+    const v = q.get(k);
+    return v && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null;
+  };
+  const provider = q.get("provider");
+  return {
+    from: date("from"),
+    to: date("to"),
+    provider: provider && (PROVIDER_NAMES as readonly string[]).includes(provider) ? provider : null,
+    modelId: q.get("model") && /^[a-z0-9-]{2,60}$/.test(q.get("model")!) ? q.get("model") : null,
+    userId: q.get("user") ? input.uuid(q.get("user"), "User") : null,
+    state: opt(q.get("state")),
+    purpose: q.get("purpose") === "customer" || q.get("purpose") === "staff_test" ? q.get("purpose") : null,
+  };
+};
+type CheckSlot = { proceed: boolean; accountId?: string; provider?: CheckTarget["provider"]; credentialVersion?: number; credentialSource?: CheckTarget["credentialSource"]; secretRef?: string };
+const target = (s: CheckSlot): CheckTarget => ({
+  accountId: s.accountId!, provider: s.provider!, credentialVersion: s.credentialVersion ?? 0, credentialSource: s.credentialSource ?? "none", secretRef: s.secretRef ?? null,
+});
+
 /** Fresh sign-in (and MFA when the account has a verified factor) for owner-level changes (§19.3). */
-async function requireFreshAuth({ db, user }: Ctx) {
+async function requireFreshAuth({ db, user }: Ctx, what = "change staff access") {
   const last = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : 0;
-  if (Date.now() - last > 10 * 60 * 1000) throw new ApiError("REAUTH_REQUIRED", "Sign in again to change staff access.", 403);
+  if (Date.now() - last > 10 * 60 * 1000) throw new ApiError("REAUTH_REQUIRED", `Sign in again to ${what}.`, 403);
   const { data } = await db.auth.mfa.getAuthenticatorAssuranceLevel();
   if (data && data.nextLevel === "aal2" && data.currentLevel !== "aal2") {
-    throw new ApiError("MFA_REQUIRED", "Complete two-factor verification to change staff access.", 403);
+    throw new ApiError("MFA_REQUIRED", `Complete two-factor verification to ${what}.`, 403);
   }
 }
 
@@ -159,6 +206,17 @@ const GETS: Record<string, Handler> = {
   audit: ({ db, q }) => rpc(db, "admin_audit_log", { p_before: cursor(q), p_limit: limit(q, 200) }),
   tickets: ({ db, q }) => rpc(db, "admin_list_tickets", { p_status: opt(q.get("status")) }),
   reconciliation: ({ db }) => rpc(db, "admin_reconciliation"),
+  // Providers (provider.read): balances, routing, offers, usage. Keys never leave the server; only masked hints.
+  "providers/overview": async ({ db }) => ({ ...(await rpc<Record<string, unknown>>(db, "admin_providers_overview")), runtime: providersRuntime() }),
+  "providers/models": ({ db }) => rpc(db, "admin_routing_models"),
+  "providers/review": ({ db }) => rpc(db, "admin_routing_review", { p_apply: false, p_revision: null, p_activate: [] }),
+  "providers/usage/export": async ({ db, q }) => {
+    const u = await rpc<{ rows: UsageRow[]; from: string; to: string }>(db, "admin_provider_usage", { p_filters: usageFilters(q), p_before: null, p_limit: 2000 });
+    return { filename: `genlixs-supplier-costs-${u.from.slice(0, 10)}-to-${u.to.slice(0, 10)}.csv`, rows: u.rows.length, csv: usageCsv(u.rows) };
+  },
+  "providers/usage": ({ db, q }) => rpc(db, "admin_provider_usage", { p_filters: usageFilters(q), p_before: cursor(q), p_limit: limit(q, 500) }),
+  "providers/offers/:id": ({ db, rest }) => rpc(db, "admin_offer_detail", { p_offer_id: offerId(rest[2]) }),
+  "providers/jobs/:id/route": ({ db, rest }) => rpc(db, "admin_job_route", { p_job_id: input.uuid(rest[2], "Job") }),
 };
 
 const POSTS: Record<string, Handler> = {
@@ -486,6 +544,133 @@ const POSTS: Record<string, Handler> = {
       p_role: input.oneOf(b.role, "Role", ["support", "operations", "finance", "owner"] as const),
       p_active: input.bool(b.active, "Active"),
       p_reason: reason(b.reason),
+    });
+  },
+  // ---- providers (owner: provider.manage; checked in each RPC). Specific paths first.
+  "providers/balances/refresh": async ({ db }) => {
+    // One read per configured account (bounded, read-only), each also granted by the database at most once per interval.
+    const o = await rpc<{ accounts: { id: string; credential: { source: string } }[] }>(db, "admin_providers_overview");
+    const ready = o.accounts.filter((a) => a.credential.source !== "none").slice(0, 8);
+    const results = await Promise.all(
+      ready.map(async (a) => {
+        const slot = await rpc<CheckSlot>(db, "admin_begin_provider_check", { p_account_id: a.id, p_kind: "refresh" }).catch(() => ({ proceed: false }));
+        if (!slot.proceed) return { accountId: a.id, skipped: true };
+        const r = await checkProvider(target(slot), "admin", false);
+        await refreshUsage(target(slot));
+        return { accountId: a.id, ok: r.result.ok, state: r.result.state };
+      }),
+    );
+    return { ...(await rpc<Record<string, unknown>>(db, "admin_providers_overview")), runtime: providersRuntime(), refreshed: results };
+  },
+  "providers/preview": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_route_preview", {
+      p_model_id: modelId(b.modelId),
+      p_options: b.options === undefined ? {} : jsonObject(b.options, "Settings", 20),
+      p_mode: input.str(b.mode, "Input mode", { max: 40, optional: true }) ?? null,
+      p_quantities: b.quantities === undefined ? {} : jsonObject(b.quantities, "Quantities", 10),
+    });
+  },
+  "providers/review/apply": async ({ req, db }) => {
+    const b = await readJson(req);
+    const activate = Array.isArray(b.activate) ? b.activate.slice(0, 200).map((x) => offerId(x)) : [];
+    return rpc(db, "admin_routing_review", { p_apply: true, p_revision: input.str(b.revision, "Preview revision", { min: 32, max: 32 }), p_activate: activate });
+  },
+  "providers/policy": async ({ req, db }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_set_routing_policy", { p_patch: jsonObject(b.patch, "Policy", 5), p_reason: reason(b.reason) });
+  },
+  "providers/adjustments": async ({ req, db }) => {
+    const b = await readJson(req);
+    const at = input.str(b.occurredAt, "Date", { max: 40, optional: true });
+    if (at && Number.isNaN(Date.parse(at))) throw new ApiError("INVALID_INPUT", "Date is not valid.", 422);
+    return rpc(db, "admin_record_cost_adjustment", {
+      p_account_id: accountId(b.accountId),
+      p_kind: input.oneOf(b.kind, "Kind", ["refund", "correction", "unattributed"] as const),
+      p_native_amount: signedDecimal(b.amount, "Amount"),
+      p_unit: input.str(b.unit, "Unit", { min: 2, max: 32 }),
+      p_occurred_at: at ? new Date(at).toISOString() : null,
+      p_note: reason(b.note),
+    });
+  },
+  "providers/units/:unit": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    const unit = input.str(rest[2], "Unit", { min: 2, max: 32 })!;
+    if (!/^[a-z][a-z0-9_]{1,30}$/.test(unit)) throw new ApiError("INVALID_INPUT", "Unit is not valid.", 422);
+    return rpc(db, "admin_save_cost_unit", {
+      p_unit: unit,
+      p_units_per_usd: decimalText(b.unitsPerUsd, "Units per US dollar", 10),
+      p_basis: input.oneOf(b.basis, "Basis", ["documented", "illustrative", "manual"] as const),
+      p_source_url: input.str(b.sourceUrl, "Source link", { max: 300, optional: true }) ?? null,
+      p_note: input.str(b.note, "Note", { max: 500, optional: true }) ?? null,
+    });
+  },
+  "providers/offers/:id/price": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_save_offer_price", {
+      p_offer_id: offerId(rest[2]),
+      p_price: jsonObject(b.price, "Price", 20),
+      p_expected_version: input.int(b.expectedVersion, "Current version", { min: 1, max: 100000, optional: true }) ?? null,
+    });
+  },
+  // Paid private test of one offer through the normal pipeline (pinned to that offer).
+  "providers/offers/:id/test": async ({ req, db, rest }) => {
+    if (!paidSubmissionsAllowed()) {
+      throw new ApiError("CREDENTIALS_MISSING", "Paid provider calls are disabled on this deployment (outside production set ALLOW_PAID_PROVIDER_TESTS).", 409);
+    }
+    const b = await readJson(req);
+    const result = await rpc(db, "admin_create_offer_test", {
+      p_offer_id: offerId(rest[2]),
+      p_prompt: typeof b.prompt === "string" ? b.prompt.slice(0, 5000) : "",
+      p_options: b.options && typeof b.options === "object" && !Array.isArray(b.options) ? b.options : {},
+      p_inputs: input.slots(b.inputs),
+      p_reference_asset_ids: Array.isArray(b.referenceAssetIds) ? b.referenceAssetIds.slice(0, 16).map((x) => input.uuid(x, "Reference")) : [],
+      p_idempotency_key: input.idempotencyKey(req),
+      p_confirm_spend: input.bool(b.confirmSpend, "Spend confirmation", true) ?? false,
+    });
+    kickWorker("control", 20_000);
+    return result;
+  },
+  "providers/offers/:id": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_update_offer", { p_offer_id: offerId(rest[2]), p_patch: jsonObject(b.patch, "Change", 10), p_reason: optionalReason(b.reason) });
+  },
+  "providers/:id/key/remove": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_remove_provider_key", { p_account_id: accountId(rest[1]), p_reason: reason(b.reason) });
+  },
+  // The key is accepted once, stored in Vault by the database and never echoed; the reply has only a masked hint.
+  "providers/:id/key": async (c) => {
+    await requireFreshAuth(c, "save a provider key");
+    const b = await readJson(c.req, 8 * 1024);
+    const key = typeof b.key === "string" ? b.key.trim() : "";
+    if (key.length < 8 || key.length > 512 || /\s/.test(key)) {
+      throw new ApiError("INVALID_INPUT", "Paste the API key exactly as the provider shows it (8–512 characters, no spaces).", 422);
+    }
+    return rpc(c.db, "admin_set_provider_key", { p_account_id: accountId(c.rest[1]), p_secret: key, p_reason: optionalReason(b.reason) });
+  },
+  "providers/:id/settings": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_update_provider_account", { p_account_id: accountId(rest[1]), p_patch: jsonObject(b.patch, "Change", 10), p_reason: optionalReason(b.reason) });
+  },
+  // Connection test = the provider's documented read-only balance call with the saved key. It never generates.
+  "providers/:id/test": async ({ db, rest }) => {
+    const slot = await rpc<CheckSlot>(db, "admin_begin_provider_check", { p_account_id: accountId(rest[1]), p_kind: "test" });
+    if (!slot.proceed) throw new ApiError("RATE_LIMITED", "This provider was checked a moment ago. Try again in a few seconds.", 429);
+    const r = await checkProvider(target(slot), "admin", true);
+    await refreshUsage(target(slot));
+    return r;
+  },
+  "providers/:id/manual-balance": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    const seen = input.str(b.observedAt, "Seen on", { min: 10, max: 40 })!;
+    if (Number.isNaN(Date.parse(seen))) throw new ApiError("INVALID_INPUT", "Seen on is not a valid date.", 422);
+    return rpc(db, "admin_record_manual_balance", {
+      p_account_id: accountId(rest[1]),
+      p_total: decimalText(b.total, "Balance", 8),
+      p_unit: input.str(b.unit, "Unit", { min: 2, max: 32 }),
+      p_observed_at: new Date(seen).toISOString(),
+      p_note: reason(b.note),
     });
   },
   "tickets/:id/reply": async ({ req, db, rest }) => {

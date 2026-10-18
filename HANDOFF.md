@@ -3,7 +3,8 @@
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
 - **Last updated:** 18 Oct 2026
-- **Latest work:** **v3.4 — UI refinement, Image Edit references, walkthroughs and Motion Library** (deployed 18 Oct 2026; migration `20261018013256` applied; see §0, first block) on top of **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
+- **Latest work (applied and deployed 18 Oct 2026):** **v3.5 — multi-provider routing** — six suppliers behind one catalog, keys in Vault from Admin, cheapest verified route per request, supplier cost ledger, Admin › Providers & routing. Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` are applied to production. Every model still routes to its original KIE route; all 119 new offers are off and the five new suppliers are disabled with no key — nothing is activated until the owner adds keys and verifies offers (§7, task 0). Guide: `docs/PROVIDERS_AND_ROUTING.md`; evidence: `docs/VERIFICATION.md` §000.
+- **Previous work:** **v3.4 — UI refinement, Image Edit references, walkthroughs and Motion Library** (deployed 18 Oct 2026; migration `20261018013256` applied; see §0, first block) on top of **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
   evidence in `docs/VERIFICATION.md` §0), on top of **v3.2 — simplified admin and explicit credit pricing** (Models with one On/Off switch, Pricing & packages with two reference values, package editor and per-setting price editor, KIE balance page; migrations `20261014203016`–`20261014203957`, 18 in total) on top of **v3.1 — admin catalog, bulk pricing and KIE monitoring** and **v3 — live backend** (`claude/nice-curie-ispn6l`, see `git log`). v3 implemented `Genlixs_Backend_Implementation_Guide_EN.md` v1.0; v3.1 adds the Models & pricing workspace, 18 curated KIE models, bulk markup pricing, private staff tests and the KIE balance panel (4 more migrations, 14 in total). Start with §0.
 - **Repository:** https://github.com/lonadonia/Genlixs (public)
 
@@ -261,6 +262,13 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
 ---
 
 ## 7. Pending tasks (in priority order)
+
+0. **Multi-provider routing (v3.5):** applied and deployed 18 Oct 2026 with everything new switched off. Next, only with
+   the owner's go-ahead and a budget for paid tests: add each supplier's key in Admin, test the connection, run one
+   authorised paid test per offer, mark it Verified, run *Review routing*. Replace the illustrative CNY / Duomi point
+   rates with the rates actually paid; add Cuddler's confirmed result host to `MEDIA_FETCH_ALLOWED_HOSTS` (never a
+   wildcard, never guessed). KIE's balance was 626 credits (~$3.13) on 18 Oct: jobs above the live balance are refused
+   before charging until it is topped up. Details and the offer matrix: `docs/PROVIDERS_AND_ROUTING.md`.
 
 1. ~~**Remaining Drive videos (REQ-063).**~~ **Done in v2.2:** the client handed the full `images` and `Videos` folders over locally; 50 images and 21 clips are in. The old notes are kept below for reference.
    - 26 of the 27 videos are 12–43 MB. The Google Drive connector returns files of 10 MB or less only.

@@ -86,6 +86,9 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/supabase/{client,server,admin}.ts` | Browser client · per-request user client (verified with `getUser`) · secret-key client for workers only |
 | `src/lib/providers/kie/{client,adapters,webhook}.ts` | KIE create/status/balance, response classification and normalization, per-adapter inputs, callback HMAC |
 | `src/lib/providers/fake.ts` | Deterministic fake provider (non-production + explicit flag) |
+| `src/lib/providers/{types,registry,credentials,sync,http,decimal}.ts` | Multi-provider layer: shared client interface, the six supplier clients, keys from Vault (service role) or `KIE_API_KEY`, balance/usage reads, fixed-host HTTP, exact decimals. See `docs/PROVIDERS_AND_ROUTING.md` |
+| `src/lib/providers/{cuddler,apimart,nezhagate,poyo,duomi}.ts` | Per-supplier request builders, create-reply classification, status normalization, balance parsing (documented contracts, checked 18 Oct 2026) |
+| `src/components/live/admin/providers/*` | Admin › Providers & routing: Overview, Providers (keys, switches, funding terms, manual balances), Models (comparison, offers, prices, paid offer tests, routing review, inventory), Usage (ledger, CSV) |
 | `src/lib/providers/balance.ts` | Server-side KIE balance read (deduplicated per instance; cross-instance slot in the database), recorded success or error |
 | `src/lib/media/{safe-fetch,sniff}.ts` | SSRF-safe importer and byte-level file verification |
 | `src/lib/jobs/{worker,kick}.ts` | Queue loop and handlers (submit, check, bind, import, asset delete, billing apply) |

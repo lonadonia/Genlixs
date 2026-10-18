@@ -4,6 +4,33 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 000. Multi-provider routing, supplier keys and cost ledger (18 Oct 2026, applied to production)
+
+Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` (one tested migration split into 12
+lossless parts so each fits one apply call), operator guide `docs/PROVIDERS_AND_ROUTING.md`. The local rows below ran on
+the isolated local PostgreSQL 17 and a local production build. The production rows ran after the owner's go-ahead;
+**no supplier was called with a new key, no key was saved, no offer was switched on and no paid generation was sent**.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `npm run build` | `VERIFIED_PASS` (`/admin/providers` built) |
+| `npm run test:contracts` | `VERIFIED_PASS` 75/75 — new `providers.test.ts` (10): adapter registry equals the migration per supplier; Cuddler/APIMart/NezhaGate/PoYo/Duomi request shapes from their documentation, create-reply classification (account, retryable, terminal, unknown; Duomi business errors inside HTTP 200), status normalization (charge only on final jobs, another job never evidence), balances (held funds, unlimited key allowance noted, errors never zero), exact decimals and the max-cost ceiling, sanitized CSV |
+| SQL tests 01–07 after the migration | `VERIFIED_PASS` (65 groups, unchanged behaviour) |
+| SQL test 08 (`08_multi_provider_routing_tests.sql`) | `VERIFIED_PASS` 14 groups = the 14 acceptance items: access (customers/operations), keys only as hints and readable only by the service role, cheapest compatible route, units/CNY/points/fee/bonus/surcharge/batch/minimum arithmetic, Seedance reference 3 s → APIMart $0.66664 vs 10 s → NezhaGate $0.75, Cuddler card fee $0.0332325 > APIMart $0.032 (and the reverse without the fee), one attempt/reservation/ledger row per job, unknown submit never resent, download retry without resubmission, single-configuration winner kept / dominated supplier excluded, truthful balances, in-flight route and key version pinned through Admin changes and rotation (old version purged only after completion), one public card per model with narrowed options, usage totals adding up |
+| History backfill | `VERIFIED_PASS` — attempts made by the previous release, then the migration: all linked to the original KIE route; refused → not charged; reported 6 credits → confirmed $0.03; unreported → unknown (never estimated) |
+| Rollback | `VERIFIED_PASS` — migrations → test 08 → `20261018181012_multi_provider_routing.rollback.sql` → tests 01–07 pass |
+| Every model's route after the migration | `VERIFIED_PASS` — all 21 models route to KIE with the same cost as `supplier_credits` (e.g. Seedance edit 38 × 5 × 2 = 380 credits) |
+| Admin browser checks (`v34/providers-admin.mjs`, 33) | `VERIFIED_PASS` against `next start` with the admin API answered from fixtures built by the local database: four tabs; unknown balances never shown as $0; $0.005 never rounded to $0.01; key field is a password field, the key is sent once and only the masked hint is shown; comparison drawer with exclusion reasons and the KIE saving only for a verified equivalent; review preview → apply with its revision; inventory decisions; usage totals, CSV download, job route drawer; operations staff see no owner controls; no overflow at 390 px; axe WCAG 2.1 A/AA 0 violations on 7 states |
+| Production — before applying | `VERIFIED_PASS` — project `qlpxdrbadakbyzdyfrnk` (PostgreSQL 17.11, Vault 0.3.1), branch `claude/nice-curie-ispn6l`; the seven replaced function definitions identical to the local ones the migration was tested against |
+| Production — migration | `VERIFIED_PASS` — 12 parts applied in order; each stored statement byte-identical to its file (md5 of `statements[1]`) |
+| Production — state | `VERIFIED_PASS` — public catalog unchanged (md5 `cc1d9d8d…` before and after); 21/21 original KIE routes eligible and on; 119 new offers, routing off for every one; the five new provider accounts disabled with no key; all 14 earlier attempts linked to their KIE route, ledger 9 confirmed + 5 not charged (KIE 402) |
+| Production — routing | `VERIFIED_PASS` — the last 25 quotes per model (106): 105 route to the original KIE route at exactly the cost of the previous estimate; 1 (Seedance 2.5, 10 s 720p, 630 credits) is refused because KIE's balance read 15 minutes earlier was 626.03 credits — the new balance gate, which applies only to an API balance younger than 60 minutes. The previous release accepted such jobs and KIE answered 402 |
+| Production — permissions and keys (rolled back) | `VERIFIED_PASS` — anon: no execute; customer: `FORBIDDEN` on overview, key save and review, no access to `app_private`, Vault or the worker key function; operations: overview yes, key save and review apply `FORBIDDEN`; owner key save returns only `••••` + 4, the key is in no account, credential, audit or overview text and not in the Vault ciphertext, the service role reads it back; with a saved key the account still routes nothing (offer off, KIE chosen). Nothing was left behind (0 keys, 0 Vault entries) |
+| Production — customer path (rolled back) | `VERIFIED_PASS` — as a customer: quotes for three image models at the previous credit prices (3 / 9 / 2), job created queued on the KIE adapter with credits reserved, work item and queue message created; nothing kept |
+| Production — security advisor | `VERIFIED_PASS` — the same four categories as before (deny-all `app_private` tables, public catalog, staff RPCs that check capabilities themselves, leaked-password setting); the worker key function is not callable by signed-in users |
+| SQL test 08 on production | `NOT_TESTED` — it locks every model and provider-account row for its duration; the targeted checks above ran instead |
+| Live supplier calls (connection tests, balances, paid generations) | `NOT_TESTED` — no keys; every new offer starts off and needs an authorised paid test |
+
 ## 00. UI refinement, Image Edit references, walkthroughs and Motion Library (18 Oct 2026, local)
 
 Windows 11, Node 24.21, Next.js 16.3.8, Chrome through playwright-core. Browser checks ran against the local development
