@@ -209,7 +209,7 @@ export function ModelSheet({
                           <StageBadge stage={q.stage} />
                           {!q.current && (q.blocker || q.incompatible) ? (
                             <p className="mt-1 max-w-[18rem] text-[11px] leading-snug text-muted-dark">{q.incompatible && !q.integrated
-                                ? `${q.blocker ?? "No integration in this release"}; its supported settings are not recorded yet.`
+                                ? `${(q.blocker ?? "No integration in this release").replace(/\.\s*$/, "")}; its supported settings are not recorded yet.`
                                 : q.incompatible
                                   ? `Default settings: ${q.incompatible}.`
                                   : q.blocker}</p>
