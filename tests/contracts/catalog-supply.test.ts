@@ -1,5 +1,5 @@
-// Catalog supply view (Admin › Models, Pricing, Supplier balances): which alternative counts as cheaper, how quotes and
-// products are ordered, and the labels shown. Costs themselves are computed in the database (supabase/tests/09).
+// Catalog supply view (Admin › Models & pricing): which alternative counts as cheaper, how quotes and products are
+// ordered, and the labels shown. Costs and prices themselves are computed in the database (supabase/tests/09 and 10).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -35,6 +35,7 @@ const quote = (over: Partial<SupplyQuote>): SupplyQuote => ({
   incompatible: null,
   native: null,
   usd: null,
+  markupIfServedPct: null,
   current: false,
   stage: "needs_key",
   ...over,
@@ -44,7 +45,14 @@ const model = (quotes: SupplyQuote[], routeUsd: number | null): SupplyModel => (
   id: "m",
   example: { options: {}, mode: null, quantities: { outputs: 1, counts: {}, seconds: {}, promptChars: 100 } },
   defaultUnits: 9,
-  route: { status: routeUsd === null ? "unavailable" : "ok", explanation: "", offerId: "kie", provider: "kie", providerName: "KIE", legacy: true, native: null, unit: "kie_credit", usd: routeUsd },
+  pricing: {
+    status: "ok", reason: null, followsPolicy: true, priceVersion: 1, priceSource: "policy", policyVersion: 1,
+    kieUsd: 0.09, targetUsd: 0.18, chargedUsd: 0.18, cost: null,
+  },
+  route: {
+    status: routeUsd === null ? "unavailable" : "ok", explanation: "", offerId: "kie", provider: "kie", providerName: "KIE", legacy: true, native: null,
+    unit: "kie_credit", usd: routeUsd, effectiveMarkupPct: null,
+  },
   quotes,
 });
 

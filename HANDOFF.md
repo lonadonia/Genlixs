@@ -2,8 +2,9 @@
 
 This file lets a new Claude Code session, on any account, continue exactly where the last one stopped. Read it in full before you change anything. Then read the documents listed in §9 in the order given.
 
-- **Last updated:** 18 Oct 2026
-- **Latest work (18 Oct 2026):** **v3.5.1 — catalog pages for multi-supplier routing.** Admin › Models shows every model once with the supplier serving it, the default request's cost/price/margin and the cheapest other supplier (with the missing step); its *Available at suppliers* tab lists the 50 products outside the catalog, each once, cheapest supplier first. Pricing & packages has summary cards and three tabs; **Supplier balances** (`/admin/balances`) replaces the KIE balance page (`/admin/kie` redirects) and covers all six suppliers. One read-only function, migration `20261018194110_catalog_supply` (applied). Owner guide: `docs/CATALOG_AND_PRICING.md`; evidence: `docs/VERIFICATION.md` §0000. Turning the 50 products into customer models needs an integration per product, keys, paid tests and prices (§7, task 0).
+- **Last updated:** 19 Oct 2026
+- **Latest work (19 Oct 2026):** **v3.6 — two-page Admin and automatic KIE-based pricing.** The four catalog pages became two: **Models & pricing** (`/admin/catalog`: pricing panel with *Markup on KIE cost (%)* and *USD value of one Genlixs credit* + **Save & apply**; one row per model with its example price in credits and USD, serving supplier and whole-request cost, effective markup, On/Off; model drawer; packages collapsed; *Add models*) and **Providers & balances** (`/admin/providers`: one row per provider with status, balance, spending, switch, key, refresh; drawer and on-demand details). `/admin/pricing` → `/admin/catalog`, `/admin/balances` and `/admin/kie` → `/admin/providers` (307). Every price follows one global policy in the database (credits = ceil(KIE reference × (1 + markup) ÷ credit value) per request); per-model and bulk price editing are retired (`PRICING_AUTOMATIC`); new KIE price data re-prices automatically. Migration `20261018232513_automatic_pricing` is applied: policy v1 = +100 % at $0.02, which reproduced all 21 published prices (no price changed). Owner guide: `docs/CATALOG_AND_PRICING.md`; evidence: `docs/VERIFICATION.md` §00000. No paid generation or provider test was run.
+- **Before that (18 Oct 2026):** **v3.5.1 — catalog pages for multi-supplier routing.** Admin › Models shows every model once with the supplier serving it, the default request's cost/price/margin and the cheapest other supplier (with the missing step); its *Available at suppliers* tab lists the 50 products outside the catalog, each once, cheapest supplier first. Pricing & packages has summary cards and three tabs; **Supplier balances** (`/admin/balances`) replaces the KIE balance page (`/admin/kie` redirects) and covers all six suppliers. One read-only function, migration `20261018194110_catalog_supply` (applied). Owner guide: `docs/CATALOG_AND_PRICING.md`; evidence: `docs/VERIFICATION.md` §0000. Turning the 50 products into customer models needs an integration per product, keys, paid tests and prices (§7, task 0).
 - **Before that (applied and deployed 18 Oct 2026):** **v3.5 — multi-provider routing** — six suppliers behind one catalog, keys in Vault from Admin, cheapest verified route per request, supplier cost ledger, Admin › Providers & routing. Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` are applied to production. Every model still routes to its original KIE route; all 119 new offers are off and the five new suppliers are disabled with no key — nothing is activated until the owner adds keys and verifies offers (§7, task 0). Guide: `docs/PROVIDERS_AND_ROUTING.md`; evidence: `docs/VERIFICATION.md` §000.
 - **Previous work:** **v3.4 — UI refinement, Image Edit references, walkthroughs and Motion Library** (deployed 18 Oct 2026; migration `20261018013256` applied; see §0, first block) on top of **v3.3 — generation repair, three video modes and the shared generation preview** (see §0, first block;
   evidence in `docs/VERIFICATION.md` §0), on top of **v3.2 — simplified admin and explicit credit pricing** (Models with one On/Off switch, Pricing & packages with two reference values, package editor and per-setting price editor, KIE balance page; migrations `20261014203016`–`20261014203957`, 18 in total) on top of **v3.1 — admin catalog, bulk pricing and KIE monitoring** and **v3 — live backend** (`claude/nice-curie-ispn6l`, see `git log`). v3 implemented `Genlixs_Backend_Implementation_Guide_EN.md` v1.0; v3.1 adds the Models & pricing workspace, 18 curated KIE models, bulk markup pricing, private staff tests and the KIE balance panel (4 more migrations, 14 in total). Start with §0.
@@ -52,7 +53,8 @@ the owner's go-ahead; evidence in `docs/VERIFICATION.md` §00.**
   `src/lib/live/video-studio.ts` (composer rules, contract-tested), `src/lib/live/{uploads,use-job,use-quote,progress}.ts`;
   migrations `20261015025200`–`20261015032953` (reliability, typed inputs, video-mode catalog, reads, reuse of outputs).
 - Tests: contracts 54, SQL suites 01–06 (57 groups), browser checks of the signed-in production studio (desktop + phone).
-- Open for the owner: approve the three draft prices and switch the modes on; `KIE_WEBHOOK_HMAC_KEY` (polling covers it);
+- Open for the owner: ~~approve the three draft prices and switch the modes on~~ (done: all 21 models are on; since v3.6
+  every price follows the global policy and drafts no longer exist); `KIE_WEBHOOK_HMAC_KEY` (polling covers it);
   a live test of Veo 3.1 Extend and of 1080p/4K results; check the KIE key limits if 402 refusals return.
 - QA accounts: the temporary accounts of 15 Oct were closed through the runbook procedure (`docs/RUNBOOKS.md`, Accounts);
   their jobs, ledger and test evidence remain as records.
@@ -264,14 +266,21 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
 
 ## 7. Pending tasks (in priority order)
 
+00. **Automatic pricing (v3.6):** applied 18 Oct 2026 (23:25 UTC) with policy v1 = +100 % on the KIE reference at $0.02
+   per Genlixs credit; no price changed. The owner sets markup and credit value only in Admin › Models & pricing
+   (**Save & apply**). Keep the KIE price lists current (model drawer → Technical details and tests → KIE cost): they now
+   drive the prices directly. New migrations must insert capability or KIE cost versions and let the policy price them —
+   never insert price versions. Rollback (not applied): `supabase/rollbacks/20261018232513_automatic_pricing.rollback.sql`.
+
 0. **Multi-provider routing (v3.5):** applied and deployed 18 Oct 2026 with everything new switched off. Next, only with
    the owner's go-ahead and a budget for paid tests: add each supplier's key in Admin, test the connection, run one
    authorised paid test per offer, mark it Verified, run *Review routing*. Replace the illustrative CNY / Duomi point
    rates with the rates actually paid; add Cuddler's confirmed result host to `MEDIA_FETCH_ALLOWED_HOSTS` (never a
    wildcard, never guessed). KIE's balance was 626 credits (~$3.13) on 18 Oct: jobs above the live balance are refused
    before charging until it is topped up. Details and the offer matrix: `docs/PROVIDERS_AND_ROUTING.md`.
-   To grow the catalog from Admin › Models › *Available at suppliers* (each product once, cheapest supplier first): pick
-   products with the owner, write the integration for the cheapest supplier, add a capability and price, run one paid
+   To grow the catalog from Admin › Models & pricing › *Add models* (each product once, cheapest supplier first): pick
+   products with the owner, write the integration for the cheapest supplier, add a capability and its KIE reference
+   price (the policy prices it; without a KIE reference it stays unpriced with "KIE reference needed"), run one paid
    test, then switch the model on — the router keeps one card per model whatever the supplier.
 
 1. ~~**Remaining Drive videos (REQ-063).**~~ **Done in v2.2:** the client handed the full `images` and `Videos` folders over locally; 50 images and 21 clips are in. The old notes are kept below for reference.

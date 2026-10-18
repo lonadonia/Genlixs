@@ -1,8 +1,10 @@
--- Admin catalog upgrade: permissions, configuration costs and bulk markup math, credit economy and commission
--- scenarios, pricing batches (immutability, stale previews, all-or-nothing), quotes/jobs across price changes,
--- availability end to end, private staff tests (no wallet, no duplicates, evidence), provider balance and costs.
+-- Admin catalog upgrade: permissions, configuration costs and markup math, credit economy and commission scenarios,
+-- price history (immutability), quotes/jobs across price changes, availability end to end, private staff tests (no
+-- wallet, no duplicates, evidence), provider balance and costs.
 -- Updated for migration 15 (simplified pricing): charges are valued at the Genlixs credit value (a reference value)
 -- instead of the cheapest package, and a priced model can be switched on without a paid test.
+-- Updated for automatic pricing: prices follow the global policy (KIE reference × markup ÷ credit value); the bulk
+-- and per-model editors are retired.
 -- Rolled back by the final exception. Run 00_helpers.sql first in the same session.
 do $$
 declare
@@ -24,7 +26,9 @@ begin
 
   -- C1 permissions: customers, support and partners cannot read costs/balance or change the catalog
   perform pg_temp.t_as(cust);
-  begin perform public.admin_pricing_preview('all', null, 300, false); raise exception 'C1 customer preview';
+  begin perform public.admin_preview_pricing_policy(300, 0.02); raise exception 'C1 customer preview';
+  exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
+  begin perform public.admin_pricing_policy(); raise exception 'C1 customer policy';
   exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
   begin perform public.admin_provider_summary(); raise exception 'C1 customer balance';
   exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
@@ -50,32 +54,30 @@ begin
     raise exception 'C1 support sees costs'; end if;
   execute 'reset role';
   perform pg_temp.t_as(fin);
-  begin perform public.admin_pricing_apply('all', null, 300, false, 'x', 'publish', array['gpt-flare-image']); raise exception 'C1 finance publish';
+  begin perform public.admin_apply_pricing_policy(300, 0.02, null); raise exception 'C1 finance publish';
   exception when others then if sqlerrm <> 'FORBIDDEN' then raise; end if; end;
   execute 'reset role';
   v_ok := v_ok + 1;
 
   -- C2 configuration costs, markup math, credit conversion (Genlixs credit value), commission scenarios
-  -- Known reference values inside this transaction: $5 / 1,000 KIE credits and $5 / 250 Genlixs credits.
+  -- Known values inside this transaction: $5 / 1,000 KIE credits, $0.02 per Genlixs credit and +300 % on the KIE reference.
   perform pg_temp.t_save_ref(fin, 'kie_purchase', 5, 1000);
-  perform pg_temp.t_save_ref(fin, 'credit_value', 5, 250);
-  perform pg_temp.t_as(fin);
-  p := public.admin_pricing_preview('all', null, 300, false);
-  execute 'reset role';
+  perform pg_temp.t_apply_policy(owner_u, 300, 0.02);
   -- The basis is the Genlixs credit value, not a package.
   v_num := (app_private.current_reference('credit_value')).usd_per_credit;
-  if (p -> 'basis' ->> 'minRevenuePerCredit')::numeric <> v_num or v_num <> 0.02 then raise exception 'C2 basis is not the credit value %', p -> 'basis'; end if;
-  -- Every configuration: proposed = max(1, ceil(cost USD x 4 / rpc)); never a single "from" price.
-  for m in select value from jsonb_array_elements(p -> 'models') loop
-    if m ->> 'status' <> 'ok' then raise exception 'C2 % status %', m ->> 'modelId', m ->> 'status'; end if;
+  if (app_private.credit_basis() ->> 'minRevenuePerCredit')::numeric <> v_num or v_num <> 0.02 then raise exception 'C2 basis is not the credit value'; end if;
+  -- Every configuration: charge = max(1, ceil(cost USD x 4 / credit value)); never a single "from" price.
+  for v_txt in select id from app_private.model_catalog order by sort_order, id loop
+    m := app_private.model_price_table(v_txt, null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
+    if m ->> 'status' <> 'ok' then raise exception 'C2 % status %', v_txt, m ->> 'status'; end if;
     for v_row in select value from jsonb_array_elements(m -> 'configs') loop
-      if (v_row ->> 'proposedUnits')::bigint <> greatest(ceil(round(round((v_row ->> 'supplierUsd')::numeric * 4, 8) / v_num, 12)), 1) then
-        raise exception 'C2 % % proposed %', m ->> 'modelId', v_row ->> 'key', v_row; end if;
+      if (v_row ->> 'currentUnits')::bigint <> greatest(ceil(round(round((v_row ->> 'supplierUsd')::numeric * 4, 8) / v_num, 12)), 1) then
+        raise exception 'C2 % % charged %', v_txt, v_row ->> 'key', v_row; end if;
       if (v_row ->> 'supplierUsd')::numeric <> round((v_row ->> 'supplierCredits')::numeric * 0.005, 8) then
-        raise exception 'C2 % % usd conversion', m ->> 'modelId', v_row ->> 'key'; end if;
+        raise exception 'C2 % % usd conversion', v_txt, v_row ->> 'key'; end if;
     end loop;
   end loop;
-  select x into m from jsonb_array_elements(p -> 'models') x where x ->> 'modelId' = 'kling-3-0';
+  m := app_private.model_price_table('kling-3-0', null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
   -- Kling: per second x duration, audio changes the rate (20 vs 14 credits/s at 720p), 4K identical.
   select x into v_row from jsonb_array_elements(m -> 'configs') x where x ->> 'key' = '720p|on|10';
   if (v_row ->> 'supplierCredits')::numeric <> 200 then raise exception 'C2 kling 720p audio 10s %', v_row; end if;
@@ -83,82 +85,61 @@ begin
   if (v_row ->> 'supplierCredits')::numeric <> 140 then raise exception 'C2 kling silent %', v_row; end if;
   if (m ->> 'configCount')::int <> 18 then raise exception 'C2 kling configs %', m ->> 'configCount'; end if;
   -- Veo 1080p includes the upgrade once; Wan priced per duration; Seedream fractional credits.
-  select x into m from jsonb_array_elements(p -> 'models') x where x ->> 'modelId' = 'veo-3-1';
+  m := app_private.model_price_table('veo-3-1', null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
   select x into v_row from jsonb_array_elements(m -> 'configs') x where x ->> 'key' = '1080p';
   if (v_row ->> 'supplierCredits')::numeric <> 65 then raise exception 'C2 veo 1080p %', v_row; end if;
-  select x into m from jsonb_array_elements(p -> 'models') x where x ->> 'modelId' = 'seedream-5-flash-image';
+  m := app_private.model_price_table('seedream-5-flash-image', null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
   select x into v_row from jsonb_array_elements(m -> 'configs') x where x ->> 'key' = '1K';
   if (v_row ->> 'supplierUsd')::numeric <> 0.0162 then raise exception 'C2 seedream usd %', v_row; end if;
-  -- Flare 1K at +300 %: $0.03 -> $0.12 target -> ceil(0.12 / rpc); contribution per scenario.
-  select x into m from jsonb_array_elements(p -> 'models') x where x ->> 'modelId' = 'gpt-flare-image';
+  -- Flare 1K at +300 %: $0.03 -> $0.12 -> 6 credits; contribution per scenario.
+  m := app_private.model_price_table('gpt-flare-image', null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
   select x into v_row from jsonb_array_elements(m -> 'configs') x where x ->> 'key' = '1K';
-  if (v_row ->> 'targetUsd')::numeric <> 0.12 then raise exception 'C2 flare target %', v_row; end if;
-  v_num := (v_row ->> 'proposedUnits')::numeric * (p -> 'basis' ->> 'minRevenuePerCredit')::numeric;
-  if (v_row -> 'contribution' ->> 'revenueUsd')::numeric <> round(v_num, 6)
-     or (v_row -> 'contribution' ->> 'direct')::numeric <> round(v_num - 0.03, 6)
-     or (v_row -> 'contribution' ->> 'affiliateBase')::numeric <> round(v_num * 0.7 - 0.03, 6)
-     or (v_row -> 'contribution' ->> 'affiliateUplift')::numeric <> round(v_num * 0.5 - 0.03, 6) then
-    raise exception 'C2 contribution %', v_row -> 'contribution'; end if;
-  if jsonb_array_length(v_row -> 'contribution' -> 'excludes') <> 3 then raise exception 'C2 unknown costs not flagged'; end if;
-  -- +0 % still never sells below cost at the lowest package rate; +50 % commission can make it a loss (flagged).
+  if (v_row ->> 'currentUnits')::int <> 6 then raise exception 'C2 flare charge %', v_row; end if;
+  v_num := (v_row ->> 'currentUnits')::numeric * 0.02;
+  if (v_row -> 'currentContribution' ->> 'revenueUsd')::numeric <> round(v_num, 6)
+     or (v_row -> 'currentContribution' ->> 'direct')::numeric <> round(v_num - 0.03, 6)
+     or (v_row -> 'currentContribution' ->> 'affiliateBase')::numeric <> round(v_num * 0.7 - 0.03, 6)
+     or (v_row -> 'currentContribution' ->> 'affiliateUplift')::numeric <> round(v_num * 0.5 - 0.03, 6) then
+    raise exception 'C2 contribution %', v_row -> 'currentContribution'; end if;
+  if jsonb_array_length(v_row -> 'currentContribution' -> 'excludes') <> 3 then raise exception 'C2 unknown costs not flagged'; end if;
+  -- +0 % still never sells below cost at the credit value; +50 % commission can make it a loss (flagged).
+  perform pg_temp.t_apply_policy(owner_u, 0, 0.02);
+  m := app_private.model_price_table('gpt-flare-image', null, app_private.credit_basis(), app_private.pricing_assumptions(), false);
+  if (m -> 'summary' ->> 'lossConfigsDirect')::int <> 0 then raise exception 'C2 zero markup direct loss'; end if;
+  if (m -> 'summary' ->> 'lossConfigsUplift')::int = 0 then raise exception 'C2 50 %% loss not flagged at 0 %% markup'; end if;
+  -- markup and credit value validation
   perform pg_temp.t_as(fin);
-  p2 := public.admin_pricing_preview('selected', array['gpt-flare-image'], 0, false);
-  execute 'reset role';
-  if (p2 -> 'models' -> 0 -> 'summary' ->> 'lossConfigsDirect')::int <> 0 then raise exception 'C2 zero markup direct loss'; end if;
-  if (p2 -> 'models' -> 0 -> 'summary' ->> 'lossConfigsUplift')::int = 0 then raise exception 'C2 50 %% loss not flagged at 0 %% markup'; end if;
-  -- markup validation and revision stability
-  perform pg_temp.t_as(fin);
-  begin perform public.admin_pricing_preview('all', null, -1, false); raise exception 'C2 negative markup';
+  begin perform public.admin_preview_pricing_policy(-1, 0.02); raise exception 'C2 negative markup';
   exception when others then if sqlerrm <> 'INVALID_MARKUP' then raise; end if; end;
-  begin perform public.admin_pricing_preview('all', null, 12.345, false); raise exception 'C2 3 decimals';
+  begin perform public.admin_preview_pricing_policy(12.345, 0.02); raise exception 'C2 3 decimals';
   exception when others then if sqlerrm <> 'INVALID_MARKUP' then raise; end if; end;
-  if (public.admin_pricing_preview('all', null, 300, false) ->> 'revision') <> p ->> 'revision' then raise exception 'C2 revision unstable'; end if;
-  if (public.admin_pricing_preview('all', null, 301, false) ->> 'revision') = p ->> 'revision' then raise exception 'C2 revision ignores markup'; end if;
+  begin perform public.admin_preview_pricing_policy(100, -0.02); raise exception 'C2 negative credit value';
+  exception when others then if sqlerrm <> 'INVALID_CREDIT_VALUE' then raise; end if; end;
   execute 'reset role';
+  perform pg_temp.t_apply_policy(owner_u, 300, 0.02);
   v_ok := v_ok + 1;
 
-  -- C3 batches: drafts, stale preview refused, all-or-nothing, publish, immutable history, restore
-  perform pg_temp.t_as(fin);
-  r := public.admin_pricing_apply('all', null, 300, false, p ->> 'revision', 'draft', array['gpt-flare-image', 'veo-3-1']);
-  if jsonb_array_length(r -> 'items') <> 2 then raise exception 'C3 draft batch %', r; end if;
-  execute 'reset role';
-  if (select count(*) from app_private.price_versions where model_id in ('gpt-flare-image', 'veo-3-1') and state = 'draft' and source = 'bulk') <> 2 then
-    raise exception 'C3 drafts not created'; end if;
-  perform pg_temp.t_as(owner_u);
-  begin perform public.admin_pricing_apply('all', null, 300, false, p ->> 'revision', 'publish', array['gpt-flare-image']); raise exception 'C3 stale preview applied';
-  exception when others then if sqlerrm <> 'PREVIEW_STALE' then raise; end if; end;
-  p := public.admin_pricing_preview('all', null, 300, false);
-  -- a manual override is protected unless explicitly included; selecting it fails the whole batch
-  perform public.admin_save_price_draft('wan-2-6', '{"720p|5": 50, "720p|10": 90, "720p|15": 130, "1080p|5": 70, "1080p|10": 130, "1080p|15": 190}');
-  p := public.admin_pricing_preview('all', null, 300, false);
-  select x into m from jsonb_array_elements(p -> 'models') x where x ->> 'modelId' = 'wan-2-6';
-  if m ->> 'status' <> 'manual_override' or (m ->> 'selectable')::boolean then raise exception 'C3 override not protected %', m ->> 'status'; end if;
-  if (p -> 'models' -> 0 ->> 'modelId') <> 'gpt-flare-image' then raise exception 'C3 catalog order %', p -> 'models' -> 0 ->> 'modelId'; end if;
-  execute 'reset role';
-  select count(*) into v_n from app_private.price_versions;
-  perform pg_temp.t_as(owner_u);
-  begin perform public.admin_pricing_apply('all', null, 300, false, p ->> 'revision', 'publish', array['gpt-flare-image', 'wan-2-6']);
-    raise exception 'C3 override overwritten';
-  exception when others then if sqlerrm <> 'ROW_NOT_APPLICABLE' then raise; end if; end;
-  execute 'reset role';
-  if (select count(*) from app_private.price_versions) <> v_n then raise exception 'C3 partial batch applied'; end if;
-  perform pg_temp.t_as(owner_u);
-  r := public.admin_pricing_apply('all', null, 300, false, p ->> 'revision', 'publish', array['gpt-flare-image', 'veo-3-1']);
-  execute 'reset role';
-  if (select count(*) from app_private.price_versions where model_id in ('gpt-flare-image', 'veo-3-1') and state = 'published') <> 2 then
-    raise exception 'C3 not published'; end if;
-  if (select count(*) from app_private.price_versions where model_id in ('gpt-flare-image', 'veo-3-1') and state = 'draft') <> 0 then
-    raise exception 'C3 superseded drafts still open'; end if;
-  if (select count(*) from app_private.pricing_batch_items where batch_id = (r ->> 'batchId')::uuid) <> 2 then raise exception 'C3 batch items'; end if;
+  -- C3 price history: one policy version per change, published rules and the history immutable, editors retired
+  if (select count(*) from app_private.price_versions where model_id in ('gpt-flare-image', 'veo-3-1') and state = 'published' and source = 'policy') <> 2 then
+    raise exception 'C3 not published by the policy'; end if;
+  if exists (select 1 from app_private.price_versions where state = 'draft') then raise exception 'C3 a draft price is still open'; end if;
+  if (select count(*) from app_private.pricing_policy_versions where markup_bps = 30000) < 2 then raise exception 'C3 policy versions'; end if;
   begin update app_private.price_versions set rules = '{"base": 1}' where model_id = 'gpt-flare-image' and state = 'published';
     raise exception 'C3 published rules mutable';
   exception when others then if sqlerrm not like 'published or retired price rules are immutable%' then raise; end if; end;
-  begin delete from app_private.pricing_batch_items where batch_id = (r ->> 'batchId')::uuid; raise exception 'C3 batch items deletable';
+  begin update app_private.pricing_policy_versions set reason = 'x' where id = (app_private.current_pricing_policy()).id; raise exception 'C3 policy mutable';
   exception when others then if sqlerrm not like 'append-only journal%' then raise; end if; end;
-  begin update app_private.pricing_batches set markup_bps = 1 where id = (r ->> 'batchId')::uuid; raise exception 'C3 batch mutable';
-  exception when others then if sqlerrm not like 'append-only journal%' then raise; end if; end;
-  if not exists (select 1 from app_private.admin_audit_logs where action = 'pricing.batch_publish' and target_id = r ->> 'batchId' and actor_id = owner_u
-                 and reason like 'Published 2 model price(s) at +300 %%') then raise exception 'C3 audit description'; end if;
+  select count(*) into v_n from app_private.price_versions;
+  perform pg_temp.t_as(owner_u);
+  begin perform public.admin_pricing_apply('all', null, 300, false, 'x', 'publish', array['gpt-flare-image']); raise exception 'C3 bulk editor still works';
+  exception when others then if sqlerrm <> 'PRICING_AUTOMATIC' then raise; end if; end;
+  begin perform public.admin_save_price_draft('wan-2-6', '{"720p|5": 50, "720p|10": 90, "720p|15": 130, "1080p|5": 70, "1080p|10": 130, "1080p|15": 190}');
+    raise exception 'C3 manual override still possible';
+  exception when others then if sqlerrm <> 'PRICING_AUTOMATIC' then raise; end if; end;
+  execute 'reset role';
+  if (select count(*) from app_private.price_versions) <> v_n then raise exception 'C3 a retired editor wrote a version'; end if;
+  if not exists (select 1 from app_private.admin_audit_logs where action = 'pricing.policy' and actor_id = owner_u
+                 and reason like 'Global pricing policy v%: +300 % on the KIE reference at $0.02 per Genlixs credit;%') then raise exception 'C3 audit description'; end if;
   v_id := (select id from app_private.price_versions where model_id = 'gpt-flare-image' and state = 'published');
   v_ok := v_ok + 1;
 
@@ -175,10 +156,7 @@ begin
   v_job := (r -> 'job' ->> 'id')::uuid;
   q2 := public.create_generation_quote('gpt-flare-image', 'An older quote kept open', '{"resolution": "2K"}', '{}');
   execute 'reset role';
-  perform pg_temp.t_as(owner_u);
-  p := public.admin_pricing_preview('selected', array['gpt-flare-image'], 500, false);
-  perform public.admin_pricing_apply('selected', array['gpt-flare-image'], 500, false, p ->> 'revision', 'publish', array['gpt-flare-image']);
-  execute 'reset role';
+  perform pg_temp.t_apply_policy(owner_u, 500, 0.02);
   perform pg_temp.t_as(cust);
   begin perform public.create_generation((q2 ->> 'quoteId')::uuid, 'c4-job-0002'); raise exception 'C4 old quote charged a different price';
   exception when others then if sqlerrm <> 'QUOTE_STALE' then raise; end if; end;
@@ -187,15 +165,17 @@ begin
   if (q2 ->> 'creditUnits')::int <= (q ->> 'creditUnits')::int then raise exception 'C4 new quote did not use the new price'; end if;
   if (select units from public.generation_jobs where id = v_job) <> (q ->> 'creditUnits')::bigint
      or (select units from public.credit_reservations where job_id = v_job) <> (q ->> 'creditUnits')::bigint then raise exception 'C4 running job changed'; end if;
-  -- restore the earlier version as a NEW published version
+  -- an earlier version cannot be restored by hand: prices follow the policy
   perform pg_temp.t_as(owner_u);
-  r := public.admin_restore_price_version(v_id);
+  begin perform public.admin_restore_price_version(v_id); raise exception 'C4 restored by hand';
+  exception when others then if sqlerrm <> 'PRICING_AUTOMATIC' then raise; end if; end;
   execute 'reset role';
-  if (select restored_from from app_private.price_versions where id = (r ->> 'priceVersionId')::uuid) <> v_id
-     or (select state from app_private.price_versions where id = v_id) <> 'retired' then raise exception 'C4 restore %', r; end if;
+  if (select state from app_private.price_versions where id = v_id) <> 'retired' then raise exception 'C4 history'; end if;
   v_ok := v_ok + 1;
 
   -- C5 availability end to end (enable validation, no paid-test gate, disable/maintenance, bulk all-or-nothing)
+  -- A model without a price (test fixture) cannot be switched on; Save & apply prices it from its KIE reference.
+  update app_private.price_versions set state = 'retired' where model_id = 'flux-2-pro-image' and state = 'published';
   perform pg_temp.t_as(ops);
   begin perform public.admin_set_model_availability('flux-2-pro-image', 'enabled'); raise exception 'C5 enabled without price';
   exception when others then if sqlerrm <> 'MODEL_NOT_PRICED' then raise; end if; end;
@@ -203,15 +183,11 @@ begin
   r := public.admin_set_model_availability('veo-3-1', 'enabled');
   if r ->> 'enableBasis' <> 'documented_cost' or r ->> 'verificationStatus' <> 'untested' then raise exception 'C5 basis %', r; end if;
   execute 'reset role';
+  r := pg_temp.t_apply_policy(owner_u, 500, 0.02);
+  if jsonb_array_length(r -> 'result' -> 'repriced') <> 1 or r -> 'result' -> 'repriced' -> 0 ->> 'modelId' <> 'flux-2-pro-image' then raise exception 'C5 re-priced %', r; end if;
   perform pg_temp.t_as(owner_u);
-  -- enable with "publish the draft in the same flow"
-  perform public.admin_pricing_apply('selected', array['flux-2-pro-image'], 200, false,
-    public.admin_pricing_preview('selected', array['flux-2-pro-image'], 200, false) ->> 'revision', 'draft', array['flux-2-pro-image']);
-  execute 'reset role';
-  v_id := (select id from app_private.price_versions where model_id = 'flux-2-pro-image' and state = 'draft');
-  perform pg_temp.t_as(owner_u);
-  r := public.admin_set_model_availability('flux-2-pro-image', 'experimental', null, true, v_id);
-  if r ->> 'state' <> 'experimental' or r -> 'publishedPrice' ->> 'state' <> 'published' then raise exception 'C5 publish-in-flow %', r; end if;
+  r := public.admin_set_model_availability('flux-2-pro-image', 'experimental', null, true);
+  if r ->> 'state' <> 'experimental' then raise exception 'C5 experimental %', r; end if;
   execute 'reset role';
   if (select verification_status from app_private.model_catalog where id = 'veo-3-1') <> 'untested' then raise exception 'C5 status changed'; end if;
   perform pg_temp.t_as(cust);
@@ -240,6 +216,8 @@ begin
   execute 'reset role';
   -- the running job from C4 is untouched by availability changes
   if (select state from public.generation_jobs where id = v_job) <> 'queued' then raise exception 'C5 running job affected'; end if;
+  -- one model of the batch without a price (test fixture) blocks the whole batch
+  update app_private.price_versions set state = 'retired' where model_id = 'kling-3-0' and state = 'published';
   perform pg_temp.t_as(owner_u);
   begin perform public.admin_bulk_set_availability(array['veo-3-1', 'kling-3-0'], 'enabled', true); raise exception 'C5 bulk partially blocked';
   exception when others then if sqlerrm <> 'BULK_BLOCKED' then raise; end if; end;
@@ -251,7 +229,7 @@ begin
   if (select count(*) from app_private.model_catalog where id in ('veo-3-1', 'gpt-flare-image') and state = 'disabled') <> 2 then raise exception 'C5 bulk disable'; end if;
   v_ok := v_ok + 1;
 
-  -- C6 private staff test on a disabled, unpriced model: no wallet, no duplicates, evidence for that entry only
+  -- C6 private staff test on a disabled model: no wallet, no duplicates, evidence for that entry only
   perform pg_temp.t_as(owner_u);
   begin perform public.admin_create_model_test('veo-3-1-lite', 'A paper boat drifting', '{}', '{}', 'test-key-0001', false); raise exception 'C6 no spend confirmation';
   exception when others then if sqlerrm <> 'SPEND_CONFIRMATION_REQUIRED' then raise; end if; end;
@@ -341,7 +319,7 @@ begin
   execute 'reset role';
   v_ok := v_ok + 1;
 
-  -- C8 package impact, assumptions, loss override and supplier cost versions
+  -- C8 package impact, assumptions and supplier cost versions (a new KIE price list re-prices its model)
   v_txt := (select product_key from app_private.product_versions where state in ('draft', 'published') order by amount_minor desc limit 1);
   perform pg_temp.t_as(fin);
   r := public.admin_package_impact(jsonb_build_object(v_txt, jsonb_build_object('amountMinor', 100, 'credits', 1000)));
@@ -354,18 +332,16 @@ begin
   r := public.admin_save_supplier_cost('kling-3-0', '{"720p|on": 21, "720p|off": 14, "1080p|on": 27, "1080p|off": 18, "4K|on": 67, "4K|off": 67}',
     'documented', 'https://kie.ai/kling-3-0', now(), 'Rechecked');
   if (r ->> 'version')::int <> 2 then raise exception 'C8 cost version %', r; end if;
-  perform public.admin_save_price_draft('kling-3-0', (select jsonb_object_agg(x.key, 1) from jsonb_each(
-    (public.admin_pricing_preview('selected', array['kling-3-0'], 100, false) -> 'models' -> 0 -> 'proposedRules' -> 'units')) x));
   execute 'reset role';
   begin update app_private.supplier_cost_versions set note = 'x' where model_id = 'kling-3-0'; raise exception 'C8 cost mutable';
   exception when others then if sqlerrm not like 'append-only journal%' then raise; end if; end;
-  v_id := (select id from app_private.price_versions where model_id = 'kling-3-0' and state = 'draft');
-  perform pg_temp.t_as(owner_u);
-  begin perform public.admin_publish_price_version(v_id, null); raise exception 'C8 below-cost published without reason';
-  exception when others then if sqlerrm <> 'LOSS_REASON_REQUIRED' then raise; end if; end;
-  r := public.admin_publish_price_version(v_id, 'Launch promotion approved by the owner');
-  if jsonb_array_length(r -> 'belowCost') = 0 then raise exception 'C8 below-cost not reported'; end if;
-  execute 'reset role';
+  -- the new KIE price list re-priced Kling at once under the current policy (+500 % at $0.02): 720p with audio, 10 s =
+  -- 210 KIE credits = $1.05 → $6.30 = 315 credits; nothing below cost
+  v_row := (select jsonb_build_object('rules', rules, 'cost', supplier_cost_version_id, 'source', source) from app_private.price_versions
+    where model_id = 'kling-3-0' and state = 'published');
+  if (v_row ->> 'cost')::uuid <> (r ->> 'costVersionId')::uuid or v_row ->> 'source' <> 'policy' or (v_row -> 'rules' -> 'units' ->> '720p|on|10')::int <> 315 then
+    raise exception 'C8 not re-priced from the new KIE price list %', v_row; end if;
+  if jsonb_array_length(app_private.below_cost_configs('kling-3-0', v_row -> 'rules')) <> 0 then raise exception 'C8 below cost'; end if;
   v_ok := v_ok + 1;
 
   raise exception 'PASS: % catalog/pricing test groups', v_ok;

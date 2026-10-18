@@ -1,7 +1,7 @@
 # Suppliers, keys and cheapest-route generation
 
 Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` (applied 18 Oct 2026) · Admin ›
-**Providers & routing** (`/admin/providers`) · 18 Oct 2026.
+**Providers & balances** (`/admin/providers`; routing details under **More → Routing & offers**) · 18 Oct 2026.
 
 Genlixs can buy each generation from one of six suppliers — KIE, Duomi, PoYo, NezhaGate, Cuddler and APIMart. Customers
 still see **one card per model** and pay the same Genlixs credits; the server sends each job to the **cheapest verified
@@ -39,11 +39,14 @@ Nothing to configure by hand. Supabase Vault is built into the project; keys are
 Re-run *Review routing* after switching a winning supplier off: an original route that was dominated stays off until a
 review switches it back on (no hidden fallback).
 
-The everyday overview lives in the Catalog pages (`docs/CATALOG_AND_PRICING.md`): **Models** shows, for every model once,
-the supplier serving its default request, its cost, price and margin, and the cheapest other supplier with the step still
-missing (key, paid test, routing); its **Available at suppliers** tab lists each product outside the catalog once with its
-cheapest supplier. **Supplier balances** shows every supplier's balance and spending and warns when KIE's balance cannot
-cover a model's most expensive settings. Both read `admin_catalog_supply` (`provider.read`, read-only).
+The everyday work lives on two pages (`docs/CATALOG_AND_PRICING.md`): **Models & pricing** shows, for every model once,
+the supplier serving its example request, that supplier's cost for the whole request and the effective markup on it, and
+in the model drawer the cheaper offers that are not serving yet with the step still missing (key, paid test, routing);
+**Add models** lists each product outside the catalog once with its cheapest supplier. **Providers & balances** shows
+every provider's balance and spending, keys and switches, and warns when KIE's balance cannot cover a model's most
+expensive settings. Both read `admin_catalog_supply` (`provider.read`, read-only). The customer price never depends on the
+serving supplier: it follows the KIE reference under the global pricing policy, so a cheaper route only raises Genlixs's
+effective markup.
 
 ## 3. How a route is chosen
 
@@ -132,7 +135,8 @@ History: every earlier attempt was linked to its model's original KIE route; cha
 | Duomi | raw `Authorization` | `POST /api/gemini/nano-banana(-edit)`; `GET /api/gemini/nano-banana/{id}`; business errors inside HTTP 200 | `GET https://api.wike.cc/api/account/get` (points) | — | none |
 
 Units: KIE credit and PoYo credit 200/USD, APIMart credit 10/USD (Gold), CNY 6.70/USD and Duomi point 6,700/USD are
-**illustrative** until replaced with the rate actually paid (Admin › Models › offer › Price, or `admin_save_cost_unit`).
+**illustrative** until replaced with the rate actually paid (Providers & balances › Routing & offers › offer › Price, or
+`admin_save_cost_unit`). A new KIE credit price (`kie_credit`) is a new pricing-policy version and re-prices every model.
 
 ## 8. Offers after the migration
 

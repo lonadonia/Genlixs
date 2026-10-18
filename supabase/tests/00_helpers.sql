@@ -68,6 +68,23 @@ begin
 end;
 $$;
 
+-- Saves the global pricing policy (markup %, USD per Genlixs credit) as a staff member from the current policy version;
+-- must be called without a role switch in effect (the current policy id is read from app_private first).
+create or replace function pg_temp.t_apply_policy(p_actor uuid, p_markup numeric, p_usd_per_credit numeric)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_id uuid := (app_private.current_pricing_policy()).id;
+  r jsonb;
+begin
+  perform pg_temp.t_as(p_actor);
+  r := public.admin_apply_pricing_policy(p_markup, p_usd_per_credit, v_id);
+  execute 'reset role';
+  return r;
+end;
+$$;
+
 -- Claims the newest pending work item of a kind for a reference (as the worker would after dequeue).
 create or replace function pg_temp.t_claim(p_ref uuid, p_kind text)
 returns jsonb

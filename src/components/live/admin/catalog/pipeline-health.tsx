@@ -114,8 +114,8 @@ export function healthChecks(h: Health): Check[] {
   return out;
 }
 
-/** Generation pipeline health for staff: what moves jobs, what KIE answered, what failed, and what to do about it. */
-export function PipelineHealth() {
+/** Reads the pipeline health now and every minute while the page is visible. */
+export function usePipelineHealth(enabled = true) {
   const [h, setH] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -131,15 +131,20 @@ export function PipelineHealth() {
     }
   }, []);
   useEffect(() => {
+    if (!enabled) return;
     const t = window.setTimeout(() => void load(), 0);
     const i = window.setInterval(() => document.visibilityState === "visible" && void load(), 60_000);
     return () => {
       window.clearTimeout(t);
       window.clearInterval(i);
     };
-  }, [load]);
+  }, [enabled, load]);
+  return { h, error, busy, load, checks: h ? healthChecks(h) : [] };
+}
 
-  const checks = h ? healthChecks(h) : [];
+/** Generation pipeline health for staff: what moves jobs, what KIE answered, what failed, and what to do about it. */
+export function PipelineHealth({ health }: { health: ReturnType<typeof usePipelineHealth> }) {
+  const { h, error, busy, load, checks } = health;
   const worst = checks.some((c) => c.tone === "error") ? "error" : checks.some((c) => c.tone === "attention") ? "attention" : "success";
   return (
     <Panel

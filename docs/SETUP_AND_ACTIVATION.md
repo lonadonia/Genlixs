@@ -30,7 +30,7 @@ Current state (14 Oct 2026, after the catalog upgrade):
      (stable public origin, not a preview URL), optional `MEDIA_FETCH_ALLOWED_HOSTS` (adds result hosts; the reviewed KIE
      hosts always apply). **Every origin must be one that already resolves** — today `https://genlixs.vercel.app`. Using a
      domain that is not attached yet (for example `genlixs.com` on 15 Oct 2026) silently breaks callbacks, worker wake-ups and
-     the links in sign-up and password emails. Admin → Supplier balances → *Generation pipeline* shows each origin and whether it
+     the links in sign-up and password emails. Admin → Providers & balances → *More → Generation pipeline* shows each origin and whether it
      resolves.
    - Secrets (generate random values for the last two, e.g. `openssl rand -base64 32`): `SUPABASE_SECRET_KEY`, `KIE_API_KEY`,
      `KIE_WEBHOOK_HMAC_KEY`, `INTERNAL_WORKER_TOKEN`, `REFERRAL_COOKIE_SIGNING_KEY`.
@@ -51,17 +51,16 @@ Current state (14 Oct 2026, after the catalog upgrade):
    `ALLOW_PAID_PROVIDER_TESTS=true` only on a non-production environment where you deliberately run paid tests (production
    does not need it).
 7. **Models and prices** (Admin → Catalog; full guide in `docs/CATALOG_AND_PRICING.md`):
-   - Supplier balances: check KIE reads a real balance; set the low-balance warning (KIE activity section);
-   - Pricing & packages: confirm or change the two reference values (KIE credit cost from a top-up you made; the Genlixs
-     credit value, seeded with the illustrative $5 for 250 credits), then set the price of each model you intend to offer
-     (per setting, or "Apply a markup to several models");
-   - Models: switch the priced models on. A private paid test (Models → Details → Private test) is optional but recommended;
+   - Providers & balances: check KIE reads a real balance; set the low-balance warning (KIE → Details → KIE activity);
+   - Models & pricing: set the pricing panel — markup on the KIE cost (100 % sells for twice the KIE cost) and the USD value
+     of one Genlixs credit — and **Save & apply**; every model is priced from its KIE reference automatically;
+   - Models & pricing: switch the priced models on. A private paid test (model → Technical details and tests → Private test) is optional but recommended;
      it records the task id, KIE-reported credits and the output. If an import fails with "host not allowed", confirm the host
      is a KIE delivery host and add it to `MEDIA_FETCH_ALLOWED_HOSTS`.
 8. **Payments**: choose a gateway available to the business (Stripe does not support Morocco-based accounts), implement its
    adapter in `src/lib/billing/` (createCheckout, verifyWebhook, submitRefund) and set `BILLING_PROVIDER`,
    `BILLING_API_SECRET`, `BILLING_WEBHOOK_SECRET`. Until then checkout answers "Payments are not available yet".
-   Then offer the approved packages in Admin → Pricing & packages → Packages.
+   Then offer the approved packages in Admin → Models & pricing → Packages.
 9. **Partner programme**: confirm the proposed terms (attribution window, renewal months, hold days, payout threshold),
    edit the draft if needed and publish it (Admin → Partners → Partner commission terms). Approvals are refused until an agreement is published.
 10. **Domain**: add `genlixs.com` to the Vercel project, apply the DNS records Vercel shows, then update `APP_BASE_URL`,

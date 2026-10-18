@@ -25,7 +25,17 @@ node supabase/local-test/run.mjs fresh migrations tests:01,02,03,04,05,06,07,08 
   rollback:20261018181012 tests:01,02,03,04,05,06,07 stop
 ```
 
+Automatic pricing (migration `20261018232513_automatic_pricing`): all suites including 10, then its rollback and the
+earlier suites again (use the versions of tests 03 and 04 from before that migration, e.g. `git show 8b1c7e3:<file>`):
+
+```sh
+node supabase/local-test/run.mjs fresh migrations tests:01,02,03,04,05,06,07,08,09,10 \
+  rollback:20261018232513 tests:01,02,03,04,05,06,07,08,09 stop
+```
+
 `rollback:<version>` applies `supabase/rollbacks/<version>_*.rollback.sql`; plain `rollback` keeps applying the Image Edit rollback.
+`design-handoff/genlixs/qa-scripts/v36/dump-local-fixtures.mjs` turns this database into admin API fixtures for the
+browser check of the two admin pages (one rolled-back transaction).
 
 `shim.sql` stands in for the Supabase platform pieces the migrations use: the `anon` / `authenticated` /
 `service_role` roles and default grants, `auth.users` with `auth.uid()` / `auth.jwt()`, the storage tables and

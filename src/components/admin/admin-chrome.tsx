@@ -9,10 +9,8 @@ import {
   Briefcase,
   Coins,
   CreditCard,
-  Gauge,
   LayoutDashboard,
   LifeBuoy,
-  Network,
   ScrollText,
   Search,
   ShieldCheck,
@@ -39,10 +37,8 @@ const LIVE_GROUPS: NavGroup[] = [
   {
     title: "Catalog",
     items: [
-      { href: "/admin/catalog", label: "Models", icon: Boxes },
-      { href: "/admin/pricing", label: "Pricing & packages", icon: Tag },
-      { href: "/admin/balances", label: "Supplier balances", icon: Gauge },
-      { href: "/admin/providers", label: "Providers & routing", icon: Network },
+      { href: "/admin/catalog", label: "Models & pricing", icon: Boxes },
+      { href: "/admin/providers", label: "Providers & balances", icon: Wallet },
     ],
   },
   {

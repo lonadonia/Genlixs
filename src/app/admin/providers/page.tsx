@@ -4,7 +4,7 @@ import { LIVE } from "@/lib/config";
 import { LiveOnlyNotice } from "@/components/live/admin/live-admin";
 import { ProvidersPage } from "@/components/live/admin/providers/providers-page";
 
-export const metadata: Metadata = { title: "Providers & routing" };
+export const metadata: Metadata = { title: "Providers & balances" };
 
 export default function Page() {
   if (!LIVE) return <LiveOnlyNotice />;

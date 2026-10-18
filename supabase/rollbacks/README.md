@@ -4,6 +4,16 @@ A rollback is written and tested with its migration but is **not applied**. To u
 as a new migration (Supabase MCP `apply_migration` or `supabase db push`) with the owner's agreement, then run the
 matching test in `supabase/tests/`.
 
+## 20261018232513_automatic_pricing
+
+Undoes automatic pricing (applied 18 Oct 2026, 23:25 UTC): drops the three re-pricing triggers and the policy
+functions, and restores the per-model and bulk price editors, the reference-value impact preview, the earlier readiness
+wording and the earlier supplier view. Prices stay exactly as published (policy versions use the same table format);
+the policy history table, `price_versions.policy_version_id` and the `policy` source are kept for the audit trail, and
+`price_units_for` keeps its `_refs` lookup so a published policy table keeps quoting. Tested locally: migrations →
+test 10 → rollback → tests 01–09 (the versions before automatic pricing) pass; the restored bodies equal production's
+before the migration (normalized-source md5 of all 14 replaced functions). Deploy the previous release after applying it.
+
 ## 20261018181012_multi_provider_routing
 
 Undoes the twelve parts `20261018181012`…`20261018182418_multi_provider_routing_part01`…`part12` (applied 18 Oct 2026).

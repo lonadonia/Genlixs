@@ -66,22 +66,7 @@ function decimalText(v: unknown, name: string, decimals: number, optional = fals
   }
   return t;
 }
-/** Kept configurations per model for bulk pricing: {"<modelId>": ["<key>", â€¦]}. */
-function keptMap(v: unknown): Record<string, string[]> {
-  if (v === undefined || v === null) return {};
-  if (typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
-  const entries = Object.entries(v as Record<string, unknown>);
-  if (entries.length > 100) throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
-  return Object.fromEntries(
-    entries.map(([k, list]) => {
-      if (!Array.isArray(list) || list.length > 200 || list.some((x) => typeof x !== "string" || x.length > 60)) {
-        throw new ApiError("INVALID_INPUT", "Kept configurations are not valid.", 422);
-      }
-      return [modelId(k), list as string[]];
-    }),
-  );
-}
-/** {configuration key: number} maps for per-configuration prices and costs (keys are validated by the database). */
+/** {configuration key: number} maps for per-configuration KIE costs (keys are validated by the database). */
 function numberMap(v: unknown, name: string): Record<string, number> {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new ApiError("INVALID_INPUT", `${name} are required.`, 422);
   const entries = Object.entries(v as Record<string, unknown>);
@@ -94,17 +79,11 @@ function numberMap(v: unknown, name: string): Record<string, number> {
     }),
   );
 }
-const bulkScope = (b: Record<string, unknown>) => {
-  const scope = input.oneOf(b.scope, "Scope", ["all", "images", "videos", "selected"] as const)!;
-  const markup = typeof b.markupPercent === "string" ? Number(b.markupPercent) : b.markupPercent;
-  if (typeof markup !== "number" || !Number.isFinite(markup)) throw new ApiError("INVALID_MARKUP", "Enter the markup above KIE cost as a percentage.", 422);
-  return {
-    p_scope: scope,
-    p_model_ids: scope === "selected" ? modelIds(b.modelIds) : null,
-    p_markup_percent: markup,
-    p_include_overrides: input.bool(b.includeOverrides, "Include manual prices", true) ?? false,
-  };
-};
+/** The two global pricing settings, as exact decimal text (validated again in the database). */
+const policyInput = (b: Record<string, unknown>) => ({
+  p_markup_percent: decimalText(b.markupPercent, "Markup on KIE cost", 2),
+  p_usd_per_credit: decimalText(b.usdPerCredit, "USD value of one Genlixs credit", 6),
+});
 /** What this deployment can do, without revealing any secret value. */
 const runtime = () => ({
   submitsEnabled: providerConfigured(),
@@ -191,6 +170,8 @@ const GETS: Record<string, Handler> = {
   "catalog/batches": ({ db, q }) => rpc(db, "admin_pricing_batches", { p_limit: limit(q, 100) }),
   // Which supplier serves each model now and every supplier's cost for the same default request (provider.read).
   "catalog/supply": ({ db }) => rpc(db, "admin_catalog_supply"),
+  // The global pricing policy: markup on the KIE reference and USD value of one Genlixs credit.
+  "catalog/policy": ({ db }) => rpc(db, "admin_pricing_policy"),
   settings: ({ db }) => rpc(db, "admin_settings"),
   "catalog/tests/outputs/:id": async ({ db, rest }) => {
     // Staff-only signed link to a private test output (the RPC checks the capability and the asset's purpose).
@@ -342,29 +323,6 @@ const POSTS: Record<string, Handler> = {
       p_badges: badges,
     });
   },
-  "catalog/models/:id/prices": async ({ req, db, rest }) => {
-    const b = await readJson(req);
-    return rpc(db, "admin_save_price_draft", {
-      p_model_id: modelId(rest[2]),
-      p_units: numberMap(b.units, "Credit charges"),
-      p_extra_reference_units: input.int(b.extraReferenceUnits, "Extra reference charge", { min: 0, max: 100000, optional: true }) ?? null,
-      p_note: input.str(b.note, "Note", { max: 300, optional: true }) ?? null,
-    });
-  },
-  // One-step price: a new immutable version, published at once (owner) or saved as a draft. The editor sends the
-  // version it started from so a concurrent change is refused instead of overwritten.
-  "catalog/models/:id/price": async ({ req, db, rest }) => {
-    const b = await readJson(req);
-    return rpc(db, "admin_save_model_price", {
-      p_model_id: modelId(rest[2]),
-      p_units: numberMap(b.units, "Credit charges"),
-      p_extra_reference_units: input.int(b.extraReferenceUnits, "Extra reference charge", { min: 1, max: 1_000_000, optional: true }) ?? null,
-      p_publish: input.bool(b.publish, "Publish", true) ?? true,
-      p_accept_loss: input.bool(b.acceptLoss, "Below-cost confirmation", true) ?? false,
-      p_expected_price_version_id: input.uuid(b.expectedPriceVersionId, "Current price", true) ?? null,
-      p_note: input.str(b.note, "Note", { max: 300, optional: true }) ?? null,
-    });
-  },
   "catalog/models/:id/costs": async ({ req, db, rest }) => {
     const b = await readJson(req);
     const checked = input.str(b.checkedAt, "Checked on", { min: 10, max: 40 })!;
@@ -414,62 +372,15 @@ const POSTS: Record<string, Handler> = {
     kickWorker("control", 20_000);
     return result;
   },
-  "catalog/prices/:id/publish": async ({ req, db, rest }) => {
+  // Global pricing policy (Admin › Models & pricing): a preview saves nothing; Save & apply versions the policy and
+  // re-prices every model in one transaction. The editor sends the policy version it started from.
+  "catalog/policy/preview": async ({ req, db }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_publish_price_version", { p_price_version_id: input.uuid(rest[2], "Price version"), p_reason: optionalReason(b.reason) });
+    return rpc(db, "admin_preview_pricing_policy", policyInput(b));
   },
-  "catalog/prices/:id/restore": async ({ req, db, rest }) => {
+  "catalog/policy/apply": async ({ req, db }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_restore_price_version", { p_price_version_id: input.uuid(rest[2], "Price version"), p_reason: optionalReason(b.reason) });
-  },
-  "catalog/bulk-pricing/preview": async ({ req, db }) => {
-    const b = await readJson(req);
-    return rpc(db, "admin_pricing_preview", { ...bulkScope(b) });
-  },
-  "catalog/bulk-pricing/apply": async ({ req, db }) => {
-    const b = await readJson(req);
-    return rpc(db, "admin_pricing_apply", {
-      ...bulkScope(b),
-      p_preview_revision: input.str(b.previewRevision, "Preview revision", { min: 32, max: 32 }),
-      p_action: input.oneOf(b.action, "Action", ["draft", "publish"] as const),
-      p_selected: modelIds(b.selected),
-    });
-  },
-  // Bulk markup: one "Save changes" for every selected model (all or none), with configurations kept unchanged.
-  "catalog/bulk-pricing/save": async ({ req, db }) => {
-    const b = await readJson(req);
-    return rpc(db, "admin_pricing_save", {
-      ...bulkScope(b),
-      p_preview_revision: input.str(b.previewRevision, "Preview revision", { min: 32, max: 32 }),
-      p_selected: modelIds(b.selected),
-      p_excluded: keptMap(b.kept),
-      p_publish: input.bool(b.publish, "Publish", true) ?? true,
-      p_accept_loss: input.bool(b.acceptLoss, "Below-cost confirmation", true) ?? false,
-    });
-  },
-  // Reference values: the KIE purchase (USD per KIE credit) and the Genlixs credit value (USD per Genlixs credit).
-  // Saving one never changes wallets, purchases, quotes, running jobs or published prices.
-  "pricing/references": async ({ req, db }) => {
-    const b = await readJson(req);
-    const kind = input.oneOf(b.kind, "Reference", ["kie_purchase", "credit_value"] as const)!;
-    return rpc(db, "admin_save_pricing_reference", {
-      p_kind: kind,
-      p_amount_usd: decimalText(b.amountUsd, "Amount", 2),
-      p_credits: decimalText(b.credits, "Credits", kind === "credit_value" ? 0 : 2),
-      p_bonus_credits: kind === "kie_purchase" ? decimalText(b.bonusCredits, "Bonus credits", 2, true) : null,
-      p_source_url: input.str(b.sourceUrl, "Source link", { max: 300, optional: true }) ?? null,
-      p_note: input.str(b.note, "Note", { max: 500, optional: true }) ?? null,
-      p_expected_version_id: input.uuid(b.expectedVersionId, "Current value", true) ?? null,
-    });
-  },
-  "pricing/references/impact": async ({ req, db }) => {
-    const b = await readJson(req);
-    const kind = input.oneOf(b.kind, "Reference", ["kie_purchase", "credit_value"] as const)!;
-    return rpc(db, "admin_reference_impact", {
-      p_kind: kind,
-      p_amount_usd: decimalText(b.amountUsd, "Amount", 2),
-      p_credits: decimalText(b.credits, "Credits", kind === "credit_value" ? 0 : 2),
-    });
+    return rpc(db, "admin_apply_pricing_policy", { ...policyInput(b), p_expected_policy_id: input.uuid(b.expectedPolicyId, "Current policy") });
   },
   // One package at a time: a new version when its terms change; other packages are never touched.
   "packages/:key": async ({ req, db, rest }) => {
@@ -662,6 +573,15 @@ const POSTS: Record<string, Handler> = {
     const r = await checkProvider(target(slot), "admin", true);
     await refreshUsage(target(slot));
     return r;
+  },
+  // One provider's balance, read-only (provider.read). The database grants one read per interval across all staff, so a
+  // repeated click returns "skipped" instead of calling the provider again. Never submits a generation.
+  "providers/:id/refresh": async ({ db, rest }) => {
+    const slot = await rpc<CheckSlot>(db, "admin_begin_provider_check", { p_account_id: accountId(rest[1]), p_kind: "refresh" });
+    if (!slot.proceed) return { skipped: true };
+    const r = await checkProvider(target(slot), "admin", false);
+    await refreshUsage(target(slot));
+    return { skipped: false, ok: r.result.ok, state: r.result.state, error: r.result.error };
   },
   "providers/:id/manual-balance": async ({ req, db, rest }) => {
     const b = await readJson(req);

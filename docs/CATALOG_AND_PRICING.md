@@ -1,143 +1,139 @@
-# Models, pricing and supplier balances — owner guide and reference
+# Models, pricing and provider balances — owner guide and reference
 
 Customers see every model **once**, whichever supplier makes it: each request goes to the cheapest verified supplier that
-supports its exact settings (see `docs/PROVIDERS_AND_ROUTING.md`). The admin console has four sections under **Catalog**:
+supports its exact settings (see `docs/PROVIDERS_AND_ROUTING.md`). Every selling price follows **one global pricing
+policy**: the documented KIE cost of the request, plus your markup, converted to Genlixs credits. Nothing is priced per
+model. The admin console has two pages under **Catalog**:
 
-- **Models** (`/admin/catalog`): one row per model with its On/Off switch, the supplier serving it now, the cost, price and
-  margin of its default request, and the cheapest other supplier with the step still missing to use it (key, paid test,
-  routing switch or integration). Click a model for every supplier's quote; maintenance, the experimental label, private
-  tests and the KIE cost source are under **Technical details and tests**. The **Available at suppliers** tab lists the image
-  and video products the suppliers sell that are not Genlixs models yet — each product once, its cheapest supplier first.
-- **Pricing & packages** (`/admin/pricing`): summary cards (credit value, priced models, margin range, settings below cost)
-  and three tabs: **Model prices** (customer price, what customers pay, supplier cost with the supplier serving the model,
-  margin), **Packages** and **Reference values** (with the supplier currency rates the router uses).
-- **Supplier balances** (`/admin/balances`; the old `/admin/kie` address redirects here): each supplier's balance with its
-  source and age, spending today and this month, how long KIE's balance lasts at the last 7 days' pace, a warning naming the
-  models whose most expensive settings cost more than KIE's balance, the generation pipeline and KIE activity.
-- **Providers & routing** (`/admin/providers`): keys, connection tests, offers, prices and the routing review.
+- **Models & pricing** (`/admin/catalog`): the pricing panel (markup on the KIE cost and the USD value of one Genlixs
+  credit, one **Save & apply**), then one row per model: its example settings, the customer price in Genlixs credits with
+  its USD value, the supplier serving it and that supplier's cost for the whole request, the effective markup on that cost,
+  the On/Off switch and a details button. The model drawer shows how the price is set (KIE reference → target → credits),
+  the serving supplier, cheaper offers that are not serving yet (kept apart), and anything that blocks the model.
+  **Packages** is a collapsed section at the bottom; **Add models** lists the products the suppliers sell that are not
+  Genlixs models yet (nothing there is published).
+- **Providers & balances** (`/admin/providers`): one row per provider with one status, its balance (unit, source and age),
+  spending today and this month, the On/Off switch, **Add key / Replace key**, **Refresh** and **Details** (diagnostics,
+  funding terms and limits, a manual balance, spending by job, and for KIE its activity). **More** opens spending by job,
+  the generation pipeline and routing & offers on demand. Banners say when generation is not working, a balance is too low,
+  a key was refused or a provider is refusing jobs, each with a link to the details.
+
+The former addresses redirect: `/admin/pricing` → `/admin/catalog` (`?tab=packages` opens Packages, `?model=<id>` opens
+that model), `/admin/balances` and `/admin/kie` → `/admin/providers`.
 
 Operational settings are on **Overview** (Service settings); partner commission terms are on **Partners**. Every change is
-written to the audit log with an automatic description; a typed reason is asked only for operational settings and partner terms.
+written to the audit log with an automatic description.
 
 These units appear on these pages and are always labelled; they are never the same thing:
 - **KIE credits** (and each supplier's own unit: PoYo and APIMart credits, CNY, Duomi points): what a supplier charges.
 - **Genlixs credits**: what customers spend from their balance. One wallet, one unit, whatever package they came from.
-- **USD**: reference values used to compare them. Supplier units are converted with the rates in Reference values;
-  CNY and Duomi points use an illustrative rate until the rate actually paid is entered.
+- **USD**: reference values used to compare them. A Genlixs credit is not a KIE (or any supplier's) credit.
 
 ## Quick guide (three tasks)
 
-**Switch a model on or off.** Models → find the model (type filter or search) → press its switch. "Saving…"
+**Change prices.** Models & pricing → the pricing panel → type the **Markup on KIE cost (%)** (100 % sells for twice the
+KIE cost) and/or the **USD value of one Genlixs credit** → a small preview shows how many models change price and a few
+example requests before → after → **Save & apply** (owner). Every image, image-editing, video and video-editing price is
+recalculated at once; quotes already taken are re-checked before a job starts, jobs already accepted keep their price,
+wallets, purchases and packages are not touched.
+
+**Switch a model on or off.** Models & pricing → find the model (type filter or search) → press its switch. "Saving…"
 appears, then On or Off. If something is missing the switch stays as it was and one sentence says what to do, for example
-"Set a price first" with a link to the price. Off hides the model; new price checks and submissions are refused (also price
-checks made earlier); jobs already running finish. A paid test is not needed; the model stays "Not tested yet" until one runs.
+"KIE reference needed". Off hides the model; new price checks and submissions are refused (also price checks made
+earlier); jobs already running finish. A paid test is not needed; the model stays "Not tested yet" until one runs.
 
-**Edit a package or a reference value.** Pricing & packages → Reference values: type the amount and credits on the card
-(KIE: a top-up you made, e.g. $5 for 1,000 KIE credits; Genlixs: e.g. $5 for 250 credits) → the rate per credit updates →
-**Save**. Nothing customers already have or have bought changes; current prices stay until you recalculate them (the
-**Recalculate prices** button after saving opens the markup tool). Packages: change the name, price, included or bonus
-credits, or **Offered to customers** on the package's card → **Save package**. Only that package gets a new version;
-earlier orders keep their terms. **Credits from the credit value** fills the included credits at the reference rate.
-
-**Change a model's credit charge.** Pricing & packages → Model prices → **Set price** / **Edit price** on the model. For each
-setting (resolution, duration, audio, quality…) type either the Genlixs credits, the USD value or the markup above the KIE
-cost; the other two follow. "Markup for every setting" + **Apply to all settings** fills all rows at once. Charges round up to
-whole credits; the row shows the value and the actual markup. A charge worth less than the KIE cost needs the "Save anyway"
-tick. **Save price** applies it as a new version at once (owner); **Save as draft** keeps it for later. For many models at
-once use **Apply a markup to several models** → Preview → untick any setting to keep its current charge → **Save changes**.
+**Add or replace a provider key.** Providers & balances → the provider's row → **Add key** / **Replace key** → paste →
+**Save key**. The key goes to Supabase Vault on the server and is never shown again (only a masked hint). **Details →
+Test connection** checks it with a read-only balance call; nothing is generated.
 
 ## 1. Owner guide (details)
 
+### Pricing panel
+- Two settings, one action. The markup is a markup on cost, not a margin on revenue: +100 % sells a request for twice its
+  KIE reference. The credit value is the existing Genlixs credit value (there is no second setting); changing it here
+  versions it.
+- The preview is calculated by the server and saves nothing. **Save & apply** is refused with "changed meanwhile" when
+  someone else saved first; reload and look at the preview again. Finance can preview; only the owner can apply.
+- What the policy uses: the model's KIE price list (exact version, resolution, duration, audio, reference images, output
+  count and billed input seconds) at the documented price of a KIE credit ($0.005). A model whose KIE price list does not
+  cover its settings shows **KIE reference needed** and has no price; another supplier's price is never used instead.
+- Prices follow KIE price data automatically: recording a new KIE price list for a model (model drawer → **Technical
+  details and tests → KIE cost**) re-prices that model at once; a new documented KIE credit price re-prices every model.
+
 ### Models
-- The switch checks, on the server: the integration exists in this release, the option schema, the server KIE key, a known
-  KIE cost and a saved price. A private test is optional and never blocks switching on. The switch maps to the stored
-  states without contradictions: On = enabled (or experimental), Off = disabled; "Paused for maintenance" (visible, not
-  usable, with a note) and "On, labelled experimental" are set under **Technical details and tests → Status**.
+- The switch checks, on the server: the integration exists in this release, the option schema, the server KIE key, a KIE
+  reference price and a price. A private test is optional and never blocks switching on. On = enabled (or experimental),
+  Off = disabled; "Paused for maintenance" and "On, labelled experimental" are set under **Technical details and tests →
+  Status**.
 - Switching on records why the model is available: a validated test, manual evidence, or the documented KIE cost
   ("not tested yet"). Untested models are never shown as tested.
-- Customers see a change within a few seconds (the public catalog is cached for 5 s).
-- **Served by** is the router's own choice for the model's default request; **Cheaper supplier** is the lowest quote for the
-  same request from a supplier that cannot serve it yet, with the saving and the next step. Quotes use each supplier's
-  published price with its funding terms (for example Cuddler's card fee); conflicting or unverified prices are never
-  compared. Nothing on this page changes routing: suppliers are switched on in Providers & routing after a paid test.
+- Customers see a change within a few seconds (the public catalog is cached for 5 s; quotes always read the live price).
+- **Served by · cost** is the router's own choice for the model's example request and what that supplier charges for the
+  whole request, with its funding terms. **Effective markup** = (customer price − that cost) ÷ that cost. When a cheaper
+  supplier starts serving, the customer price does not move and the effective markup rises: the saving is Genlixs's.
+  Nothing on this page changes routing: suppliers are switched on in Providers & balances after a paid test.
 
 ### Private test (optional, spends KIE credits)
-Models → a model → **Technical details and tests → Private test**. Write a prompt and choose the settings; the expected KIE cost is shown before you
-confirm "I understand this spends credits from the owner's KIE balance". A repeated click returns the same job; one test per
-model runs at a time; no customer wallet, order or commission is involved. Only a delivered, validated file marks this entry
-"Tested".
-
-### Reference values
-- **KIE credit cost**: USD paid ÷ KIE credits received in a top-up (bonus credits included; enter them under "Bonus credits
-  and source" so the assumption is visible). Seeded from KIE's standard rate: $5 for 1,000 credits = $0.005.
-- **Genlixs credit value**: a base amount ÷ a whole number of Genlixs credits. Seeded with the illustrative value
-  $5 for 250 credits = $0.02, labelled "Example value, not confirmed" until you save or confirm it.
-- Each save is a new version (the old ones are kept). Saving never changes wallet balances, ledger entries, purchases,
-  quotes, running jobs or published prices. While typing, the card shows what the new value would mean for the current
-  prices (markup range, settings that would fall below the KIE cost) without saving anything.
+Models & pricing → a model → **Technical details and tests → Private test**. Write a prompt and choose the settings; the
+expected KIE cost is shown before you confirm "I understand this spends credits from the owner's KIE balance". A repeated
+click returns the same job; one test per model runs at a time; no customer wallet, order or commission is involved. Only a
+delivered, validated file marks this entry "Tested".
 
 ### Packages
 - Usable credits = included + bonus. Value per credit = price ÷ usable credits, compared with the Genlixs credit value
-  (premium or discount). The grant on purchase or per paid month is the usable credits.
+  (premium or discount). The grant on purchase or per paid month is the usable credits. Changing the credit value never
+  changes a package; the credit value is a pricing reference, not the cash each package brings.
 - Changing what customers can buy (offering, or editing an offered package) is an owner decision; finance can prepare a
-  package that is not offered. Checkout, gateways and the subscription system are unchanged.
+  package that is not offered. Each package is saved on its own as a new version; earlier orders keep their terms.
 - Promotional credits (sign-up bonus, staff grants) bring no revenue and are not part of any package.
 
-### Model prices
-- Every setting is priced separately and saved as one immutable version; quotes and debits only ever use the saved server
-  price. The editor starts from the current price (or a saved draft) and sends the version it started from: if someone
-  saved in the meantime, the save is refused with "Reload".
-- **Package comparison** (one setting at a time): the value of the charge and the contribution at the credit value and at
-  each package's rate, directly and with the 30 % / 50 % partner commission — estimates before payment fees and running
-  costs.
-- **Apply a markup to several models**: all, images, videos or chosen models; the credit value used is shown. Prices set by
-  hand are kept unless "Include prices set by hand" is ticked. Settings can be kept at their current charge. One
-  **Save changes** applies every chosen model as a new version, or nothing; if a price, a KIE cost or a reference value
-  changed since the preview, the save is refused and the preview refreshed.
-- **Price history** in the editor lists every version; **Restore** saves an earlier one again as a new version.
-
-### Supplier balances
-Each supplier card shows the balance in the supplier's own unit with an approximate USD value, where it came from (provider
-API or a dated manual entry) and its age; a supplier without a key shows "No key saved", never $0. KIE's balance is read on
-the server with the KIE key (never sent to the browser), at most once per 30 s across all staff, and every minute while the
-page is open (**Read now** reads it at once); **Refresh balances** reads every supplier that has a key. The router refuses a
-job before any charge when a balance read less than an hour ago (minus jobs in flight) cannot cover it, so the page warns
-when the most expensive settings of KIE-served models cost more than KIE's balance. "KIE balance lasts" divides the balance
-by the last 7 days' KIE spending. The **KIE activity** section has credits used, jobs now, spend by model, reliability, recent
-readings and the low-balance warning.
+### Providers & balances
+Each row shows the balance in the provider's own unit with an approximate USD value, where it came from (provider API or a
+dated manual entry) and its age; a provider without a key shows "No key saved", never $0. Balances are read on the server
+with the saved key (never sent to the browser), at most once per interval across all staff; **Refresh** reads one
+provider, **Refresh balances** reads all that have a key. KIE's balance is also read every minute while the page is open.
+The router refuses a job before any charge when a balance read less than an hour ago (minus jobs in flight) cannot cover
+it, so the page warns when the most expensive settings of KIE-served models cost more than KIE's balance.
 
 ### Update a KIE cost
-KIE has no documented price API, so costs are never synchronised automatically. When kie.ai/pricing changes: Models → the
-model → **Technical details and tests → KIE cost** → new rates, source link, date checked → **Record new cost version**. Prices do not change; review
-them in Pricing & packages. Costs older than 30 days are marked stale.
+KIE has no documented price API, so costs are never synchronised automatically. When kie.ai/pricing changes: Models &
+pricing → the model → **Technical details and tests → KIE cost** → new rates, source link, date checked → **Record new
+cost version**. The model is re-priced at once under the global policy. Costs older than 30 days are marked stale.
 
 ## 2. Credit pricing (how numbers are computed)
 
 ```
-USD per KIE credit       = KIE purchase amount ÷ KIE credits received          (10 decimals)
-USD per Genlixs credit   = credit value amount ÷ Genlixs credits               (10 decimals)
-KIE cost (USD)           = KIE credits for the setting × USD per KIE credit    (8 decimals)
-target (USD)             = KIE cost × (1 + markup ÷ 100)                       (8 decimals)
-charge (Genlixs credits) = ceil(target ÷ USD per Genlixs credit), at least 1
-value (USD)              = charge × USD per Genlixs credit
-actual markup (%)        = (value ÷ KIE cost − 1) × 100
-contribution             = value × (1 − partner commission) − KIE cost         (before payment fees and running costs)
+B  KIE reference (USD)     = KIE credits of the whole request × documented USD per KIE credit   (8 decimals)
+M  markup                  = global markup on the KIE reference (100 % = selling for twice B)
+V  USD per Genlixs credit  = the Genlixs credit value                                           (at most 6 decimals)
+target (USD)               = B × (1 + M ÷ 100)                                                  (8 decimals)
+charge (Genlixs credits)   = ceil(target ÷ V), at least 1 — rounded once for the whole request
+charged value (USD)        = charge × V
+C  serving cost (USD)      = what the supplier that serves the request charges, funding terms applied
+effective markup (%)       = (charged value − C) ÷ C × 100
 ```
 
-All money arithmetic runs in Postgres `numeric`; the browser mirrors it with exact decimals (`src/lib/pricing/`), so $0.07
-at $0.01 per credit is 7 credits, not 8. A missing KIE cost is never treated as zero: the model cannot be priced.
+One engine in Postgres computes every price (`app_private.policy_units`, `app_private.policy_model_rules`): each model's
+price table is materialised as an immutable price version, and quotes, the stale-quote check before a job, the reservation
+and the final debit all read that version. The browser never calculates a price. Values are reference values before
+payment fees, partner commission and other costs — not net profit.
 
-Worked example (the owner's figures, also a contract test and a database test): KIE $5 for 1,000 credits → $0.005 per KIE
-credit; Genlixs $5 for 250 credits → $0.02 per Genlixs credit. An image costing 6 KIE credits costs $0.03. Charged 3 Genlixs
-credits it is worth $0.06: a markup of +100 %. The customer spends 50 % fewer credits in number than the KIE credits it uses,
-because one Genlixs credit is worth four KIE credits (+300 % in value). Contribution before payment and running costs:
-$0.03 directly, $0.012 with a 30 % partner commission, $0 with 50 %.
+Examples (synthetic, also database tests in `supabase/tests/10_automatic_pricing_tests.sql`):
 
-Rounding example: Seedream 5.0 Flash 1K costs 3.24 KIE credits = $0.0162; +100 % = $0.0324 = 1.62 credits, charged 2 credits
-($0.04, actual markup +146.9 %).
+| Situation | B | M | V | C | Charge | Effective markup |
+| --- | --- | --- | --- | --- | --- | --- |
+| KIE serves the request | $0.10 | 100 % | $0.01 | $0.10 | $0.20 = 20 credits | 100 % |
+| A cheaper supplier serves it | $0.10 | 100 % | $0.01 | $0.08 | $0.20 = 20 credits | 150 % |
+| A still cheaper supplier | $0.10 | 100 % | $0.01 | $0.05 | $0.20 = 20 credits | 300 % |
+| The markup becomes 150 % | $0.10 | 150 % | $0.01 | $0.08 | $0.25 = 25 credits | 212.5 % |
+| The credit value becomes $0.02 | $0.10 | 100 % | $0.02 | $0.08 | $0.20 = 10 credits | 150 % |
+
+Rounding: B $0.025, M 100 %, V $0.02 → target $0.05 = 2.5 credits → charged 3 credits ($0.06, +140 % on B). In the catalog,
+Seedream 5.0 Flash 1K costs 3.24 KIE credits = $0.0162 → $0.0324 = 1.62 → 2 credits ($0.04). Exact decimals: $0.07 at
+$0.01 per credit is 7 credits, not 8.
 
 Package rates are a comparison, not the basis: Starter $9 for 200 credits is $0.045 per credit, +125 % above the $0.02
-credit value. Earlier versions valued credits at the cheapest package; that rule is no longer used for pricing.
+credit value.
 
 ## 3. Curated catalog (checked against docs.kie.ai and kie.ai/pricing on 14 Oct 2026)
 
@@ -197,18 +193,18 @@ these creation models did not change. Three new entries are **off, with a draft 
 | Kling 3.0 Motion Control | Moves a character image like the person in a 3–30 s video; orientation "Follow the video" (≤ 30 s) or "Keep the image's pose" (≤ 10 s); not a background setting | per second of the motion video: 720p 20, 1080p 27 | 10 × seconds at 720p, ⌈13.5 × seconds⌉ at 1080p (30–405) | private test passed 15 Oct (720p, 4 s: KIE charged 80) |
 | Veo 3.1 Extend | Continues one of the customer's own Veo 3.1 clips (last 13 days) | per extension: Fast 60, Lite 30, Quality 250 | Fast 30, Lite 15, Quality 125 | not tested |
 
-The drafts follow the rule of every published price: KIE cost × 2 (+100 %) at $0.005 per KIE credit and $0.02 per Genlixs
-credit, rounded up to whole credits; none is below cost. They were saved as drafts by finance and are **not published**.
-To offer a mode: Pricing & packages → the model → review the draft → **Publish** (owner), then Models → switch it on. Until
-then customers see an honest "not available yet" in that tab, and staff with the test permission can run private tests
+These modes were later published and switched on by the owner (18 Oct 2026). Since automatic pricing, their prices — like
+every model's — follow the global policy (KIE cost × (1 + markup) at the Genlixs credit value, rounded up per request);
+the draft-price workflow described here no longer exists, and staff with the test permission can still run private tests
 from the studio (the KIE account pays, no customer credits).
 
 ## 4. What is verified and what is not
 
-- Verified: configuration enumeration and costs for all 18 entries, reference values and the credit arithmetic (including the
-  worked example and rounding), one-step prices, bulk markup (manual prices, kept settings, stale previews, all-or-nothing),
-  availability without a paid-test gate, package editing with bonus credits, the 30 %/50 % scenarios, the staff-test
-  pipeline with simulated provider steps and permissions — see `docs/VERIFICATION.md`.
+- Verified: configuration enumeration and costs for all entries, the global pricing policy (the formula and the examples
+  above, whole-request rounding, Save & apply versioning, stale quotes refreshed, accepted jobs and wallets untouched,
+  KIE reference needed, automatic re-pricing from new KIE price data, retired per-model and bulk editors), availability
+  without a paid-test gate, package editing with bonus credits, the 30 %/50 % scenarios, the staff-test pipeline with
+  simulated provider steps and permissions — see `docs/VERIFICATION.md`.
 - **15 Oct 2026, real KIE requests in production** (`docs/VERIFICATION.md` §0): GPT Image 2.5 Flare 1K (6 KIE credits),
   Veo 3.1 Lite 720p text and start-frame clips (30 each), Seedance 2.5 Edit 480p (119) and Kling 3.0 Motion Control 720p
   (80), all delivered from the default KIE hosts and saved; the live balance reading moved by exactly the reported credits.

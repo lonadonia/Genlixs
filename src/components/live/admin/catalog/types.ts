@@ -15,7 +15,7 @@ export type Check = {
   ok: boolean;
   label: string;
   detail: string;
-  fix?: "set_price" | "publish_draft" | "edit_cost" | "run_test" | null;
+  fix?: "edit_cost" | "apply_policy" | "run_test" | null;
   warning?: boolean;
   draftPriceVersionId?: string | null;
 };

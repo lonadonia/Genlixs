@@ -169,7 +169,7 @@ function StatusSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void
         <h3 id="state-h" className="text-sm font-semibold text-ink-dark">
           Special states
         </h3>
-        <p className="text-sm text-muted-dark">The switch on the Models page covers On and Off. Use these only for a maintenance pause or an experimental label.</p>
+        <p className="text-sm text-muted-dark">The switch on Models &amp; pricing covers On and Off. Use these only for a maintenance pause or an experimental label.</p>
         <fieldset className="grid gap-2 sm:grid-cols-2">
           <legend className="sr-only">Availability</legend>
           {SPECIAL.map((s) => (
@@ -493,7 +493,7 @@ function CostSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
       const r = await api<{ version: number }>(`/api/admin/catalog/models/${d.model.id}/costs`, {
         body: { rates: Object.fromEntries(keys.map((k) => [k.key, Number(rates[k.key])])), sourceKind, sourceUrl: sourceUrl.trim() || null, checkedAt, note: note.trim() || null },
       });
-      setMsg({ tone: "success", text: `KIE cost v${r.version} recorded. Prices did not change; review them in Pricing & packages.` });
+      setMsg({ tone: "success", text: `KIE price list v${r.version} recorded. The customer price follows it under the global pricing policy.` });
       onChanged();
     } catch (e) {
       setMsg({ tone: "error", text: errorMessage(e) });
@@ -505,8 +505,9 @@ function CostSection({ d, onChanged }: { d: ModelDetail; onChanged: () => void }
     <div className="space-y-5">
       <Notice>
         KIE publishes prices on its pricing page; it has no documented price API, so Genlixs never syncs costs automatically. Check the source, then record a
-        new version here (it keeps the old ones). Rates are KIE credits {unitLabel(current.schedule.unit, spec.output.kind)}; USD uses your KIE purchase reference
-        ({fmtUsd4(rate)} per KIE credit, set in Pricing &amp; packages). Recording a cost does not change any price.
+        new version here (it keeps the old ones). Rates are KIE credits {unitLabel(current.schedule.unit, spec.output.kind)} ({fmtUsd4(rate)} per KIE credit).
+        This is the KIE reference of the model&apos;s price: recording a new version re-prices the model at once under the global pricing policy. Quotes
+        already taken are re-checked before a job starts; accepted jobs keep their price.
       </Notice>
       <div className="flex flex-wrap gap-3 text-sm">
         {d.model.pricingUrl ? (

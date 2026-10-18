@@ -47,10 +47,18 @@ window, renewal, hold and threshold are proposals marked unconfirmed). The launc
 can be generated or bought until the owner prices, enables and publishes.
 
 Prices: a published price version holds either the launch format (`base` + `add`) or a **table** of whole credits per
-configuration (`{"format":"table","dims":[…],"units":{"<values joined by |>":n}}`). The price editor and the markup tool write
-tables. Charges are valued with two versioned, append-only reference values (`app_private.pricing_reference_versions`:
-the KIE purchase → USD per KIE credit, the Genlixs credit value → USD per Genlixs credit); saving one never touches wallets,
-ledgers, orders, quotes, jobs or prices. Packages store usable `credits` (included + `bonus_credits`); orders snapshot them. KIE costs live in `app_private.supplier_cost_versions` (`unit` output|second, `dims`, `rates` in KIE credits,
+configuration (`{"format":"table","dims":[…],"units":{"<values joined by |>":n}}`). Since automatic pricing every table is
+written by **one global policy** (`app_private.pricing_policy_versions`, append-only: markup in basis points, the
+credit-value reference and the documented KIE credit price): credits = ceil(B × (1 + markup) ÷ V) per whole request, where B
+is the KIE reference of the request (`app_private.policy_units`, `policy_model_rules`; a `_refs` dimension is added when
+KIE bills extra reference images, so the request is rounded once). Saving the policy (`admin_apply_pricing_policy`), a new
+KIE cost version, a new capability or a new documented KIE credit price re-prices automatically (triggers); only models
+whose table changes get a new version (`source = 'policy'`, `policy_version_id`). The per-model and bulk price editors are
+retired (`PRICING_AUTOMATIC`). New migrations must not insert price versions themselves: insert the capability or cost
+version and the policy prices it. The Genlixs credit value lives only in `pricing_reference_versions` (`credit_value`);
+the KIE purchase reference is cost analysis only. Saving any of them never touches wallets, ledgers, orders, accepted jobs
+or packages; quotes taken before a price change are refused as `QUOTE_STALE` and taken again. Packages store usable
+`credits` (included + `bonus_credits`); orders snapshot them. KIE costs live in `app_private.supplier_cost_versions` (`unit` output|second, `dims`, `rates` in KIE credits,
 optional `extraReference`); a configuration without a rate has no known cost and blocks pricing and enabling.
 Staff tests are `generation_jobs` with `purpose = staff_test`: units 0, no reservation, no notification, hidden from the
 customer library; a trigger records the outcome in `model_test_runs` and, on a validated delivery, marks only that entry
@@ -88,7 +96,7 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/providers/fake.ts` | Deterministic fake provider (non-production + explicit flag) |
 | `src/lib/providers/{types,registry,credentials,sync,http,decimal}.ts` | Multi-provider layer: shared client interface, the six supplier clients, keys from Vault (service role) or `KIE_API_KEY`, balance/usage reads, fixed-host HTTP, exact decimals. See `docs/PROVIDERS_AND_ROUTING.md` |
 | `src/lib/providers/{cuddler,apimart,nezhagate,poyo,duomi}.ts` | Per-supplier request builders, create-reply classification, status normalization, balance parsing (documented contracts, checked 18 Oct 2026) |
-| `src/components/live/admin/providers/*` | Admin › Providers & routing: Overview, Providers (keys, switches, funding terms, manual balances), Models (comparison, offers, prices, paid offer tests, routing review, inventory), Usage (ledger, CSV) |
+| `src/components/live/admin/providers/*` | Admin › Providers & balances: one row per provider (status, balance, spending, switch, key, refresh), banners (pipeline, low balance, refused keys), provider drawer (diagnostics, funding terms and limits, manual balance, key removal, spending by job, KIE activity); on demand: spending by job (CSV), generation pipeline, routing & offers (comparison, offers, prices, paid offer tests, routing review, inventory) |
 | `src/lib/providers/balance.ts` | Server-side KIE balance read (deduplicated per instance; cross-instance slot in the database), recorded success or error |
 | `src/lib/media/{safe-fetch,sniff}.ts` | SSRF-safe importer and byte-level file verification |
 | `src/lib/jobs/{worker,kick}.ts` | Queue loop and handlers (submit, check, bind, import, asset delete, billing apply) |
@@ -96,8 +104,8 @@ an operator "attach verified task", or the customer deadline (credits returned).
 | `src/lib/auth/{referral,redirect}.ts` | Signed referral cookie; same-site redirect guard |
 | `src/lib/live/**` | Browser API helper, account context (wallet/notifications refresh on focus + 30 s), response types |
 | `src/components/live/**` | Live studio, partner portal, admin console and public pricing/consent components |
-| `src/components/live/admin/catalog/**` | Models (one row per model: On/Off switch, supplier serving it, default-request cost/price/margin, cheapest other supplier; model sheet with every supplier quote; products available at suppliers; diagnostics: status, private test, KIE cost, activity, advanced), Pricing & packages (summary, model prices with supplier cost, package editor, reference values and supplier currencies, per-model price editor, bulk markup), Supplier balances (all suppliers, KIE runway and warning, generation pipeline, KIE activity) |
-| `src/lib/pricing/**` | Exact-decimal credit arithmetic mirrored from the database (contract-tested) |
+| `src/components/live/admin/catalog/**` | Admin › Models & pricing: the pricing panel (markup on the KIE cost, USD per Genlixs credit, server preview, Save & apply), one row per model (example settings, credits and USD, serving supplier and its cost, effective markup, On/Off switch), the model drawer (KIE reference → target → credits, serving supplier vs cheaper offers, blockers), packages (collapsed), Add models (supplier inventory), diagnostics (status, private test, KIE cost, activity, advanced) |
+| `src/lib/pricing/**` | Exact-decimal package arithmetic (contract-tested); model prices are never computed in the browser |
 | `tests/contracts/*.test.ts` | Provider, webhook, safe-fetch, cookie, redirect and file-sniffing contract tests (`npm run test:contracts`) |
 | `supabase/tests/*.sql` | Database invariant tests (run in one transaction, always rolled back) |
 

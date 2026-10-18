@@ -27,6 +27,20 @@ WORKER_TOKEN=<local INTERNAL_WORKER_TOKEN> node live-api-smoke.mjs        # 36 A
 QA_EMAIL=… QA_PASSWORD=… PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node live-flows.mjs   # 30 browser checks
 ```
 
+**v3.6 — two-page Admin and automatic pricing (current).** Models & pricing (pricing panel with server preview and Save &
+apply, model table, drawer, packages, Add models) and Providers & balances (provider rows, drawer, details on demand),
+redirects of the retired URLs, roles, 390 px overflow and axe-core. Mocked API from fixtures (`v36/dump-local-fixtures.mjs`
+builds them from the isolated local database; add four read-only provider captures, see the header of `v36/mock.mjs`);
+every `/api` call is intercepted and the run fails on any generation, upload or paid-test request:
+
+```
+REPO=<repo> node v36/dump-local-fixtures.mjs <fixtures-dir>        # after: node supabase/local-test/run.mjs fresh migrations
+FIXTURES=<fixtures-dir> PLAYWRIGHT_PATH=… CHROME_PATH=… AXE_PATH=… node v36/two-page-admin.mjs   # 56 checks
+```
+
+The v3.5.1 and v3.2 scripts below describe the four retired pages (Models, Pricing & packages, Supplier balances,
+Providers & routing) and the retired price editors; they are kept for reference only.
+
 Catalog pages after the multi-supplier rebuild (Models with supplier quotes and products available at suppliers, Pricing &
 packages tabs, Supplier balances — the old `/admin/kie` redirects there). Mocked staff session; every admin read comes from
 saved API responses (see the header of the script for the six files), every write is blocked:

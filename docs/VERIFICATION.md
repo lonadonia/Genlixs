@@ -4,6 +4,29 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 00000. Two-page Admin and automatic KIE-based pricing (18–19 Oct 2026)
+
+Admin › Models & pricing (`/admin/catalog`) and Providers & balances (`/admin/providers`) replace Models, Pricing &
+packages, Supplier balances and Providers & routing; `/admin/pricing`, `/admin/balances` and `/admin/kie` redirect.
+Migration `20261018232513_automatic_pricing`: one global policy (credits = ceil(B × (1 + M) ÷ V) per whole request, B =
+KIE reference, M = markup, V = USD per Genlixs credit), automatic re-pricing from KIE price data, retired per-model and
+bulk editors. **No paid generation, no provider test submission and no provider credit was used**; browser checks ran
+with every `/api` call intercepted, and the database checks on production were read-only or rolled back.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `npm run build` | `VERIFIED_PASS` (build: `/admin/catalog` and `/admin/providers`; the retired pages are 307 redirects from `next.config.ts`) |
+| `npm run test:contracts` | `VERIFIED_PASS` 80/80 — `pricing.test.ts` rewritten (6): policy-panel input rules (markup 0–2000 % with 2 decimals; credit value > $0 with 6 decimals, never assumed $0.01), the four type filters, no model-price formula left in the browser, package arithmetic, exact decimals; `catalog-supply.test.ts` (6) on the new shapes |
+| SQL, isolated local PostgreSQL 17 | `VERIFIED_PASS` — all migrations + the new one, tests 01–10 (test 10: 8 groups; 03 and 04 rewritten for automatic pricing, 8 groups each). Rollback tested: migration → test 10 → rollback → tests 01–09 as they were before the migration all pass |
+| Brief's examples (test 10, P1) | `VERIFIED_PASS` — B $0.10, +100 %, V $0.01: 20 credits = $0.20; C $0.10 → +100 %, C $0.08 → +150 %, C $0.05 → +300 %; +150 % → 25 credits, +212.5 % on $0.08; V $0.02 → 10 credits, +150 % on $0.08; B $0.025, +100 %, V $0.02 → target $0.05 → 3 credits ($0.06); $0.07 at $0.01 = 7 credits |
+| Engine on the catalog (test 10) | `VERIFIED_PASS` — every configuration of every model equals the formula; a cheaper supplier serving leaves the price, the KIE reference and the price version unchanged and raises the effective markup; Save & apply versions the policy, refuses a stale editor, writes nothing when unchanged, makes earlier quotes `QUOTE_STALE`, keeps accepted jobs, reservations, wallets, packages and orders unchanged; a new KIE price list or KIE credit price re-prices automatically, a KIE purchase does not; a missing KIE rate unpublishes ("KIE reference needed", `COST_UNKNOWN` on switch-on), a partial list prices only what it covers; extra reference images are priced per whole request; the nine retired editors answer `PRICING_AUTOMATIC` and write nothing |
+| Production — before applying | `VERIFIED_PASS` — normalized-source md5 of the 14 replaced functions identical to the local migrations (the rollback restores them exactly); 21 published prices (16 bulk, 5 capability), no drafts, credit value $0.02, KIE $0.005; the final engine run read-only on production data: 21/21 models complete, 21/21 price tables identical (187 configurations) — nothing would be re-priced |
+| Production — migration | `VERIFIED_PASS` — applied as `20261018232513` (18 Oct 2026, 23:25 UTC); stored text byte-identical to the file (md5 `d8982e68…`); policy v1 = +100 % at $0.02; **0 new price versions** (no price changed); 21 models enabled; `anon` cannot execute the new functions; the 4 triggers present |
+| Production — after (read-only, owner session claims) | `VERIFIED_PASS` — all 21 models priced and following the policy, served by KIE: Flare 1K 3 credits ($0.06 on $0.03, +100 %), Nano Banana Pro 9 ($0.18 on $0.09), FLUX.2 Pro 3 (+140 %, whole-credit rounding), Seedream 2 (+146.9 %), Seedance 2.5 158 ($3.16 on $1.575, +100.6 %); preview at the current values: 0 of 21 change; preview at +150 %: 21 change (Flare 3 → 4 credits); 0 blocked models; the retired editor answers `PRICING_AUTOMATIC`; test 09 `PASS: 6` (rolled back) |
+| Browser check (`qa-scripts/v36/two-page-admin.mjs`, 56) | `VERIFIED_PASS` on the dev server and on `next start` — redirects (307), exactly two catalog pages in the navigation, pricing panel defaults (100 %, $0.02), Save & apply disabled until a change, server preview (affected count, examples), Save & apply (one apply call with the policy id; success message; new prices in the table), 21 rows with credits/USD, serving supplier and cost, effective markup (+100 %, +800 % when NezhaGate serves, +140 % rounding), KIE reference needed, type filters (video editing = 3) and search, model drawer (B → target → credits, serving supplier apart from cheaper offers), packages collapsed, Add models, six provider rows with status/balance/source/today/month/switch/refresh/key, provider drawer (status, funding & limits, spending, KIE activity), details on demand (spending, pipeline, routing), `?routing=`, finance can preview but not apply, support sees no costs or providers, no overflow at 390 px, no page errors, **no generation, upload or paid-test request** |
+| Accessibility (axe-core, WCAG 2.1 A/AA) | `VERIFIED_PASS` — 0 violations on Models & pricing, the model drawer, Providers & balances and the provider drawer |
+| Live paid generation or provider test | `NOT_TESTED` by design (zero-credit budget) |
+
 ## 0000. Catalog pages rebuilt for multi-supplier routing (18 Oct 2026)
 
 Admin › Models, Pricing & packages and Supplier balances (formerly KIE balance) rebuilt around "every model once, served by

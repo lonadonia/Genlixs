@@ -3,6 +3,7 @@
    numbers for display only (every cost is computed in the database); null always means unknown, never zero. */
 
 import type { Tone } from "@/components/ui/badge";
+import type { Policy } from "./policy";
 
 /** First step still missing before an offer can serve customers, in the order the steps are done. */
 export type SupplyStage =
@@ -34,8 +35,24 @@ export type SupplyQuote = {
   incompatible: string | null;
   native: number | null;
   usd: number | null;
+  /** Effective markup if this offer served the default request at the current customer price. */
+  markupIfServedPct: number | null;
   current: boolean;
   stage: SupplyStage;
+};
+
+/** Automatic price of the default request: B (KIE reference), B × (1 + markup), credits charged and their value. */
+export type SupplyPricing = {
+  status: "ok" | "partial" | "kie_reference_needed";
+  reason: string | null;
+  followsPolicy: boolean;
+  priceVersion: number | null;
+  priceSource: string | null;
+  policyVersion: number | null;
+  kieUsd: number | null;
+  targetUsd: number | null;
+  chargedUsd: number | null;
+  cost: { version: number; sourceKind: string; sourceUrl: string | null; checkedAt: string } | null;
 };
 
 export type SupplyModel = {
@@ -47,6 +64,7 @@ export type SupplyModel = {
   };
   /** Genlixs credits charged for the default request (null when not priced). */
   defaultUnits: number | null;
+  pricing: SupplyPricing;
   route: {
     status: "ok" | "blocked" | "unavailable";
     explanation: string;
@@ -56,7 +74,10 @@ export type SupplyModel = {
     legacy: boolean | null;
     native: number | null;
     unit: string | null;
+    /** C: what the serving supplier costs for the whole default request, funding terms applied. */
     usd: number | null;
+    /** (charged value − C) ÷ C, from the database. */
+    effectiveMarkupPct: number | null;
   };
   quotes: SupplyQuote[];
 };
@@ -85,6 +106,7 @@ export type SupplyProduct = { productKey: string; tool: string | null; operation
 
 export type Supply = {
   generatedAt: string;
+  policy: Policy | null;
   suppliers: { provider: string; name: string; on: boolean; hasKey: boolean }[];
   models: SupplyModel[];
   products: SupplyProduct[];

@@ -3,8 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      // The KIE balance page became Supplier balances (all suppliers); old links and bookmarks land there.
-      { source: "/admin/kie", destination: "/admin/balances", permanent: false },
+      // Admin has two catalog pages: Models & pricing (prices and packages) and Providers & balances (keys, balances,
+      // spending, routing). Old links and bookmarks land on the page that now holds the same work; the query string is
+      // kept, so /admin/pricing?tab=packages opens the packages section and ?model=<id> opens that model.
+      { source: "/admin/pricing", destination: "/admin/catalog", permanent: false },
+      { source: "/admin/balances", destination: "/admin/providers", permanent: false },
+      { source: "/admin/kie", destination: "/admin/providers", permanent: false },
     ];
   },
 };

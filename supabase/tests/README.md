@@ -13,8 +13,10 @@ rolled-back transactions; they create their own users and roles and leave nothin
    `PASS: 11 billing/affiliate/admin test groups` (02), `PASS: 8 catalog/pricing test groups` (03) or
    `PASS: 8 simplified-pricing test groups` (04).
    Tests 03 and 04 start by switching every model off and retiring every price inside their own transaction, and set the
-   reference values they need, so they are independent of the live catalog state. A session switched to the `authenticated`
-   role cannot read `app_private`; helpers such as `pg_temp.t_save_ref` read what they need before switching.
+   reference values and the pricing policy they need, so they are independent of the live catalog state. Since automatic
+   pricing (migration `20261018232513_automatic_pricing`) they check prices made by the global policy and that the retired
+   per-model and bulk editors refuse with `PRICING_AUTOMATIC`. A session switched to the `authenticated` role cannot read
+   `app_private`; helpers such as `pg_temp.t_save_ref` and `pg_temp.t_apply_policy` read what they need before switching.
 
 Afterwards the database is unchanged; check with
 `select count(*) from auth.users; select count(*) from public.generation_jobs;`.
@@ -29,6 +31,15 @@ Models, Pricing and Supplier balances): access, one entry per model with the rou
 the router computes them (USD, illustrative CNY, card fee, incompatible settings), the first missing step per offer, each
 product outside the catalog once, and no key material (`PASS: 6 catalog supply test groups`). It changes no shared rows,
 so it also runs on production inside its rolled-back transaction (done on 18 Oct 2026).
+
+Test 10 (`10_automatic_pricing_tests.sql`) checks `20261018232513_automatic_pricing` (one global policy: KIE reference ×
+(1 + markup) ÷ USD per Genlixs credit, rounded up once per request): the brief's examples ($0.10 at +100 % and $0.01 =
+20 credits; effective markup 100 / 150 / 300 % for a $0.10, $0.08 and $0.05 supplier; 25 credits and 212.5 % at +150 %;
+10 credits at $0.02; $0.025 → 3 credits), every configuration of every model against the formula, a cheaper supplier
+serving without moving the price, Save & apply (permissions, preview saves nothing, stale editor, unchanged repeat,
+quotes re-checked, accepted jobs/wallets/packages untouched, audit), automatic re-pricing from a new KIE price list or KIE
+credit price, KIE reference needed, whole-request rounding with extra reference images, and the retired editors
+(`PASS: 8 automatic pricing test groups`). It re-prices every model inside its transaction, so run it locally.
 
 Test 08 (`08_multi_provider_routing_tests.sql`) checks migrations `20261018181012`…`20261018182418` (multi-provider
 routing, parts 01–12, applied 18 Oct 2026; run locally — on production it would lock every model and provider row): the 14

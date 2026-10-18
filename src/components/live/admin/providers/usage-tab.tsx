@@ -30,8 +30,8 @@ const monthStart = () => {
 };
 
 /** Usage: Genlixs supplier spending by job and attempt. Confirmed, estimated, pending and unknown amounts stay apart. */
-export function UsageTab({ accounts }: { accounts: ProviderAccount[] }) {
-  const [f, setF] = useState({ from: monthStart(), to: "", provider: "", model: "", state: "", purpose: "" });
+export function UsageTab({ accounts, provider }: { accounts: ProviderAccount[]; provider?: string }) {
+  const [f, setF] = useState({ from: monthStart(), to: "", provider: provider ?? "", model: "", state: "", purpose: "" });
   const [applied, setApplied] = useState(f);
   const qs = useMemo(() => {
     const p = new URLSearchParams();
