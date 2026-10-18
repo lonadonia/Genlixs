@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TUTORIALS, type Tutorial } from "@/lib/tutorials";
 import { cn } from "@/lib/format";
 
@@ -11,11 +12,21 @@ const motionAllowed = () => {
   return !reduce && !saveData;
 };
 
-/** "How it works" in the video studio: the walkthrough videos, then the steps of the current mode. */
-export function HowItWorks({ steps, modeTitle }: { steps: { title: string; body: ReactNode }[]; modeTitle: string }) {
+/**
+ * "How it works" in the video studio: the walkthrough videos, then the steps of the current mode. It is the view the
+ * studio opens on; on a phone it sits above the tools and `onStart` leads down to them.
+ */
+export function HowItWorks({ steps, modeTitle, onStart }: { steps: { title: string; body: ReactNode }[]; modeTitle: string; onStart?: () => void }) {
   return (
     <div className="space-y-8 pb-4">
       <TutorialCarousel items={TUTORIALS} />
+      {onStart ? (
+        <div className="-mt-3 flex justify-center lg:hidden">
+          <Button size="lg" onClick={onStart} icon={<ArrowDown aria-hidden className="size-4" />}>
+            Start creating
+          </Button>
+        </div>
+      ) : null}
       <section aria-labelledby="how-steps-h" className="mx-auto max-w-[920px]">
         <h3 id="how-steps-h" className="px-1 text-[13px] font-semibold text-muted">
           Steps for {modeTitle.toLowerCase()}

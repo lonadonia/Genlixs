@@ -41,6 +41,7 @@ try {
   await page.goto(`${BASE}/studio/video`, { waitUntil: "networkidle" });
 
   // ------------------------------------------------------------ canvas views
+  check("the studio opens on How it works", (await page.getByRole("tab", { name: "How it works" }).getAttribute("aria-selected")) === "true" && (await page.locator("#canvas-panel-how video").count()) === 1);
   const tabs = await page.getByRole("tablist", { name: "Studio views" }).getByRole("tab").allInnerTexts();
   check("History, Motion Library and How it works sit together", JSON.stringify(tabs.map((t) => t.trim())) === JSON.stringify(["History", "Motion Library", "How it works"]), JSON.stringify(tabs));
   await page.getByRole("tab", { name: "History" }).focus();
@@ -150,10 +151,28 @@ try {
   check("the action names what to fix", /Remove the file that could not be used/.test(reason), reason);
   await ctx2.close();
 
-  // ------------------------------------------------------------ phone layout of the preview
+  // ------------------------------------------------------------ a job link opens History
+  const ctx4 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await mockAccount(ctx4, {});
+  const JOB4 = "44444444-4444-4444-8444-000000000004";
+  await ctx4.route(`**/api/generations/${JOB4}`, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: job(JOB4, "queued") }) }));
+  const p4 = await ctx4.newPage();
+  await p4.goto(`${BASE}/studio/video?job=${JOB4}`, { waitUntil: "networkidle" });
+  check("a link to a job opens History", (await p4.getByRole("tab", { name: "History" }).getAttribute("aria-selected")) === "true");
+  await ctx4.close();
+
+  // ------------------------------------------------------------ phone: How it works first, then the tools
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await mockAccount(ctx3, {});
   const p3 = await ctx3.newPage();
+  await p3.goto(`${BASE}/studio/video`, { waitUntil: "networkidle" });
+  const order = await p3.evaluate(() => ({ canvas: document.getElementById("video-canvas").getBoundingClientRect().top, composer: document.getElementById("video-composer").getBoundingClientRect().top }));
+  check("on a phone How it works comes before the tools", order.canvas < order.composer, JSON.stringify(order));
+  await p3.screenshot({ path: `${OUT}/how-it-works-first-390.png` });
+  await p3.getByRole("button", { name: "Start creating" }).click();
+  await sleep(1200);
+  const after = await p3.evaluate(() => ({ top: Math.round(document.getElementById("video-composer").getBoundingClientRect().top), focus: document.activeElement?.id }));
+  check("Start creating leads to the tools", after.top >= -4 && after.top < 160 && after.focus === "video-tab-create", JSON.stringify(after));
   await p3.goto(`${BASE}/studio/video?tab=motion&view=library`, { waitUntil: "networkidle" });
   await p3.getByRole("button", { name: /Preview Doorway dance/ }).click();
   await p3.locator("dialog[open]").waitFor();
@@ -165,8 +184,9 @@ try {
   await p3.keyboard.press("Escape");
   await p3.getByRole("tab", { name: "How it works" }).click();
   await p3.locator("#canvas-panel-how video").waitFor();
+  await sleep(1000);
   const stage = await p3.locator("#canvas-panel-how video").boundingBox();
-  check("on a phone the active walkthrough stays fully visible", stage.x >= 0 && stage.x + stage.width <= 390, JSON.stringify(stage));
+  check("on a phone the active walkthrough stays fully visible", stage.x >= 0 && stage.x + stage.width <= 390 && stage.y >= 0 && stage.y + stage.height <= 844, JSON.stringify(stage));
   check("no horizontal overflow at 390", (await overflowX(p3)) === 0);
   await p3.locator("#canvas-panel-how").screenshot({ path: `${OUT}/how-it-works-390.png` });
   await ctx3.close();

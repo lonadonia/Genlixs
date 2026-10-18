@@ -54,7 +54,7 @@ export type VideoStudioProps = {
   initialJobId?: string | null;
   /** Opened from "Use as …" on a saved result: put that file into a slot once. */
   use?: { assetId: string; slot: string; draft: DraftKey; mode?: string | null } | null;
-  /** Canvas view: History (default), Motion Library or How it works (`?view=library|how`). */
+  /** Canvas view: How it works when the studio opens, History for a job link (`?view=history|library|how`). */
   initialView?: CanvasView;
 };
 
@@ -148,7 +148,7 @@ export function VideoStudio(props: VideoStudioProps) {
   return <Studio key={acct.me.id} userId={acct.me.id} {...props} />;
 }
 
-function Studio({ userId, initialDraft = "create", initialJobId = null, use = null, initialView = "history" }: VideoStudioProps & { userId: string }) {
+function Studio({ userId, initialDraft = "create", initialJobId = null, use = null, initialView = "how" }: VideoStudioProps & { userId: string }) {
   const acct = useAccount();
   const catalog = useApi<Catalog>("/api/catalog");
   const canTest = Boolean(acct.me?.capabilities?.includes("catalog.test"));
@@ -333,7 +333,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const setView = useCallback(
     (v: CanvasView, bringIntoView = false) => {
       setViewState(v);
-      setUrl({ view: v === "history" ? null : v });
+      setUrl({ view: v });
       if (bringIntoView) reveal("video-canvas");
     },
     [setUrl],
@@ -413,6 +413,11 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     return list.find((x) => x.id === drafts.motion.modelId) ?? list[0] ?? null;
   }, [modelsFor, drafts.motion.modelId]);
   const closePreview = useCallback(() => setPreview(null), []);
+  /** Phones: from the walkthrough down to the tools, with the focus on the active mode. */
+  const startCreating = useCallback(() => {
+    reveal("video-composer");
+    window.requestAnimationFrame(() => document.getElementById(`video-tab-${tab}`)?.focus({ preventScroll: true }));
+  }, [tab]);
 
   /**
    * Recreate from the Motion Library: the library clip itself becomes the motion video (fetched from this site and
@@ -806,7 +811,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const unavailable = !model && !loadingTests;
 
   return (
-    <div className="lg:flex lg:items-start lg:gap-5 lg:pr-5 lg:pb-3">
+    <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:pr-5 lg:pb-3">
       <section
         id="video-composer"
         aria-label="Video composer"
@@ -958,10 +963,12 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         </div>
       </section>
 
-      <div id="video-canvas" className="min-w-0 flex-1 scroll-mt-16 p-3 sm:p-5 lg:px-0 lg:pt-1">
+      {/* How it works is what customers see first: beside the tools on a desktop, above them on a phone. */}
+      <div id="video-canvas" className={cn("min-w-0 flex-1 scroll-mt-16 p-3 sm:p-5 lg:px-0 lg:pt-1", view === "how" && "max-lg:order-first")}>
         <h1 className="sr-only">Video studio</h1>
         <div className="mb-3">
-          <CanvasTabs value={view} onChange={(v) => setView(v)} />
+          {/* On a phone the canvas changes place with the view (How it works sits above the tools): keep it in sight. */}
+          <CanvasTabs value={view} onChange={(v) => setView(v, true)} />
         </div>
         {view === "library" ? (
           <div role="tabpanel" id="canvas-panel-library" aria-labelledby="canvas-tab-library">
@@ -969,7 +976,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
           </div>
         ) : view === "how" ? (
           <div role="tabpanel" id="canvas-panel-how" aria-labelledby="canvas-tab-how">
-            <HowItWorks steps={HOW[dk]} modeTitle={banner.title} />
+            <HowItWorks steps={HOW[dk]} modeTitle={banner.title} onStart={startCreating} />
           </div>
         ) : (
           <div role="tabpanel" id="canvas-panel-history" aria-labelledby="canvas-tab-history">

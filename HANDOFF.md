@@ -26,7 +26,9 @@ the owner's go-ahead; evidence in `docs/VERIFICATION.md` §00.**
   Migration `20261018013256_image_edit_multi_reference` (applied 18 Oct 2026 with the owner's go-ahead) sets the
   per-model limits 16/16/8/8/10 from the KIE docs, keeps the reference order from quote to provider and re-binds the
   prices unchanged; rollback in `supabase/rollbacks/` (not applied). `supabase/tests/07` passes on production.
-- Video canvas: History / Motion Library / How it works (`?view=library|how`). Walkthrough carousel
+- Video canvas: History / Motion Library / How it works (`?view=history|library|how`). The studio opens on How it works
+  (owner's request, 18 Oct 2026); a job link or a reused file opens History, and Generate switches to History. On a
+  phone How it works sits above the tools with a "Start creating" button. Walkthrough carousel
   (`video/how-it-works.tsx`, `src/lib/tutorials.ts`), Motion Control banner (`video/motion-banner.tsx`), Motion Library
   (9 clips, `src/lib/motion-library.ts`, `video/motion-library.tsx`): Recreate uploads the library clip itself as the motion
   video, the customer's image as the character, keeps the prompt; Motion Control prices it and nothing runs until Generate.

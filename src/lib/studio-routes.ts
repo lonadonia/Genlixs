@@ -14,9 +14,13 @@ export function imageEditRedirect(searchParams: Record<string, string | string[]
   return `/studio/image?${q.toString()}`;
 }
 
-/** Video studio canvas: History (default), Motion Library or How it works (`?view=library|how`). */
+/**
+ * Video studio canvas: History, Motion Library or How it works (`?view=history|library|how`). Without a view in the
+ * link the studio opens on How it works; a link to a job, or to a saved file being reused, opens History instead.
+ */
 export type CanvasView = "history" | "library" | "how";
-export const canvasViewOf = (v: string | null | undefined): CanvasView => (v === "library" || v === "how" ? v : "history");
+export const canvasViewOf = (v: string | null | undefined, fallback: CanvasView = "how"): CanvasView =>
+  v === "history" || v === "library" || v === "how" ? v : fallback;
 
 /** The Image studio's mode from its query (`?mode=edit`); anything else is Generate. */
 export const imageModeOf = (mode: string | string[] | undefined): "image" | "edit" => (mode === "edit" ? "edit" : "image");

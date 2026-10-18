@@ -101,9 +101,11 @@ test("recreate: a setting that blocks the clip is changed with an explanation; i
   assert.deepEqual(motionSlots(motion)?.video[0], "motion_video");
 });
 
-test("views: only known canvas views open from a link", () => {
+test("views: the studio opens on How it works; links choose a known view; a job link opens History", () => {
+  assert.equal(canvasViewOf(null), "how");
+  assert.equal(canvasViewOf("styles"), "how");
   assert.equal(canvasViewOf("library"), "library");
-  assert.equal(canvasViewOf("how"), "how");
-  assert.equal(canvasViewOf("styles"), "history");
-  assert.equal(canvasViewOf(null), "history");
+  assert.equal(canvasViewOf("history"), "history");
+  assert.equal(canvasViewOf(undefined, "history"), "history");
+  assert.equal(canvasViewOf("how", "history"), "how");
 });
