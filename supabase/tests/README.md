@@ -41,6 +41,13 @@ quotes re-checked, accepted jobs/wallets/packages untouched, audit), automatic r
 credit price, KIE reference needed, whole-request rounding with extra reference images, and the retired editors
 (`PASS: 8 automatic pricing test groups`). It re-prices every model inside its transaction, so run it locally.
 
+Test 11 (`11_route_fallback_tests.sql`) checks `20261018235333_route_fallback_original`: a cheaper offer short of balance,
+behind its circuit breaker or past its daily cap no longer blocks a request the original KIE route can serve (the quote
+is unchanged); the cheaper offer serves again when funded; with several cheaper offers the cheapest available one up to
+the original route's cost is chosen; without a routable original route the old rule applies; nothing above the original
+route's cost is used (`PASS: 6 route fallback test groups`). Without the migration it fails at F1 with "Every eligible
+offer is temporarily unavailable" — the defect it fixes. Run it locally (it changes supplier rows inside its transaction).
+
 Test 08 (`08_multi_provider_routing_tests.sql`) checks migrations `20261018181012`…`20261018182418` (multi-provider
 routing, parts 01–12, applied 18 Oct 2026; run locally — on production it would lock every model and provider row): the 14
 acceptance items of the multi-provider brief (`PASS: 14 multi-provider test groups`). It creates test models `tst-*` and

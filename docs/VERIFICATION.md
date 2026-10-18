@@ -4,6 +4,32 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 000000. Why keyed suppliers do not serve, and the route-fallback fix (19 Oct 2026)
+
+PoYo (key v2), APIMart (v3), NezhaGate (v1) and Cuddler (v1) are switched on with saved keys; balances read 1,000 PoYo
+credits (≈ $5), 100 APIMart credits (≈ $10), $0.15 and $0.00. Read-only production checks (and simulations rolled back
+inside their transaction) found why none of their 25 mapped offers serves. **No paid generation or provider test was
+submitted and no provider credit was used.**
+
+| Blocker | Offers |
+| --- | --- |
+| Not verified (no paid test, no evidence) **and** routing off — the only blocker left; cheaper than KIE for the settings shown | APIMart Seedance 2.5 (6/6 settings, −31…51 %), Seedance 2.0 Fast (4/4, −31 %), Seedream 5.0 Flash image and edit (3/3 each, −15 %); NezhaGate GPT Image 2.5 Flare (3/3, −50…83 %), Nano Banana Pro (3/3, −58…78 %), Sunburst (1K only, −83 %), and the three edits with a fixed aspect ratio (their default "auto" is not supported); PoYo Kling 3.0 Motion Control (56/56, −44…55 %) |
+| Not verified, routing off, and the balance cannot cover a job | NezhaGate Seedance 2.5 and 2.0 Fast ($0.15 balance; 2.0 Fast also has no 480p) |
+| Not verified, routing off, balance $0, result host undocumented (downloads would be refused), partly incompatible | Cuddler Kling 3.0 standard (no audio, no 1080p/4K), Cuddler Seedance 2.5 (480p estimate only) |
+| No integration in this release (and no verified price) | APIMart FLUX.2 Pro, Veo 3.1 Fast and Lite (EXT channel), Wan 2.6; PoYo Nano Banana 2, Nano Banana Pro, Seedance 2.5, Seedream 5.0 Flash, Veo 3.1 Fast and Lite |
+
+Verification is a deliberate gate (`admin_update_offer` requires a verified price and recorded evidence, normally one
+paid test of the offer), so no offer was marked Verified and no routing switch was turned on.
+
+| Check | Result |
+| --- | --- |
+| Simulation (rolled back): every integrated APIMart/NezhaGate/PoYo offer verified | 9 requests move to a cheaper supplier with the same credits and price version; **Seedance 2.5 and 2.0 Fast became "blocked" (refused)**: the cheapest offer (NezhaGate, short of balance) set the fallback ceiling (none configured), so neither APIMart nor KIE could serve — a latent defect |
+| Fix `20261018235333_route_fallback_original` (applied) | `route_choose` may always fall back up to the original KIE route's cost; stored text identical to the file (md5 `979fa8e5…`) |
+| Local SQL | tests 01–11 pass (new test 11: 6 groups); test 11 fails without the fix with "Every eligible offer is temporarily unavailable"; rollback → test 08 passes |
+| Production before applying | the new rule chose exactly the live route for 25/25 requests today; under the simulation Seedance 2.5 → APIMart $1.08 and 2.0 Fast → APIMart $0.428 instead of refused |
+| Production after applying | all 21 models still served by KIE; 21 published prices and 0 new price versions (prices unchanged) |
+| Admin › Providers & balances | a keyed, switched-on provider without a verified offer now shows "Not verified yet — 0 of N offers verified: each needs one paid test" instead of "Ready · not serving"; mocked check 8/8 (today's production state as fixture), contracts 80/80, typecheck and lint pass |
+
 ## 00000. Two-page Admin and automatic KIE-based pricing (18–19 Oct 2026)
 
 Admin › Models & pricing (`/admin/catalog`) and Providers & balances (`/admin/providers`) replace Models, Pricing &

@@ -33,6 +33,9 @@ node supabase/local-test/run.mjs fresh migrations tests:01,02,03,04,05,06,07,08,
   rollback:20261018232513 tests:01,02,03,04,05,06,07,08,09 stop
 ```
 
+Route fallback (`20261018235333_route_fallback_original`): `fresh migrations tests:08,11 rollback:20261018235333 tests:08 stop`
+(test 11 fails without the migration, by design).
+
 `rollback:<version>` applies `supabase/rollbacks/<version>_*.rollback.sql`; plain `rollback` keeps applying the Image Edit rollback.
 `design-handoff/genlixs/qa-scripts/v36/dump-local-fixtures.mjs` turns this database into admin API fixtures for the
 browser check of the two admin pages (one rolled-back transaction).

@@ -272,6 +272,16 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    drive the prices directly. New migrations must insert capability or KIE cost versions and let the policy price them —
    never insert price versions. Rollback (not applied): `supabase/rollbacks/20261018232513_automatic_pricing.rollback.sql`.
 
+0a. **Activate the cheaper suppliers (19 Oct 2026 state).** PoYo, APIMart, NezhaGate and Cuddler have saved keys and are
+   on, but **no offer is verified**, so none serves (`docs/VERIFICATION.md` §000000 lists every offer's blocker). Ready
+   except verification: APIMart Seedance 2.5, Seedance 2.0 Fast, Seedream 5.0 Flash image/edit; NezhaGate GPT Image 2.5
+   Flare and Sunburst, Nano Banana Pro (image; edits with a fixed ratio); PoYo Kling 3.0 Motion Control. Each needs one
+   authorised paid test (Providers & balances › More › Routing & offers › offer › Test; roughly $0.005–$1.08 each), then
+   **mark Verified** with the test reference and switch routing on (or *Review routing*). Also: top up NezhaGate (its
+   $0.15 cannot cover a video) and Cuddler ($0); confirm Cuddler's result host with its test and add it to
+   `MEDIA_FETCH_ALLOWED_HOSTS` (never guessed). Since `20261018235333_route_fallback_original`, a cheaper offer that is
+   short of balance falls back to KIE (or the next offer up to KIE's cost) instead of refusing the request.
+
 0. **Multi-provider routing (v3.5):** applied and deployed 18 Oct 2026 with everything new switched off. Next, only with
    the owner's go-ahead and a budget for paid tests: add each supplier's key in Admin, test the connection, run one
    authorised paid test per offer, mark it Verified, run *Review routing*. Replace the illustrative CNY / Duomi point

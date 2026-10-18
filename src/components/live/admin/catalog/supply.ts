@@ -116,9 +116,9 @@ export const STAGE_INFO: Record<SupplyStage, { label: string; tone: Tone; hint: 
   serving: { label: "Serving", tone: "success", hint: "The router sends this model's default request here now." },
   standby: { label: "Ready as backup", tone: "info", hint: "Verified and switched on; used when it is the cheapest for a request or the cheaper one is unavailable." },
   routing_off: { label: "Verified · routing off", tone: "info", hint: "Switch routing on for this offer, or run Review routing, to let it serve customers." },
-  supplier_off: { label: "Supplier switched off", tone: "neutral", hint: "Switch the supplier on in Providers & routing." },
-  needs_test: { label: "Needs a paid test", tone: "attention", hint: "Run one private paid test of this offer, check the result and mark it Verified." },
-  needs_key: { label: "Needs an API key", tone: "attention", hint: "Add the supplier's API key in Providers & routing, then test the connection." },
+  supplier_off: { label: "Supplier switched off", tone: "neutral", hint: "Switch the supplier on in Providers & balances." },
+  needs_test: { label: "Needs a paid test", tone: "attention", hint: "Not verified yet: run one private paid test of this offer, check the result and mark it Verified." },
+  needs_key: { label: "Needs an API key", tone: "attention", hint: "Add the supplier's API key in Providers & balances, then test the connection." },
   price_unverified: { label: "Price unverified", tone: "attention", hint: "The published price is missing, conflicting or not confirmed; it is never used to route." },
   needs_integration: { label: "Not integrated", tone: "neutral", hint: "This release cannot send work to this supplier for this product yet." },
 };

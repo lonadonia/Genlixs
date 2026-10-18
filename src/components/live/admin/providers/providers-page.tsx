@@ -25,8 +25,11 @@ import { UsageTab } from "./usage-tab";
 type More = "usage" | "pipeline" | "routing";
 type RowMsg = { tone: "error" | "success" | "attention"; text: string };
 
-/** One status per provider, the most useful first: a problem, then whether it serves customers. */
-function providerStatus(a: ProviderAccount, now: number): { label: string; tone: Tone } {
+/**
+ * One status per provider, the most useful first: a problem, then whether it serves customers and, if not, the step that
+ * is missing. A saved key and the switch are not enough: an offer serves only once verified (one paid test) with routing on.
+ */
+function providerStatus(a: ProviderAccount, now: number): { label: string; tone: Tone; hint?: string } {
   if (a.credential.source === "none") return { label: "No API key", tone: "neutral" };
   if (a.connection.state === "unauthorized") return { label: "Key refused", tone: "error" };
   if (a.circuit.blockedUntil && Date.parse(a.circuit.blockedUntil) > now) return { label: "Refusing jobs", tone: "error" };
@@ -35,7 +38,17 @@ function providerStatus(a: ProviderAccount, now: number): { label: string; tone:
   if (a.balance.low) return { label: "Low balance", tone: "error" };
   if (a.connection.state === "failed") return { label: "Check failed", tone: "error" };
   if (a.offers.routing > 0) return { label: `Serving ${a.offers.routing} model${a.offers.routing === 1 ? "" : "s"}`, tone: "success" };
-  return { label: "Ready · not serving", tone: "info" };
+  if (a.offers.eligible > 0) {
+    return { label: "Verified · routing off", tone: "info", hint: `${a.offers.eligible} verified offer(s); switch routing on in More → Routing & offers.` };
+  }
+  if (a.offers.mapped > 0) {
+    return {
+      label: "Not verified yet",
+      tone: "attention",
+      hint: `0 of ${a.offers.mapped} offers verified: each needs one paid test before it can serve (More → Routing & offers).`,
+    };
+  }
+  return { label: "No offers for Genlixs models", tone: "neutral" };
 }
 
 const listNames = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
@@ -302,6 +315,7 @@ function ProviderRow({
         <Badge surface="light" tone={status.tone}>
           {status.label}
         </Badge>
+        {status.hint ? <p className="basis-full text-[11px] leading-snug text-muted-dark lg:basis-auto">{status.hint}</p> : null}
       </div>
       <div className="min-w-0">
         <p className="font-semibold text-ink-dark tabular">

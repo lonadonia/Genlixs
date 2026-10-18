@@ -4,6 +4,13 @@ A rollback is written and tested with its migration but is **not applied**. To u
 as a new migration (Supabase MCP `apply_migration` or `supabase db push`) with the owner's agreement, then run the
 matching test in `supabase/tests/`.
 
+## 20261018235333_route_fallback_original
+
+Restores `app_private.route_choose` exactly as defined in `20261018181128_multi_provider_routing_part02` (a temporarily
+unavailable cheapest offer again limits fallback to the configured ceiling, none by default, so such a request is
+refused even when the original KIE route could serve it). Tested locally: migration → test 11 → rollback → test 08
+passes. Today (no verified non-KIE offer) both versions choose the same route for every model.
+
 ## 20261018232513_automatic_pricing
 
 Undoes automatic pricing (applied 18 Oct 2026, 23:25 UTC): drops the three re-pricing triggers and the policy

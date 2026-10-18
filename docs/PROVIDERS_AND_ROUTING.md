@@ -66,7 +66,15 @@ For every job the database evaluates all offers of the model (`app_private.route
 6. **Choice** — the lowest funded cost; ties go to the original route, then the supplier order, then the offer order. An
    offer whose cost is unknown is used only when it is the model's original route and no offer has a known cost.
    A more expensive offer is used while the cheapest is temporarily unavailable only within the fallback ceiling set
-   in the policy (`routing_fallback_max_pct` / `_usd`, default: none = cheapest only).
+   in the policy (`routing_fallback_max_pct` / `_usd`, default: none = cheapest only) — and, since migration
+   `20261018235333_route_fallback_original`, always up to the cost of the model's original KIE route: customer prices
+   follow the KIE reference, so a cheaper offer that is short of balance, behind its circuit breaker or past its daily
+   cap never blocks a request that the original route (or another offer costing no more) can serve. Above the original
+   route's cost only the configured ceiling applies; without a routable original route nothing changed.
+
+   Keys and the provider switch are not enough to serve: an offer needs an integration in this release, a usable price,
+   **status Verified** (owner, after one paid test of that offer; the evidence is recorded) and **routing on**. Admin ›
+   Providers & balances shows "Not verified yet" for a keyed provider with no verified offer.
 
 The chosen supplier, offer, provider model, key version, price version, unit conversion, funding terms, estimate,
 explanation and the compared candidates are stored on the attempt (`provider_attempts.route`). Status checks, task
