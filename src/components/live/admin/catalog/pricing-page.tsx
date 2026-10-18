@@ -7,7 +7,7 @@ import { BadgeCheck, CircleDollarSign, Percent, RefreshCw, TriangleAlert } from 
 import { PageHead, Panel } from "@/components/console/parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useApi } from "@/lib/live/account";
+import { useAccount, useApi } from "@/lib/live/account";
 import { dec, toNumber } from "@/lib/pricing/decimal";
 import { cn } from "@/lib/format";
 import { money, UNIT_LABEL } from "../providers/parts";
@@ -32,7 +32,8 @@ const SECTIONS: Section[] = ["prices", "packages", "references"];
  */
 export function PricingPage() {
   const c = useApi<CatalogData>("/api/admin/catalog");
-  const canReadProvider = Boolean(c.data?.access.canReadProvider);
+  // Started from the signed-in staff capabilities so the reads load in parallel.
+  const canReadProvider = Boolean(useAccount().me?.capabilities.includes("provider.read"));
   const supply = useApi<Supply>(canReadProvider ? "/api/admin/catalog/supply" : null, [canReadProvider]);
   const sp = useSearchParams();
   const router = useRouter();

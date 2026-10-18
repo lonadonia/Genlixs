@@ -6,7 +6,7 @@ import { Boxes, ChevronRight, Network, PackageSearch, RefreshCw, TrendingDown } 
 import { PageHead, Panel } from "@/components/console/parts";
 import { Button } from "@/components/ui/button";
 import { api, ApiClientError, errorMessage } from "@/lib/live/api";
-import { useApi } from "@/lib/live/account";
+import { useAccount, useApi } from "@/lib/live/account";
 import { cn } from "@/lib/format";
 import { money } from "../providers/parts";
 import { AvailableProducts } from "./available-products";
@@ -47,7 +47,8 @@ function blockerMessage(m: AdminModel, c: Check): RowMessage {
  */
 export function ModelsPage() {
   const c = useApi<CatalogData>("/api/admin/catalog");
-  const canReadProvider = Boolean(c.data?.access.canReadProvider);
+  // Started from the signed-in staff capabilities so both reads load in parallel.
+  const canReadProvider = Boolean(useAccount().me?.capabilities.includes("provider.read"));
   const supply = useApi<Supply>(canReadProvider ? "/api/admin/catalog/supply" : null, [canReadProvider]);
   const [view, setView] = useState<View>("catalog");
   const [filter, setFilter] = useState<Filter>("all");

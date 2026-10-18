@@ -7,9 +7,8 @@ import { PageHead } from "@/components/console/parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, errorMessage } from "@/lib/live/api";
-import { useApi } from "@/lib/live/account";
+import { useAccount, useApi } from "@/lib/live/account";
 import { cn } from "@/lib/format";
-import { useAdminMe } from "../live-admin";
 import { BalanceCell, money } from "../providers/parts";
 import type { ProviderAccount, ProvidersOverview } from "../providers/types";
 import { PipelineHealth } from "./pipeline-health";
@@ -25,8 +24,9 @@ import type { CatalogData } from "./types";
  * KIE's balance is read live while the page is open; the other suppliers are read when they have a key.
  */
 export function BalancesPage() {
-  const me = useAdminMe();
-  const caps = me.data?.capabilities ?? [];
+  // The signed-in staff capabilities are already loaded, so every read below starts at once and in parallel.
+  const me = useAccount().me;
+  const caps = me?.capabilities ?? [];
   const canRead = caps.includes("provider.read");
   const overview = useApi<ProvidersOverview>(canRead ? "/api/admin/providers/overview" : null, [canRead]);
   const catalog = useApi<CatalogData>(canRead ? "/api/admin/catalog" : null, [canRead]);
@@ -83,7 +83,7 @@ export function BalancesPage() {
           ) : undefined
         }
       />
-      {!me.data ? (
+      {!me ? (
         <div role="status" aria-busy="true" aria-label="Loading balances" className="h-48 animate-pulse-soft rounded-[var(--radius-media)] bg-sheet" />
       ) : !canRead ? (
         <Notice>Your role cannot see supplier balances.</Notice>
