@@ -21,6 +21,7 @@ owner's decision (one click per offer with acknowledgement and reason).
 | Production after applying | 0 supplier offers eligible or routing; all 21 models still served by KIE; 21 published prices, 63 price versions, 1 policy version; result hosts seeded (none for Cuddler); NezhaGate Flare offers 1K/4K only; both safety-stop triggers present |
 | Admin › offer drawer (mocked, production shapes) | 15/15: the free-text "How it was verified" field is gone; 10 checks with reasons; activate disabled until the acknowledgement is ticked and a reason given; the request carries both; badge "Documented · not live-tested" with the safety-stop text; "Mark live-tested" only offered for a succeeded test job; a documentation question blocks activation; no verification note, paid test or generation request sent; 390 px without horizontal scroll |
 | Contracts, typecheck, lint, build | 81/81 (new: documented result hosts in the database equal each supplier client's `resultHosts`); typecheck, lint and `next build` pass |
+| Live deployment | commit `065ab72` live about 47 s after the push (the new badge text is in the live JavaScript of `/admin/providers`); 13/13 live checks without a session, including 401 for the new readiness and activation endpoints and the public catalog with 21 priced models |
 
 ## 000000. Why keyed suppliers do not serve, and the route-fallback fix (19 Oct 2026)
 
