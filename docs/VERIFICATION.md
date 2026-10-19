@@ -4,6 +4,34 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 00000000. Eight offers activated as "Documented, not live-tested" (19 Oct 2026, 01:16 UTC)
+
+At the owner's written instruction, the eight qualifying offers were activated through `admin_activate_offer_documented`
+(acknowledgement + reason; the function re-ran every check). Balances were 1–17 minutes old (the scheduled read-only
+balance reads kept them fresh, so no manual refresh was needed). **No paid test or generation was submitted; 0 jobs and
+0 provider attempts exist since the activation, so this is expected routing, not proven live generation.** The first
+real job on each offer is its first live use; the safety stop switches the offer off on its first refusal or failure.
+
+Read-only routing over every priced setting of the 21 enabled models (`route_choose`, no quote rows created):
+
+| Model | Supplier now | Settings | Supplier cost vs original KIE route | Still on KIE (why) |
+| --- | --- | --- | --- | --- |
+| GPT Image 2.5 Flare | NezhaGate | 16 of 24 (1K, 4K) | $0.005–$0.04 vs $0.03–$0.08 (−50…−83 %) | 8: 2K (left out after the supplier's 2K disruption notice) |
+| GPT Image 2.5 Flare Edit | NezhaGate | 14 of 24 (1K, 4K, fixed ratios) | $0.005–$0.04 vs $0.03–$0.08 (−50…−83 %) | 10: 2K, and the "auto" ratio (the default request) |
+| Nano Banana Pro | NezhaGate | 30 of 30 | $0.02–$0.05 vs $0.09–$0.12 (−58…−78 %) | — |
+| Nano Banana Pro Edit | NezhaGate | 30 of 33 (fixed ratios) | $0.02–$0.05 vs $0.09–$0.12 (−58…−78 %) | 3: "auto" ratio (the default request) |
+| Seedance 2.5 | APIMart | 42 of 42 | $0.48–$3.85 vs $0.70–$7.90 (−31…−51 %) | — (21 settings refused before for KIE's balance are now servable) |
+| Seedream 5.0 Flash | APIMart | 24 of 24 | $0.01371 vs $0.0162 (−15 %) | — |
+| Seedream 5.0 Flash Edit | APIMart | 24 of 24 (one reference image) | $0.01371 vs $0.0162 (−15 %) | more than one reference: surcharge undocumented, so KIE |
+| Kling 3.0 Motion Control | PoYo | 56 of 56 | $0.135–$2.25 vs $0.30–$4.05 (−44…−55 %) | — (9 settings refused before for KIE's balance are now servable) |
+
+236 of 528 settings move to a cheaper supplier; none costs more. Customer credits are those of the published KIE-based
+prices (21 published, 63 versions, newest 18 Oct; policy v1): a cheaper route only raises the effective markup (e.g.
+Flare 1K default: 3 credits = $0.06 on a $0.005 cost). Unchanged blockers: Kling 3.0 (12 settings) and Seedance 2.5
+Edit (36 settings) are refused while KIE's 596 credits cannot cover them; every blocked offer of the activation report
+stays off (0 other offers routing). Balances at activation: NezhaGate $0.15 (≈ 30 Flare 1K or 7 Nano Banana Pro
+requests), APIMart 100 credits, PoYo 1,000 credits; when a recent balance cannot cover a job, it falls back to KIE.
+
 ## 0000000. Documented activation: "Documented, not live-tested" next to "Live-tested" (19 Oct 2026)
 
 Migration `20261019010705_documented_activation` (applied; stored text identical to the file, md5 `4da1fcfa…`) replaces

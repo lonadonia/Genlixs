@@ -272,8 +272,11 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    drive the prices directly. New migrations must insert capability or KIE cost versions and let the policy price them —
    never insert price versions. Rollback (not applied): `supabase/rollbacks/20261018232513_automatic_pricing.rollback.sql`.
 
-0a. **Activate the cheaper suppliers (19 Oct 2026 state).** PoYo, APIMart, NezhaGate and Cuddler have saved keys and are
-   on, but **no offer is eligible yet**, so none serves. Since `20261019010705_documented_activation` there are two ways
+0a. **Cheaper suppliers (19 Oct 2026 state).** Eight offers were **activated as documented, not live-tested** at 01:16 UTC
+   at the owner's instruction (APIMart Seedance 2.5 and Seedream 5.0 Flash image/edit, NezhaGate Flare image/edit and
+   Nano Banana Pro image/edit, PoYo Kling 3.0 Motion Control; routing per setting in `docs/VERIFICATION.md` §00000000).
+   **None has served a live job yet**: watch the first jobs (Admin › Jobs; the safety stop switches an offer off on its
+   first refusal or failure) and top up NezhaGate ($0.15). Since `20261019010705_documented_activation` there are two ways
    (`docs/PROVIDERS_AND_ROUTING.md` §3a): **Live-tested** (a succeeded paid test of the offer, then *Mark live-tested*;
    a note alone is refused) or, owner only, **Activate: documented, not live-tested** in the offer drawer (Providers &
    balances › More › Routing & offers › offer › Details) when every documented check passes — tick the acknowledgement,

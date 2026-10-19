@@ -116,9 +116,10 @@ balance gates, daily caps, the circuit breaker and stale-price rules apply to ev
 Documentation questions recorded at release: APIMart Seedance 2.0 Fast (whether sound changes the price), NezhaGate GPT
 Image 2.5 Sunburst image and edit (no model page; the 1K rate is described as temporary), Cuddler Kling 3.0 and Seedance
 2.5 (result host not documented; Seedance token-priced). NezhaGate's Flare offers leave 2K out (2K disruption notice of
-18 Oct 2026). Qualifying on 19 Oct 2026 (not activated; the owner decides): APIMart Seedance 2.5, Seedream 5.0 Flash
-image and edit; NezhaGate GPT Image 2.5 Flare image and edit, Nano Banana Pro image and edit; PoYo Kling 3.0 Motion
-Control. NezhaGate Seedance 2.5 / 2.0 Fast need a larger balance than $0.15; Cuddler is unfunded and has no documented
+18 Oct 2026). **Activated as documented, not live-tested on 19 Oct 2026 (01:16 UTC) at the owner's written
+instruction**, each after passing every check: APIMart Seedance 2.5, Seedream 5.0 Flash image and edit; NezhaGate GPT
+Image 2.5 Flare image and edit, Nano Banana Pro image and edit; PoYo Kling 3.0 Motion Control (routing per setting:
+`docs/VERIFICATION.md` §00000000). None of them has served a live job yet. NezhaGate Seedance 2.5 / 2.0 Fast need a larger balance than $0.15; Cuddler is unfunded and has no documented
 result host.
 
 The chosen supplier, offer, provider model, key version, price version, unit conversion, funding terms, estimate,
