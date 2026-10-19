@@ -29,6 +29,7 @@ paid test of the offer), so no offer was marked Verified and no routing switch w
 | Production before applying | the new rule chose exactly the live route for 25/25 requests today; under the simulation Seedance 2.5 → APIMart $1.08 and 2.0 Fast → APIMart $0.428 instead of refused |
 | Production after applying | all 21 models still served by KIE; 21 published prices and 0 new price versions (prices unchanged) |
 | Admin › Providers & balances | a keyed, switched-on provider without a verified offer now shows "Not verified yet — 0 of N offers verified: each needs one paid test" instead of "Ready · not serving"; mocked check 8/8 (today's production state as fixture), contracts 80/80, typecheck and lint pass |
+| Live deployment | commit `cebcfc2` live: the new status text is in the live JavaScript of `/admin/providers` (the old label is gone); 11/11 live checks without a session (redirects, pages, 401s, public catalog with 21 priced models) |
 
 ## 00000. Two-page Admin and automatic KIE-based pricing (18–19 Oct 2026)
 
