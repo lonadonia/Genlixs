@@ -227,8 +227,8 @@ export function ModelDrawer({
               </details>
             ) : null}
             <p className="text-xs leading-relaxed text-muted-dark">
-              A cheaper offer starts serving only after its API key is saved, one paid test passes and routing is switched on. The customer price stays the
-              same; the saving raises the effective markup.
+              A cheaper offer serves once its API key is saved, it is live-tested or activated as documented (not live-tested) by the owner, and routing
+              is on. The customer price stays the same; the saving raises the effective markup.
             </p>
           </section>
         ) : (
@@ -285,7 +285,11 @@ function QuoteRow({ q, showCosts, base }: { q: SupplyQuote; showCosts: boolean; 
               ? `${(q.blocker ?? "No integration in this release").replace(/\.\s*$/, "")}; its supported settings are not recorded yet.`
               : q.incompatible
                 ? `Not offered with these settings (${q.incompatible}).`
-                : STAGE_INFO[q.stage].hint}
+                : q.stage === "documentation_gap" && q.documentationGap
+                  ? `${STAGE_INFO[q.stage].hint} ${q.documentationGap}`
+                  : q.autoPausedReason && q.stage === "needs_test"
+                    ? `Switched off automatically: ${q.autoPausedReason}`
+                    : STAGE_INFO[q.stage].hint}
           </p>
         ) : null}
       </div>
@@ -296,6 +300,11 @@ function QuoteRow({ q, showCosts, base }: { q: SupplyQuote; showCosts: boolean; 
         {delta !== null && delta < 0 ? <SavingTag fraction={-delta} /> : null}
         {showCosts && !q.current && q.markupIfServedPct !== null && !q.incompatible ? (
           <span className="text-xs text-muted-dark tabular">{fmtMarkup(q.markupIfServedPct)} if it served</span>
+        ) : null}
+        {q.basis && !q.legacy ? (
+          <Badge surface="light" tone={q.basis === "live_test" ? "success" : "info"} icon="none">
+            {q.basis === "live_test" ? "Live-tested" : "Documented · not live-tested"}
+          </Badge>
         ) : null}
         {q.current ? (
           <Badge surface="light" tone="success">

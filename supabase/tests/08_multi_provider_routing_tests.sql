@@ -42,6 +42,8 @@ begin
   perform app_private.grant_lot(cust, 'promo', 'test:grant:' || cust, 1000, null, null, 'test grant');
   insert into app_private.staff_memberships (user_id, role) values (ops, 'operations'), (own, 'owner');
   select id into nz_flare from app_private.provider_offers where provider_account_id = nz and model_id = 'gpt-flare-image';
+  -- A10/A12 need an offer that covers every setting of its model (production leaves 2K out of this one since 19 Oct 2026)
+  update app_private.provider_offers set capabilities = jsonb_set(capabilities, '{options,resolution}', '["1K", "2K", "4K"]') where id = nz_flare;
 
   -- A1 ------------------------------------------------------------------ access
   perform pg_temp.t_as(cust);
@@ -89,7 +91,12 @@ begin
   r := public.admin_providers_overview();
   if r::text like '%SECRET%' then raise exception 'A2 overview leaks the key'; end if;
   r := public.admin_update_provider_account(nz, '{"enabled": true}');
-  r := public.admin_update_offer(nz_flare, '{"status": "eligible", "verificationNote": "test job T-1: 1K output 1024x1024 checked"}');
+  execute 'reset role';
+  -- stand-ins for the worker's free connection check and balance read (documented activation needs both)
+  update app_private.provider_accounts set connection_state = 'ok', connection_checked_at = now(), balance_source = 'api',
+    last_balance = 5, balance_unit = 'usd', last_balance_at = now() where id = nz;
+  perform pg_temp.t_as(own);
+  r := public.admin_activate_offer_documented(nz_flare, 'Documented API and price; free checks passed', true);
   r := public.admin_update_offer(nz_flare, '{"routingEnabled": true}');
   if not (r ->> 'routingEnabled')::boolean then raise exception 'A2 routing not on'; end if;
   execute 'reset role';

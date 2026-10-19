@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Badge, type Tone } from "@/components/ui/badge";
 import { cn } from "@/lib/format";
 import { when } from "../catalog/shared";
-import type { Candidate, Decision, OfferStatus, ProviderAccount } from "./types";
+import type { Candidate, Decision, EvidenceBasis, OfferStatus, ProviderAccount } from "./types";
 
 /* Small shared pieces of the Providers & routing admin section (light admin surface). */
 
@@ -43,12 +43,22 @@ export const age = (seconds: number | null | undefined) => {
 export const STATUS_INFO: Record<OfferStatus, { label: string; tone: Tone }> = {
   discovered: { label: "Discovered", tone: "neutral" },
   pricing_unverified: { label: "Price unverified", tone: "attention" },
-  capabilities_unverified: { label: "Capabilities unverified", tone: "attention" },
+  capabilities_unverified: { label: "Not verified", tone: "attention" },
   configured: { label: "Configured", tone: "info" },
-  eligible: { label: "Verified", tone: "success" },
+  eligible: { label: "Eligible", tone: "success" },
   disabled: { label: "Disabled", tone: "neutral" },
   stale: { label: "Stale", tone: "warning" },
   unavailable: { label: "Unavailable", tone: "error" },
+};
+
+/** The two evidence statuses that let an offer serve; they are never mixed up. */
+export const BASIS_INFO: Record<EvidenceBasis, { label: string; tone: Tone; hint: string }> = {
+  live_test: { label: "Live-tested", tone: "success", hint: "A real paid test of this offer succeeded." },
+  documented: {
+    label: "Documented · not live-tested",
+    tone: "info",
+    hint: "Activated by the owner on documented API, prices, free checks and balance, without a paid test. The first refusal or failed job switches it off.",
+  },
 };
 
 export const DECISION_INFO: Record<Decision, { label: string; tone: Tone; hint: string }> = {
@@ -59,12 +69,16 @@ export const DECISION_INFO: Record<Decision, { label: string; tone: Tone; hint: 
   unresolved: { label: "Unresolved", tone: "attention", hint: "Missing price, capability or integration evidence." },
 };
 
-export function StatusBadge({ status }: { status: OfferStatus }) {
-  const s = STATUS_INFO[status];
+/** Offer status; an eligible offer shows its evidence (Live-tested / Documented · not live-tested / Original route). */
+export function StatusBadge({ status, basis, legacy }: { status: OfferStatus; basis?: EvidenceBasis | null; legacy?: boolean }) {
+  const b = status === "eligible" && basis ? BASIS_INFO[basis] : null;
+  const s = b ?? (status === "eligible" && legacy ? { label: "Original route", tone: "success" as Tone } : STATUS_INFO[status]);
   return (
-    <Badge surface="light" tone={s.tone}>
-      {s.label}
-    </Badge>
+    <span title={b?.hint}>
+      <Badge surface="light" tone={s.tone}>
+        {s.label}
+      </Badge>
+    </span>
   );
 }
 

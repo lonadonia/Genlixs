@@ -139,6 +139,33 @@ export type Offer = {
   sortOrder: number;
   price: OfferPrice | null;
   accountReady: boolean;
+  /** Evidence that lets the offer serve: a real succeeded test job, or the owner's documented activation (no live test). */
+  verificationBasis?: EvidenceBasis | null;
+  liveTestJob?: { id: string; ref: string; state: string } | null;
+  /** An open question in the supplier documentation; it blocks documented activation. */
+  documentationGap?: string | null;
+  /** Set when the safety stop switched a documented-only offer off (first refusal or failed job). */
+  autoPausedAt?: string | null;
+  autoPausedReason?: string | null;
+  activation?: { basis: "documented"; activatedAt: string; activatedBy: string; reason: string } | null;
+};
+
+export type EvidenceBasis = "live_test" | "documented";
+
+/** Every check of documented activation, evaluated now by the database. */
+export type Readiness = {
+  offerId: string;
+  qualifies: boolean;
+  checks: { key: string; label: string; ok: boolean; detail: string }[];
+  configs: number;
+  compatible: number;
+  cheaper: number;
+  maxSavingPct: Num;
+  cheapestNative: Num;
+  cheapestUsd: Num;
+  unit: string | null;
+  balance: { available: Num; pending: Num; unit: string | null; observedAt: string | null; fresh: boolean };
+  checkedAt: string;
 };
 
 export type Candidate = {

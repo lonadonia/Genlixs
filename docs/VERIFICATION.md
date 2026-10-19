@@ -4,6 +4,24 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 0000000. Documented activation: "Documented, not live-tested" next to "Live-tested" (19 Oct 2026)
+
+Migration `20261019010705_documented_activation` (applied; stored text identical to the file, md5 `4da1fcfa…`) replaces
+the free-text "Verified" gate with two evidence statuses (docs/PROVIDERS_AND_ROUTING.md §3a). **No paid generation, no
+provider test submission and no provider credit was used**; every check below is a mock, a local database test or a
+production simulation rolled back inside its transaction. **No offer was activated on production**: activation is the
+owner's decision (one click per offer with acknowledgement and reason).
+
+| Check | Result |
+| --- | --- |
+| Local SQL (embedded PostgreSQL 17) | tests 01–12 pass; new test 12 (8 groups): access, the production picture (8 qualify / 9 blocked with the right check), each check blocking on its own with nothing changed on refusal, acknowledgement + reason + audit + snapshot, routing and unchanged quotes/price versions, "Live-tested" refused for a note / unknown job / unpinned job / unfinished job and accepted for a succeeded pinned test, routing re-checks, documentation question, safety stop on a supplier refusal and on a failed job (live-tested offers untouched). Test 08 no longer verifies with an invented "test job T-1" note: it activates with the documented checks |
+| Rollback `supabase/rollbacks/20261019010705_documented_activation.rollback.sql` | applied locally after the migration: tests 01–07, 09–11 and the previous test 08 pass; the replaced functions' normalized bodies equal production's before the migration (`admin_update_offer`, `offer_json`, `admin_catalog_supply`; router functions untouched) |
+| Production simulation (migration + owner activations, rolled back) | 8 offers qualify and activate: APIMart Seedance 2.5 (42/42 settings cheaper, up to −51 %), Seedream 5.0 Flash image and edit (24/24, −15 %); NezhaGate GPT Image 2.5 Flare image (16/24, up to −83 %) and edit (14/24), Nano Banana Pro image (30/30, −78 %) and edit (30/33); PoYo Kling 3.0 Motion Control (56/56, −55 %). Over all 528 priced settings of the 21 models: 236 move to a cheaper supplier, **0 become dearer**, 30 settings refused today for KIE's balance become servable (Seedance 2.5 → APIMart, Kling Motion → PoYo); customer credits changed for 0 settings; price versions 63 → 63, policy versions 1 → 1 |
+| Blocked (production, after applying) | APIMart Seedance 2.0 Fast and NezhaGate Sunburst image/edit: documentation question; NezhaGate Seedance 2.5 / 2.0 Fast: $0.15 cannot cover $0.50 / $0.375; Cuddler Kling 3.0 / Seedance 2.5: no documented result host, documentation question, $0 balance (Seedance also an estimate price); Duomi: off without a key; 14 offers without an integration |
+| Production after applying | 0 supplier offers eligible or routing; all 21 models still served by KIE; 21 published prices, 63 price versions, 1 policy version; result hosts seeded (none for Cuddler); NezhaGate Flare offers 1K/4K only; both safety-stop triggers present |
+| Admin › offer drawer (mocked, production shapes) | 15/15: the free-text "How it was verified" field is gone; 10 checks with reasons; activate disabled until the acknowledgement is ticked and a reason given; the request carries both; badge "Documented · not live-tested" with the safety-stop text; "Mark live-tested" only offered for a succeeded test job; a documentation question blocks activation; no verification note, paid test or generation request sent; 390 px without horizontal scroll |
+| Contracts, typecheck, lint, build | 81/81 (new: documented result hosts in the database equal each supplier client's `resultHosts`); typecheck, lint and `next build` pass |
+
 ## 000000. Why keyed suppliers do not serve, and the route-fallback fix (19 Oct 2026)
 
 PoYo (key v2), APIMart (v3), NezhaGate (v1) and Cuddler (v1) are switched on with saved keys; balances read 1,000 PoYo

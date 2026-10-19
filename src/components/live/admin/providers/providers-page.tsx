@@ -27,7 +27,8 @@ type RowMsg = { tone: "error" | "success" | "attention"; text: string };
 
 /**
  * One status per provider, the most useful first: a problem, then whether it serves customers and, if not, the step that
- * is missing. A saved key and the switch are not enough: an offer serves only once verified (one paid test) with routing on.
+ * is missing. A saved key and the switch are not enough: an offer serves only once live-tested (a real paid test) or activated
+ * by the owner as documented, not live-tested, with routing on.
  */
 function providerStatus(a: ProviderAccount, now: number): { label: string; tone: Tone; hint?: string } {
   if (a.credential.source === "none") return { label: "No API key", tone: "neutral" };
@@ -39,13 +40,13 @@ function providerStatus(a: ProviderAccount, now: number): { label: string; tone:
   if (a.connection.state === "failed") return { label: "Check failed", tone: "error" };
   if (a.offers.routing > 0) return { label: `Serving ${a.offers.routing} model${a.offers.routing === 1 ? "" : "s"}`, tone: "success" };
   if (a.offers.eligible > 0) {
-    return { label: "Verified · routing off", tone: "info", hint: `${a.offers.eligible} verified offer(s); switch routing on in More → Routing & offers.` };
+    return { label: "Eligible · routing off", tone: "info", hint: `${a.offers.eligible} eligible offer(s); switch routing on in More → Routing & offers.` };
   }
   if (a.offers.mapped > 0) {
     return {
       label: "Not verified yet",
       tone: "attention",
-      hint: `0 of ${a.offers.mapped} offers verified: each needs one paid test before it can serve (More → Routing & offers).`,
+      hint: `0 of ${a.offers.mapped} offers can serve: each needs a paid live test, or the owner's documented activation when every check passes (More → Routing & offers → offer).`,
     };
   }
   return { label: "No offers for Genlixs models", tone: "neutral" };

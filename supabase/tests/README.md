@@ -48,6 +48,17 @@ the original route's cost is chosen; without a routable original route the old r
 route's cost is used (`PASS: 6 route fallback test groups`). Without the migration it fails at F1 with "Every eligible
 offer is temporarily unavailable" — the defect it fixes. Run it locally (it changes supplier rows inside its transaction).
 
+Test 12 (`12_documented_activation_tests.sql`) checks `20261019010705_documented_activation`: only `provider.manage`
+activates (`provider.read` sees the checks); with production-like keys, connection checks and balances exactly the 8
+expected offers qualify and the 9 blocked ones fail on the right check; each check blocks on its own and a refusal
+changes nothing; acknowledgement and reason are required and recorded (note, snapshot, audit); routing then uses the
+offer, 2K Flare keeps the original route and customer credits / price versions do not change; "Live-tested" is refused
+for a note, an unknown job, an unpinned job and an unfinished pinned test, and accepted for a succeeded pinned test;
+routing on re-runs the checks; a documentation question switches a documented offer off; the safety stop switches it off
+on a supplier refusal and on a failed job, never a live-tested one (`PASS: 8 documented activation test groups`). The
+worker calls record simulated replies; nothing is sent. Run it locally (it changes supplier rows inside its transaction).
+Since this migration, test 08 activates its NezhaGate offer with the documented checks instead of a typed "test job" note.
+
 Test 08 (`08_multi_provider_routing_tests.sql`) checks migrations `20261018181012`…`20261018182418` (multi-provider
 routing, parts 01–12, applied 18 Oct 2026; run locally — on production it would lock every model and provider row): the 14
 acceptance items of the multi-provider brief (`PASS: 14 multi-provider test groups`). It creates test models `tst-*` and

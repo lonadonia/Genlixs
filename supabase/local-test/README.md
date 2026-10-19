@@ -33,6 +33,10 @@ node supabase/local-test/run.mjs fresh migrations tests:01,02,03,04,05,06,07,08,
   rollback:20261018232513 tests:01,02,03,04,05,06,07,08,09 stop
 ```
 
+Documented activation (`20261019010705_documented_activation`): `fresh migrations tests:01,02,03,04,05,06,07,08,09,10,11,12
+rollback:20261019010705 tests:01,02,03,04,05,06,07,09,10,11 stop`, then the previous test 08 (`git show 56119a1:<file>`)
+after the rollback.
+
 Route fallback (`20261018235333_route_fallback_original`): `fresh migrations tests:08,11 rollback:20261018235333 tests:08 stop`
 (test 11 fails without the migration, by design).
 

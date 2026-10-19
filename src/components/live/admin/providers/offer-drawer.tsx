@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { api, errorMessage } from "@/lib/live/api";
 import { useApi } from "@/lib/live/account";
 import { cn } from "@/lib/format";
 import { Field, inputCls, Notice, Switch, Tabs, when } from "../catalog/shared";
-import { DecisionBadge, KV, native, STATUS_INFO, StatusBadge, UNIT_LABEL, usd } from "./parts";
-import type { CostUnit, OfferDetail, OfferStatus, RoutingModel, Schedule } from "./types";
+import { BASIS_INFO, DecisionBadge, KV, native, STATUS_INFO, StatusBadge, UNIT_LABEL, usd } from "./parts";
+import type { CostUnit, OfferDetail, OfferStatus, Readiness, RoutingModel, Schedule } from "./types";
 
 type Msg = { tone: "error" | "success" | "attention"; text: string } | null;
 type Section = "details" | "price" | "capabilities" | "test";
@@ -38,14 +38,17 @@ export function OfferDrawer({
   const [busy, setBusy] = useState<string | null>(null);
   const o = d.data;
 
+  const reload = () => {
+    d.reload();
+    onChanged();
+  };
   const update = async (what: string, patch: Record<string, unknown>, reason?: string, ok = "Saved.") => {
     setBusy(what);
     setMsg(null);
     try {
       await api(`/api/admin/providers/offers/${offerId}`, { body: { patch, reason } });
       setMsg({ tone: "success", text: ok });
-      d.reload();
-      onChanged();
+      reload();
     } catch (e) {
       setMsg({ tone: "error", text: errorMessage(e) });
     } finally {
@@ -67,7 +70,7 @@ export function OfferDrawer({
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={o.status} />
+            <StatusBadge status={o.status} basis={o.verificationBasis} legacy={o.legacy} />
             <DecisionBadge decision={o.decision} />
             {o.legacy ? <span className="text-xs text-muted-dark">Original route of this model (follows its catalog capability and KIE cost)</span> : null}
             <label className="ml-auto flex items-center gap-2 text-sm font-semibold">
@@ -96,8 +99,8 @@ export function OfferDrawer({
               ...(o.modelId && o.adapter ? [{ id: "test" as const, label: "Test" }] : []),
             ]}
           />
-          {section === "details" ? <Details o={o} canManage={canManage} busy={busy} update={update} /> : null}
-          {section === "price" ? <PriceSection o={o} canManage={canManage} units={units} onSaved={() => { d.reload(); onChanged(); }} /> : null}
+          {section === "details" ? <Details o={o} canManage={canManage} busy={busy} update={update} reload={reload} /> : null}
+          {section === "price" ? <PriceSection o={o} canManage={canManage} units={units} onSaved={reload} /> : null}
           {section === "capabilities" ? <Capabilities o={o} canManage={canManage} busy={busy === "caps"} update={update} /> : null}
           {section === "test" ? <OfferTest o={o} model={model} canRun={canManage && canTest} /> : null}
         </div>
@@ -106,9 +109,10 @@ export function OfferDrawer({
   );
 }
 
-function Details({ o, canManage, busy, update }: { o: OfferDetail; canManage: boolean; busy: string | null; update: (w: string, p: Record<string, unknown>, r?: string, ok?: string) => Promise<void> }) {
-  const [status, setStatus] = useState<OfferStatus>(o.status);
-  const [note, setNote] = useState(o.verificationNote ?? "");
+type Update = (w: string, p: Record<string, unknown>, r?: string, ok?: string) => Promise<void>;
+
+function Details({ o, canManage, busy, update, reload }: { o: OfferDetail; canManage: boolean; busy: string | null; update: Update; reload: () => void }) {
+  const [status, setStatus] = useState<OfferStatus>(o.status === "eligible" ? "capabilities_unverified" : o.status);
   const [overrideDays, setOverrideDays] = useState("7");
   const [overrideReason, setOverrideReason] = useState("");
   return (
@@ -120,7 +124,13 @@ function Details({ o, canManage, busy, update }: { o: OfferDetail; canManage: bo
         <KV k="Current price">
           {o.price ? `${o.price.kind === "supplier_cost" ? "KIE cost" : "Price"} v${o.price.version} · ${o.price.confidence} · checked ${when(o.price.checkedAt)}` : "None"}
         </KV>
-        <KV k="Verified">{o.verifiedAt ? `${when(o.verifiedAt)} — ${o.verificationNote ?? ""}` : "Not verified"}</KV>
+        <KV k="Evidence">
+          {o.status === "eligible" && o.verificationBasis
+            ? `${BASIS_INFO[o.verificationBasis].label}${o.verifiedAt ? ` since ${when(o.verifiedAt)}` : ""}`
+            : o.legacy
+              ? "Original route"
+              : "None: not verified"}
+        </KV>
         <KV k="Stale-price override">{o.priceOverrideUntil ? `until ${when(o.priceOverrideUntil)}` : "None"}</KV>
         <KV k="Sources">
           {[o.sourceUrl, o.docsUrl].filter(Boolean).map((u) => (
@@ -142,23 +152,23 @@ function Details({ o, canManage, busy, update }: { o: OfferDetail; canManage: bo
           </ul>
         </div>
       ) : null}
+      {!o.legacy && o.modelId ? <Evidence o={o} canManage={canManage} busy={busy} update={update} reload={reload} /> : null}
       {canManage && !o.legacy ? (
-        <fieldset className="grid gap-3 rounded-xl border border-rule p-4 sm:grid-cols-2">
-          <legend className="px-1 text-sm font-semibold">Verification</legend>
-          <Field label="Status">
+        <fieldset className="grid gap-3 rounded-xl border border-rule p-4 sm:grid-cols-[minmax(0,16rem)_auto] sm:items-end">
+          <legend className="px-1 text-sm font-semibold">Other status</legend>
+          <Field label="Status" hint="Any of these switches routing off and clears the evidence.">
             <select value={status} onChange={(e) => setStatus(e.target.value as OfferStatus)} className={inputCls}>
-              {(Object.keys(STATUS_INFO) as OfferStatus[]).map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_INFO[s].label}
-                </option>
-              ))}
+              {(Object.keys(STATUS_INFO) as OfferStatus[])
+                .filter((s) => s !== "eligible")
+                .map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_INFO[s].label}
+                  </option>
+                ))}
             </select>
           </Field>
-          <Field label="How it was verified" hint="Required for Verified: for example the test job reference and what was checked (size, length, audio).">
-            <input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} />
-          </Field>
-          <div className="sm:col-span-2">
-            <Button size="sm" busy={busy === "status"} onClick={() => void update("status", { status, verificationNote: note }, undefined, "Status saved.")}>
+          <div>
+            <Button size="sm" variant="secondary-light" busy={busy === "status"} onClick={() => void update("status", { status }, undefined, "Status saved; routing is off.")}>
               Save status
             </Button>
           </div>
@@ -186,6 +196,189 @@ function Details({ o, canManage, busy, update }: { o: OfferDetail; canManage: bo
         </fieldset>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * What lets this offer serve customers. Two separate evidence statuses: "Live-tested" only from a real succeeded test job
+ * of this offer, and "Documented, not live-tested" by the owner when every check below passes (the database re-checks).
+ */
+function Evidence({ o, canManage, busy, update, reload }: { o: OfferDetail; canManage: boolean; busy: string | null; update: Update; reload: () => void }) {
+  const r = useApi<Readiness>(`/api/admin/providers/offers/${o.id}/readiness`);
+  const tests = o.recentJobs.filter((j) => j.purpose === "staff_test" && j.state === "succeeded");
+  const [testJob, setTestJob] = useState(tests[0]?.jobId ?? "");
+  const [ack, setAck] = useState(false);
+  const [reason, setReason] = useState("");
+  const [gap, setGap] = useState(o.documentationGap ?? "");
+  const [gapReason, setGapReason] = useState("");
+  const [working, setWorking] = useState(false);
+  const [msg, setMsg] = useState<Msg>(null);
+  const live = o.status === "eligible" && o.verificationBasis === "live_test";
+  const documented = o.status === "eligible" && o.verificationBasis === "documented";
+  const ready = r.data;
+
+  const activate = async () => {
+    setWorking(true);
+    setMsg(null);
+    try {
+      await api(`/api/admin/providers/offers/${o.id}/activate-documented`, { body: { reason, acknowledge: ack } });
+      setMsg({ tone: "success", text: "Activated: documented, not live-tested. Routing is on; customer prices are unchanged." });
+      setAck(false);
+      reload();
+      r.reload();
+    } catch (e) {
+      setMsg({ tone: "error", text: errorMessage(e) });
+      r.reload();
+    } finally {
+      setWorking(false);
+    }
+  };
+  const afterUpdate = async (what: string, patch: Record<string, unknown>, why?: string, ok?: string) => {
+    await update(what, patch, why, ok);
+    r.reload();
+  };
+
+  return (
+    <section aria-labelledby={`evidence-${o.id}`} className="space-y-4 rounded-xl border border-rule p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id={`evidence-${o.id}`} className="text-sm font-semibold">
+          Evidence for serving customers
+        </h3>
+        <StatusBadge status={o.status} basis={o.verificationBasis} />
+      </div>
+      {o.autoPausedReason && !live && !documented ? (
+        <Notice tone="attention" title={`Switched off automatically${o.autoPausedAt ? ` (${when(o.autoPausedAt)})` : ""}`}>
+          {o.autoPausedReason} Find the cause before activating it again.
+        </Notice>
+      ) : null}
+      {o.documentationGap ? (
+        <Notice tone="attention" title="Open documentation question">
+          {o.documentationGap}
+        </Notice>
+      ) : null}
+      {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
+
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">Live-tested</p>
+        {live ? (
+          <p className="text-sm">
+            Job {o.liveTestJob?.ref ?? "—"} succeeded{o.verifiedAt ? ` · marked ${when(o.verifiedAt)}` : ""}.
+          </p>
+        ) : tests.length && canManage ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label="Succeeded test job of this offer">
+              <select value={testJob} onChange={(e) => setTestJob(e.target.value)} className={inputCls}>
+                {tests.map((j) => (
+                  <option key={j.jobId} value={j.jobId}>
+                    {j.ref} · {when(j.at)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Button size="sm" busy={busy === "live"} disabled={!testJob} onClick={() => void afterUpdate("live", { status: "eligible", testJobId: testJob }, undefined, "Marked live-tested.")}>
+              Mark live-tested
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-dark">
+            No succeeded test job of this offer yet. Only a real paid test (Test tab) can make it live-tested; a note is not enough.
+          </p>
+        )}
+      </div>
+
+      {!live ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Documented, not live-tested</p>
+          {documented ? (
+            <p className="text-sm">
+              Activated{o.activation?.activatedAt ? ` ${when(o.activation.activatedAt)}` : ""} without a live test{o.activation?.reason ? `: ${o.activation.reason}` : "."} The first
+              supplier refusal or failed job switches it off automatically.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-dark">
+              The owner may let this offer serve without a paid test when every check passes. Customer prices do not change; balance gates, daily caps and the
+              circuit breaker still apply, and the first refusal or failed job switches it off.
+            </p>
+          )}
+          {ready ? (
+            <ul className="space-y-1" aria-label="Checks for documented activation">
+              {ready.checks.map((c) => (
+                <li key={c.key} className="flex items-start gap-2 text-sm">
+                  {c.ok ? <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success-text" /> : <CircleX aria-hidden className="mt-0.5 size-4 shrink-0 text-error-text" />}
+                  <span>
+                    <span className="font-semibold">{c.label}</span>
+                    <span className="sr-only">{c.ok ? " (passed)" : " (not passed)"}</span>
+                    <span className="text-muted-dark"> — {c.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : r.error ? (
+            <Notice tone="error">{r.error.message}</Notice>
+          ) : (
+            <div role="status" aria-busy="true" aria-label="Checking" className="h-24 animate-pulse-soft rounded-lg bg-paper" />
+          )}
+          {ready && !documented ? (
+            <p className={cn("text-sm font-semibold", ready.qualifies ? "text-success-text" : "text-orange-text")}>
+              {ready.qualifies
+                ? `Qualifies: ${ready.cheaper} of ${ready.compatible} compatible settings cost less than the original route${ready.maxSavingPct !== null ? ` (up to −${ready.maxSavingPct} %)` : ""}.`
+                : "Cannot be activated without a live test until every check passes."}
+            </p>
+          ) : null}
+          {canManage && !documented && ready?.qualifies ? (
+            <div className="space-y-3 rounded-lg bg-paper p-3">
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+                <span>
+                  I confirm this offer has <strong>not been tested live</strong>. It will serve customers on its documentation, validated price, free checks and balance
+                  alone.
+                </span>
+              </label>
+              <Field label="Why it may serve without a live test" hint="Recorded with the activation and in the audit log (at least 10 characters).">
+                <input value={reason} onChange={(e) => setReason(e.target.value)} className={inputCls} maxLength={500} />
+              </Field>
+              <Button size="sm" busy={working} disabled={!ack || reason.trim().length < 10} onClick={() => void activate()}>
+                Activate: documented, not live-tested
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {canManage ? (
+        <fieldset className="grid gap-3 border-t border-rule pt-3 sm:grid-cols-2">
+          <legend className="sr-only">Documentation question</legend>
+          <Field label="Open documentation question" hint="Recording one blocks documented activation and switches off an offer serving without a live test.">
+            <input value={gap} onChange={(e) => setGap(e.target.value)} className={inputCls} maxLength={500} placeholder="None" />
+          </Field>
+          <Field label="Source or answer">
+            <input value={gapReason} onChange={(e) => setGapReason(e.target.value)} className={inputCls} maxLength={500} />
+          </Field>
+          <div className="flex gap-2 sm:col-span-2">
+            <Button
+              size="sm"
+              variant="secondary-light"
+              busy={busy === "gap"}
+              disabled={gap.trim().length < 3 || gap.trim() === (o.documentationGap ?? "") || gapReason.trim().length < 3}
+              onClick={() => void afterUpdate("gap", { documentationGap: gap.trim() }, gapReason, "Documentation question recorded.")}
+            >
+              Record question
+            </Button>
+            {o.documentationGap ? (
+              <Button
+                size="sm"
+                variant="ghost-light"
+                busy={busy === "gap-clear"}
+                disabled={gapReason.trim().length < 3}
+                onClick={() => void afterUpdate("gap-clear", { documentationGap: null }, gapReason, "Marked answered.")}
+              >
+                Mark answered
+              </Button>
+            ) : null}
+          </div>
+        </fieldset>
+      ) : null}
+    </section>
   );
 }
 
@@ -419,7 +612,7 @@ function OfferTest({ o, model, canRun }: { o: OfferDetail; model: RoutingModel |
         },
         idempotencyKey: key,
       });
-      setMsg({ tone: "success", text: `Test job created (${r.job.ref ?? r.job.short_ref ?? r.job.id}). Follow it in Jobs; record what you checked under Details.` });
+      setMsg({ tone: "success", text: `Test job created (${r.job.ref ?? r.job.short_ref ?? r.job.id}). Follow it in Jobs; once it succeeds and the result is right, mark the offer live-tested under Details.` });
     } catch (e) {
       setMsg({ tone: "error", text: e instanceof SyntaxError ? "Inputs must be JSON like {\"motion_video\": [\"<asset id>\"]}." : errorMessage(e) });
     } finally {

@@ -66,3 +66,6 @@ export function providerCapabilities() {
 
 /** Adapter ids implemented in code, per provider (a contract test compares them with the migrations). */
 export const adaptersByProvider = () => Object.fromEntries(Object.values(CLIENTS).map((c) => [c.name, [...c.adapters].sort()]));
+
+/** Documented result download hosts per provider (a contract test compares them with provider_adapters.result_hosts). */
+export const resultHostsByProvider = () => Object.fromEntries(Object.values(CLIENTS).map((c) => [c.name, [...c.resultHosts].sort()]));

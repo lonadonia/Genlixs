@@ -5,8 +5,8 @@ Migrations `20261018181012`…`20261018182418_multi_provider_routing_part01`…`
 
 Genlixs can buy each generation from one of six suppliers — KIE, Duomi, PoYo, NezhaGate, Cuddler and APIMart. Customers
 still see **one card per model** and pay the same Genlixs credits; the server sends each job to the **cheapest verified
-supplier for its exact settings** and records what that cost. Until the owner adds a key and verifies an offer, every
-model keeps its original KIE route exactly as before.
+supplier for its exact settings** and records what that cost. Until the owner adds a key and makes an offer eligible
+(live-tested, or activated as documented, not live-tested — §3a), every model keeps its original KIE route exactly as before.
 
 ## 1. Setup (one time)
 
@@ -30,8 +30,9 @@ Nothing to configure by hand. Supabase Vault is built into the project; keys are
 | Test the connection | Providers › *Test connection* | Calls the supplier's documented **read-only balance** endpoint with the saved key. It never creates a generation. |
 | Switch a supplier on/off | Providers › switch | Off = no new jobs go there; jobs already sent finish normally. |
 | Funding terms | Providers › Details | Card/top-up fee in basis points (Cuddler card = 550) and credit bonus (10 % = 1000 → cost ÷ 1.10). A daily USD cap and a shared-wallet group can be set too. |
-| Verify an offer | Models › supplier name › *Test* | One **paid** private job pinned to exactly that offer (whatever the routing switch says). Check size, length and sound, then set **Verified** with a note (job reference + what was checked). |
-| Route to it | Models › offer › *Routing on*, or **Review routing** | Routing uses an offer only when it is Verified, priced, integrated, its supplier is on with a key, and it is the cheapest for the request. |
+| Live-test an offer | Models › supplier name › *Test* | One **paid** private job pinned to exactly that offer (whatever the routing switch says). Check size, length and sound; once the job has **succeeded**, choose it under *Details › Evidence* and **Mark live-tested**. A note alone is refused. |
+| Activate without a live test | Models › supplier name › *Details › Evidence* | **Activate: documented, not live-tested** (owner only), when every check listed there passes (§3a). Needs a ticked acknowledgement and a reason; routing switches on. |
+| Route to it | Models › offer › *Routing on*, or **Review routing** | Routing uses an offer only when it is eligible (live-tested or documented), priced, integrated, its supplier is on with a key, and it is the cheapest for the request. |
 | Review routing | Models › *Review routing* | Compares every offer of every model over all its settings. Preview first; applying records each decision, switches **dominated** offers off and switches on the verified winners you tick. |
 | Compare one request | Models › *Compare* | Exact settings (and file counts/lengths) → every offer's whole-request cost, or why it is excluded, with its price evidence and the saving against KIE when KIE has a verified price for the same settings. |
 | Prices | Models › offer › *Price* | New immutable version: unit, billing basis, rates per configuration, extra-image surcharge, confidence, source link, date. A blank rate is unknown, never free. |
@@ -41,7 +42,8 @@ review switches it back on (no hidden fallback).
 
 The everyday work lives on two pages (`docs/CATALOG_AND_PRICING.md`): **Models & pricing** shows, for every model once,
 the supplier serving its example request, that supplier's cost for the whole request and the effective markup on it, and
-in the model drawer the cheaper offers that are not serving yet with the step still missing (key, paid test, routing);
+in the model drawer the cheaper offers that are not serving yet with the step still missing (key, live test or
+documented activation, documentation question, routing);
 **Add models** lists each product outside the catalog once with its cheapest supplier. **Providers & balances** shows
 every provider's balance and spending, keys and switches, and warns when KIE's balance cannot cover a model's most
 expensive settings. Both read `admin_catalog_supply` (`provider.read`, read-only). The customer price never depends on the
@@ -52,7 +54,7 @@ effective markup.
 
 For every job the database evaluates all offers of the model (`app_private.route_evaluate`, `route_choose`):
 
-1. **Structural** — integration in this release, routing on, status Verified, supplier on and not paused, a key (Vault,
+1. **Structural** — integration in this release, routing on, status eligible, supplier on and not paused, a key (Vault,
    or `KIE_API_KEY` for KIE), the key not refused at the last test.
 2. **Capabilities** — every requested setting, input mode, file count, total media length and prompt length must be
    listed by the offer. A supplier that would ignore a setting is incompatible. The original KIE route takes the model's
@@ -73,8 +75,51 @@ For every job the database evaluates all offers of the model (`app_private.route
    route's cost only the configured ceiling applies; without a routable original route nothing changed.
 
    Keys and the provider switch are not enough to serve: an offer needs an integration in this release, a usable price,
-   **status Verified** (owner, after one paid test of that offer; the evidence is recorded) and **routing on**. Admin ›
-   Providers & balances shows "Not verified yet" for a keyed provider with no verified offer.
+   an **evidence status** (below) and **routing on**. Admin › Providers & balances shows "Not verified yet" for a keyed
+   provider with no eligible offer.
+
+## 3a. Evidence: Live-tested or Documented, not live-tested
+
+Migration `20261019010705_documented_activation` (applied 19 Oct 2026). An offer is eligible to serve with one of two
+evidence statuses, recorded on the offer (`verification_basis`) and shown as separate badges; they are never mixed up:
+
+- **Live-tested** — only from a real paid test: a job pinned to exactly this offer (`admin_create_offer_test`), accepted by
+  this offer's supplier and **succeeded**. `admin_update_offer` refuses `status: eligible` without such a `testJobId`
+  (`LIVE_TEST_REQUIRED`), so a test reference can never be typed in.
+- **Documented, not live-tested** — the owner (`provider.manage`) activates it with `admin_activate_offer_documented`
+  (an explicit acknowledgement and a reason of 10+ characters; both are stored with a snapshot of the checks and in the
+  audit log). The database re-runs every check at that moment (`admin_offer_activation_readiness`, also shown in the
+  offer drawer) and refuses (`NOT_QUALIFIED`) unless all pass:
+
+  | Check | Passes when |
+  | --- | --- |
+  | Supplier offer | mapped to a Genlixs model, not the original route |
+  | Integration | an adapter of this release (request, status and result formats written from the supplier's API reference) |
+  | Documentation | the offer's API documentation link is recorded |
+  | Result host | the integration's documented download host is recorded (`provider_adapters.result_hosts`, equal to the code; none for Cuddler) |
+  | No documentation gap | no open question recorded on the offer (`documentation_gap`) |
+  | Validated price | documented or account-quote price (not an estimate), not expired, not older than `provider_price_stale_days` unless an audited override is active |
+  | Provider | switched on, not paused, a key saved |
+  | Free authentication check | the last read-only connection test with the saved key succeeded |
+  | Balance | an API balance read within `provider_balance_stale_minutes`, in the price unit, that covers the cheapest compatible request after pending jobs |
+  | Compatible settings | at least one of the model's priced settings is supported and priced by the offer |
+
+  Turning routing back on, or changing the capabilities of such an offer, re-runs the checks. Recording a documentation
+  question switches it off. **Safety stop:** the first refusal by its supplier (`provider_attempts` → rejected) or the
+  first job on it that ends failed or in review switches the offer off (status not verified, routing off,
+  `auto_paused_reason`, audit `provider_offer.auto_paused`); later requests go to the next route, at most the original
+  KIE route's cost (§3 step 6). Live-tested offers and the original routes are not affected.
+
+Nothing else changes: customer prices follow the KIE reference (no price version is created), and reservations, refunds,
+balance gates, daily caps, the circuit breaker and stale-price rules apply to every route.
+
+Documentation questions recorded at release: APIMart Seedance 2.0 Fast (whether sound changes the price), NezhaGate GPT
+Image 2.5 Sunburst image and edit (no model page; the 1K rate is described as temporary), Cuddler Kling 3.0 and Seedance
+2.5 (result host not documented; Seedance token-priced). NezhaGate's Flare offers leave 2K out (2K disruption notice of
+18 Oct 2026). Qualifying on 19 Oct 2026 (not activated; the owner decides): APIMart Seedance 2.5, Seedream 5.0 Flash
+image and edit; NezhaGate GPT Image 2.5 Flare image and edit, Nano Banana Pro image and edit; PoYo Kling 3.0 Motion
+Control. NezhaGate Seedance 2.5 / 2.0 Fast need a larger balance than $0.15; Cuddler is unfunded and has no documented
+result host.
 
 The chosen supplier, offer, provider model, key version, price version, unit conversion, funding terms, estimate,
 explanation and the compared candidates are stored on the attempt (`provider_attempts.route`). Status checks, task

@@ -273,14 +273,20 @@ for p in $(ps -eo pid,args | grep -E "next start|next-server" | grep -v grep | a
    never insert price versions. Rollback (not applied): `supabase/rollbacks/20261018232513_automatic_pricing.rollback.sql`.
 
 0a. **Activate the cheaper suppliers (19 Oct 2026 state).** PoYo, APIMart, NezhaGate and Cuddler have saved keys and are
-   on, but **no offer is verified**, so none serves (`docs/VERIFICATION.md` §000000 lists every offer's blocker). Ready
-   except verification: APIMart Seedance 2.5, Seedance 2.0 Fast, Seedream 5.0 Flash image/edit; NezhaGate GPT Image 2.5
-   Flare and Sunburst, Nano Banana Pro (image; edits with a fixed ratio); PoYo Kling 3.0 Motion Control. Each needs one
-   authorised paid test (Providers & balances › More › Routing & offers › offer › Test; roughly $0.005–$1.08 each), then
-   **mark Verified** with the test reference and switch routing on (or *Review routing*). Also: top up NezhaGate (its
-   $0.15 cannot cover a video) and Cuddler ($0); confirm Cuddler's result host with its test and add it to
-   `MEDIA_FETCH_ALLOWED_HOSTS` (never guessed). Since `20261018235333_route_fallback_original`, a cheaper offer that is
-   short of balance falls back to KIE (or the next offer up to KIE's cost) instead of refusing the request.
+   on, but **no offer is eligible yet**, so none serves. Since `20261019010705_documented_activation` there are two ways
+   (`docs/PROVIDERS_AND_ROUTING.md` §3a): **Live-tested** (a succeeded paid test of the offer, then *Mark live-tested*;
+   a note alone is refused) or, owner only, **Activate: documented, not live-tested** in the offer drawer (Providers &
+   balances › More › Routing & offers › offer › Details) when every documented check passes — tick the acknowledgement,
+   give a reason; routing switches on and the first supplier refusal or failed job switches it off again. Qualifying on
+   19 Oct (production simulation, rolled back: 236 of 528 settings cheaper, 0 dearer, prices unchanged): APIMart
+   Seedance 2.5, Seedream 5.0 Flash image/edit; NezhaGate GPT Image 2.5 Flare image/edit (1K/4K; 2K left out after the
+   supplier's 2K disruption notice), Nano Banana Pro image/edit; PoYo Kling 3.0 Motion Control. The balance check needs
+   a reading from the last hour (refresh the provider first if the check says so). Still blocked: APIMart Seedance 2.0
+   Fast and NezhaGate Sunburst (documentation questions — answer them in the drawer with a source), NezhaGate Seedance
+   (top up: $0.15 cannot cover $0.375–$0.50), Cuddler ($0, result host undocumented: confirm it with a live test and add
+   it to `MEDIA_FETCH_ALLOWED_HOSTS`, never guessed). Since `20261018235333_route_fallback_original`, a cheaper offer
+   that is short of balance falls back to KIE (or the next offer up to KIE's cost) instead of refusing the request.
+   Rollback (not applied): `supabase/rollbacks/20261019010705_documented_activation.rollback.sql`.
 
 0. **Multi-provider routing (v3.5):** applied and deployed 18 Oct 2026 with everything new switched off. Next, only with
    the owner's go-ahead and a budget for paid tests: add each supplier's key in Admin, test the connection, run one

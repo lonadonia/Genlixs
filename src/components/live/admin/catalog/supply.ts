@@ -12,6 +12,7 @@ export type SupplyStage =
   | "routing_off"
   | "supplier_off"
   | "needs_test"
+  | "documentation_gap"
   | "needs_key"
   | "price_unverified"
   | "needs_integration";
@@ -38,6 +39,10 @@ export type SupplyQuote = {
   /** Effective markup if this offer served the default request at the current customer price. */
   markupIfServedPct: number | null;
   current: boolean;
+  /** Evidence for serving: a real succeeded test job (live_test) or the owner's documented activation (documented). */
+  basis?: "live_test" | "documented" | null;
+  documentationGap?: string | null;
+  autoPausedReason?: string | null;
   stage: SupplyStage;
 };
 
@@ -114,10 +119,15 @@ export type Supply = {
 
 export const STAGE_INFO: Record<SupplyStage, { label: string; tone: Tone; hint: string }> = {
   serving: { label: "Serving", tone: "success", hint: "The router sends this model's default request here now." },
-  standby: { label: "Ready as backup", tone: "info", hint: "Verified and switched on; used when it is the cheapest for a request or the cheaper one is unavailable." },
-  routing_off: { label: "Verified · routing off", tone: "info", hint: "Switch routing on for this offer, or run Review routing, to let it serve customers." },
+  standby: { label: "Ready as backup", tone: "info", hint: "Live-tested or documented, and switched on; used when it is the cheapest for a request or the cheaper one is unavailable." },
+  routing_off: { label: "Eligible · routing off", tone: "info", hint: "Switch routing on for this offer, or run Review routing, to let it serve customers." },
   supplier_off: { label: "Supplier switched off", tone: "neutral", hint: "Switch the supplier on in Providers & balances." },
-  needs_test: { label: "Needs a paid test", tone: "attention", hint: "Not verified yet: run one private paid test of this offer, check the result and mark it Verified." },
+  needs_test: {
+    label: "Not verified yet",
+    tone: "attention",
+    hint: "Mark it live-tested after a succeeded paid test, or, when every documented check passes, the owner can activate it as documented, not live-tested (Providers & balances → offer).",
+  },
+  documentation_gap: { label: "Documentation question", tone: "attention", hint: "An open question in the supplier documentation blocks activation without a live test." },
   needs_key: { label: "Needs an API key", tone: "attention", hint: "Add the supplier's API key in Providers & balances, then test the connection." },
   price_unverified: { label: "Price unverified", tone: "attention", hint: "The published price is missing, conflicting or not confirmed; it is never used to route." },
   needs_integration: { label: "Not integrated", tone: "neutral", hint: "This release cannot send work to this supplier for this product yet." },

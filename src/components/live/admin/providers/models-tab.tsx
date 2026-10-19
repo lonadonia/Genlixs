@@ -123,7 +123,7 @@ export function ModelsTab({ canManage, canTest, units, focusModel }: { canManage
                                 <button type="button" onClick={() => setOffer(o)} className="font-semibold text-info-text underline-offset-2 hover:underline">
                                   {o.providerName}
                                 </button>
-                                <StatusBadge status={o.status} />
+                                <StatusBadge status={o.status} basis={o.verificationBasis} legacy={o.legacy} />
                                 <DecisionBadge decision={o.decision} />
                                 {o.routingEnabled ? (
                                   <Badge surface="light" tone="success" icon="none">

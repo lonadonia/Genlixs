@@ -199,6 +199,8 @@ const GETS: Record<string, Handler> = {
   },
   "providers/usage": ({ db, q }) => rpc(db, "admin_provider_usage", { p_filters: usageFilters(q), p_before: cursor(q), p_limit: limit(q, 500) }),
   "providers/offers/:id": ({ db, rest }) => rpc(db, "admin_offer_detail", { p_offer_id: offerId(rest[2]) }),
+  // Every check of documented activation, evaluated now (read-only).
+  "providers/offers/:id/readiness": ({ db, rest }) => rpc(db, "admin_offer_activation_readiness", { p_offer_id: offerId(rest[2]) }),
   "providers/jobs/:id/route": ({ db, rest }) => rpc(db, "admin_job_route", { p_job_id: input.uuid(rest[2], "Job") }),
 };
 
@@ -544,9 +546,19 @@ const POSTS: Record<string, Handler> = {
     kickWorker("control", 20_000);
     return result;
   },
+  // Owner: let an offer serve without a live test ("Documented, not live-tested"). The database re-runs every check and
+  // refuses without the acknowledgement; nothing is sent to the supplier.
+  "providers/offers/:id/activate-documented": async ({ req, db, rest }) => {
+    const b = await readJson(req);
+    return rpc(db, "admin_activate_offer_documented", {
+      p_offer_id: offerId(rest[2]),
+      p_reason: input.str(b.reason, "Reason", { min: 10, max: 500 }),
+      p_acknowledge: input.bool(b.acknowledge, "Acknowledgement", true) ?? false,
+    });
+  },
   "providers/offers/:id": async ({ req, db, rest }) => {
     const b = await readJson(req);
-    return rpc(db, "admin_update_offer", { p_offer_id: offerId(rest[2]), p_patch: jsonObject(b.patch, "Change", 10), p_reason: optionalReason(b.reason) });
+    return rpc(db, "admin_update_offer",{ p_offer_id: offerId(rest[2]), p_patch: jsonObject(b.patch, "Change", 10), p_reason: optionalReason(b.reason) });
   },
   "providers/:id/key/remove": async ({ req, db, rest }) => {
     const b = await readJson(req);

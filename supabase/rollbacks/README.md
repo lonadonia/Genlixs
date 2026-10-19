@@ -4,6 +4,15 @@ A rollback is written and tested with its migration but is **not applied**. To u
 as a new migration (Supabase MCP `apply_migration` or `supabase db push`) with the owner's agreement, then run the
 matching test in `supabase/tests/`.
 
+## 20261019010705_documented_activation
+
+Switches off offers activated as "documented, not live-tested" (so none keeps serving without the checks and the safety
+stop), drops the safety-stop triggers and the readiness/activation functions, restores `admin_update_offer` and
+`offer_json` (part05) and `admin_catalog_supply` (automatic_pricing) exactly, gives the NezhaGate Flare offers 2K back
+and drops the evidence columns and `provider_adapters.result_hosts` (the audit log keeps every activation and stop).
+Live-tested offers stay eligible. Tested locally: migration → tests 01–12 → rollback → tests 01–07, 09–11 and the
+previous test 08 pass; the restored function bodies equal production's before the migration.
+
 ## 20261018235333_route_fallback_original
 
 Restores `app_private.route_choose` exactly as defined in `20261018181128_multi_provider_routing_part02` (a temporarily

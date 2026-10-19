@@ -10,7 +10,7 @@ import { buildNezhagate, classifyNezhagateCreate, normalizeNezhagateJob, parseNe
 import { buildPoyo, classifyPoyoSubmit, normalizePoyoStatus, parsePoyoBalance } from "../../src/lib/providers/poyo";
 import { scaleUp, toUnits, fromUnits } from "../../src/lib/providers/decimal";
 import { csvCell, usageCsv, type UsageRow } from "../../src/lib/providers/usage-csv";
-import { adaptersByProvider } from "../../src/lib/providers/registry";
+import { adaptersByProvider, resultHostsByProvider } from "../../src/lib/providers/registry";
 import { maskKey } from "../../src/lib/providers/credentials";
 import type { AttemptRoute, ClaimContext, RoutedSubmit } from "../../src/lib/providers/types";
 
@@ -35,12 +35,27 @@ test("adapters in code equal the provider_adapters rows of the multi-provider mi
   const rows: [string, string][] = [];
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".sql"))) {
     const sql = readFileSync(new URL(f, dir), "utf8");
-    for (const m of sql.matchAll(/\('([a-z0-9-]+)', '(duomi|poyo|nezhagate|cuddler|apimart)', '/g)) rows.push([m[1], m[2]]);
+    // Only the rows of `insert into app_private.provider_adapters … ;` statements.
+    for (const ins of sql.matchAll(/insert into app_private\.provider_adapters[^;]*;/g)) {
+      for (const m of ins[0].matchAll(/\('([a-z0-9-]+)', '(duomi|poyo|nezhagate|cuddler|apimart)', '/g)) rows.push([m[1], m[2]]);
+    }
   }
   const fromSql: Record<string, string[]> = {};
   for (const [adapter, provider] of rows) (fromSql[provider] ??= []).push(adapter);
   const code = adaptersByProvider();
   for (const p of ["duomi", "poyo", "nezhagate", "cuddler", "apimart"]) assert.deepEqual([...(fromSql[p] ?? [])].sort(), code[p], p);
+});
+
+test("documented result hosts in the database equal each supplier client's resultHosts (none for Cuddler)", () => {
+  const dir = new URL("../../supabase/migrations/", import.meta.url);
+  const file = readdirSync(dir).find((f) => f.endsWith(".sql") && readFileSync(new URL(f, dir), "utf8").includes("add column result_hosts"));
+  assert.ok(file, "migration seeding provider_adapters.result_hosts");
+  const sql = readFileSync(new URL(file, dir), "utf8");
+  const fromSql: Record<string, string[]> = {};
+  for (const m of sql.matchAll(/when '([a-z]+)' then array\[([^\]]*)\]/g)) fromSql[m[1]] = [...m[2].matchAll(/'([^']+)'/g)].map((h) => h[1]).sort();
+  const code = resultHostsByProvider();
+  for (const p of Object.keys(code)) assert.deepEqual(fromSql[p] ?? [], code[p], p);
+  assert.deepEqual(code.cuddler, [], "Cuddler's download host is not documented");
 });
 
 test("Cuddler: modes from inputs, generate_audio from the setting, fixed variant, max_usd ceiling, idempotent create", () => {
