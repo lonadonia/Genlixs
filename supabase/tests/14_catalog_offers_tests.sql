@@ -25,6 +25,8 @@ begin
   update app_private.settings set value = '500' where key = 'max_quotes_per_minute';
   update app_private.provider_accounts set submit_blocked_until = null, submit_block_since = null, paused = false, daily_spend_cap_usd = null
     where provider in ('kie', 'apimart', 'nezhagate', 'poyo');
+  -- On production KIE's live balance may not cover a 1080p clip: give it room inside this rolled-back test.
+  update app_private.provider_accounts set last_balance = 100000, last_balance_at = now() - interval '1 minute' where provider = 'kie';
 
   -- O1 ------------------------------------------------------------------ written switched off
   v_step := 'O1';

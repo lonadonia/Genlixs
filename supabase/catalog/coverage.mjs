@@ -210,7 +210,8 @@ aspect ratio on NezhaGate Nano Banana, more than 8 images on NezhaGate edits, Ha
   models bill the source length. Supplier charges are confirmed from each task's reported cost where the supplier reports one.
 - **Reliability.** NezhaGate publishes a 61 % 30-day success rate for Seedance 2.0 (failed jobs are refunded; Genlixs falls back to KIE).
 - **Balances.** Activation requires a fresh balance that covers the cheapest request: NezhaGate held $0.125 on 22 Oct (enough for images,
-  not for a Seedance video); APIMart 100 credits ($10); PoYo 1,000 credits ($5).
+  not for a Seedance video); APIMart 100 credits ($10); PoYo 1,000 credits ($5). KIE held 506 credits on 23 Oct: a request whose KIE cost
+  is higher (e.g. Seedance 2.0 at 1080p for 5 s, 510 credits) is refused before charging until KIE is topped up or a cheaper offer serves it.
 - **Open gap.** APIMart Wan 2.6: whether sound is added by default is not documented (on either route) — it needs a live test before it can route.
 - **Cuddler** offers are not integrated: its result download host is not documented and must not be guessed.
 

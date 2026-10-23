@@ -4,6 +4,25 @@ Run on 14 Oct 2026, Windows 11, Node 24.21, Next.js 16.3.8, Chrome via playwrigh
 `qlpxdrbadakbyzdyfrnk`. Statuses: `VERIFIED_PASS`, `FAILED`, `NOT_TESTED`, `BLOCKED_EXTERNAL`. Section 0 was added on
 15 Oct 2026 and supersedes the "not executed" rows it covers.
 
+## 000000000. Full image/video catalog and supplier offers (22–23 Oct 2026)
+
+**No paid generation, edit, upscale, extension or provider test was submitted, and no supplier credit was used** (spend
+$0). Supplier documentation, public price lists and catalogs were read; nothing else was called. Coverage, savings and
+every gap: `docs/CATALOG_COVERAGE.md`.
+
+| Step | Result |
+| --- | --- |
+| Code deploy | Commit `67d5a88` pushed; Vercel built and deployed it (GitHub status "Deployment has completed"). `next build` could not run on this machine: Windows Application Control blocks Tailwind's native `.node` binary (not bypassed). `npm run lint` and `tsc --noEmit` clean. |
+| Migrations (production) | `20261023182302_catalog_engine`, `…182637_catalog_images`, `…182907_catalog_videos_a`, `…183157_catalog_videos_b`, `…183236_catalog_enable`, `…183457_catalog_offers`, `…183521_routing_review_revision`: stored text md5-identical to the files (one normalised for trailing blank lines). Before applying, the seven replaced functions were checked md5-identical to the repo's previous definitions, and all 97 new models priced with no availability blocker. |
+| Production state after | 118 models on (97 new + 21), every one priced by the global policy; Wan 2.6 re-published as v8 with rules identical to v7 (md5 `123df43c…`): no customer price changed. 29 supplier offers created **off** (status not verified, routing off, no activation); 34 research entries linked to their model with the reason; the 8 offers the owner activated on 19 Oct unchanged; NezhaGate GPT Image 2.5 Flare/Sunburst price v2 (2K $0.03, 4K $0.05). |
+| SQL, fresh local database | Suites 01–14 pass (14/11/8/8/6/10/8/14/6/8/6/8/9/5 groups); offers migration re-run changes nothing; rollback applied → 01–07 and 09–12 pass. A flaky "REVIEW_CHANGED" in test 08 (proposal order not fixed) was found and fixed by `routing_review_revision`. |
+| SQL, production (rolled back) | Test 13 `PASS: 9 catalog expansion test groups`; test 14 `PASS: 5 catalog offer test groups` (cheapest compatible route per setting once activated inside the transaction, original KIE route otherwise, customer quote unchanged). Both raise KIE's balance inside their transaction: the live 506 credits cannot cover a 1080p Seedance 2.0 clip (510). Afterwards no test user, model or routing offer remained. Test 09 not run on production: its S3 assumes the pre-19 Oct route of Nano Banana Pro. |
+| Contract tests | 101/101 (catalog adapters, supplier builders with exact bodies and refusals, studio rules, registries vs migrations). |
+| Browser (live site, account mocked) | `qa-scripts/v37/catalog-studio.mjs` against https://genlixs.vercel.app: 32/32 on desktop and phone — 118 models (33/32/53), all priced, exclusions published, Avatar tab with 3 models, 39 creation models grouped by maker with search, prompt-free tool hides the prompt, no overflow, no page errors, **0 generation requests**. |
+
+Not verified (needs money or the owner): a real job on any new model or offer; Cuddler's result host; the default sound of
+APIMart Wan 2.6. KIE held 506 credits on 23 Oct: requests above that are refused until it is topped up.
+
 ## 00000000. Eight offers activated as "Documented, not live-tested" (19 Oct 2026, 01:16 UTC)
 
 At the owner's written instruction, the eight qualifying offers were activated through `admin_activate_offer_documented`

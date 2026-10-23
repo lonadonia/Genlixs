@@ -23,6 +23,8 @@ begin
   begin
   update app_private.settings set value = '500' where key = 'max_quotes_per_minute';
   update app_private.provider_accounts set submit_blocked_until = null, paused = false where provider = 'kie';
+  -- On production KIE's live balance may not cover every default request: give it room inside this rolled-back test.
+  update app_private.provider_accounts set last_balance = 100000, last_balance_at = now() - interval '1 minute' where provider = 'kie';
   t := app_private.policy_terms(app_private.current_pricing_policy());
   v_bps := (t ->> 'markupBps')::int; v_v := (t ->> 'usdPerCredit')::numeric; v_upu := (t ->> 'kieUnitsPerUsd')::numeric;
 

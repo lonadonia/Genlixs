@@ -63,5 +63,3 @@ begin
   return jsonb_build_object('applied', true, 'revision', v_rev, 'changed', v_changed, 'switchedOff', v_off, 'switchedOn', v_on, 'providers', v_providers);
 end;
 $$;
-
-

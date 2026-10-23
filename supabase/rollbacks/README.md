@@ -4,6 +4,16 @@ A rollback is written and tested with its migration but is **not applied**. To u
 as a new migration (Supabase MCP `apply_migration` or `supabase db push`) with the owner's agreement, then run the
 matching test in `supabase/tests/`.
 
+## 20261023182302_full_catalog (covers 20261023182302 … 20261023183521)
+
+Switches the 97 models of the full catalog off and the 29 supplier offers of that release off (nothing is deleted), puts
+Wan 2.6 back on its text-only route and capability (same KIE rates, so its price does not change) and re-creates
+`normalize_generation_input`, `normalize_generation_input_v2`, `get_catalog`, `sync_legacy_offer`, `model_readiness`
+and `admin_routing_review` exactly as in the migrations named in the file (production's text was checked identical to
+them before the release). `price_configs` and `spec_excluded` stay: identical for models without excluded combinations,
+and they keep the switched-off models with exclusions completely priced. Tested locally: all migrations → tests 13–14 →
+rollback → tests 01–07 and 09–12 pass.
+
 ## 20261019010705_documented_activation
 
 Switches off offers activated as "documented, not live-tested" (so none keeps serving without the checks and the safety
