@@ -9,6 +9,7 @@ import {
   type SubmitRequest,
   type TaskDetail,
 } from "../types";
+import { upstreamFor } from "../model-id";
 import { buildInput } from "./adapters";
 
 /**
@@ -125,7 +126,8 @@ export function resultUrlsOf(result: Record<string, unknown> | null): string[] {
     const urls = strings(candidate);
     if (urls.length) return urls;
   }
-  return [];
+  // FLUX.1 Kontext documents its single result as resultImageUrl (docs.kie.ai, checked 22 Oct 2026).
+  return typeof result.resultImageUrl === "string" && result.resultImageUrl ? [result.resultImageUrl] : [];
 }
 
 /** Normalizes a recordInfo response (§12.4). Exported for contract tests. */
@@ -182,7 +184,8 @@ export class KieProvider implements GenerationProvider {
   async submit(req: SubmitRequest): Promise<SubmitOutcome> {
     const { key, base } = this.config();
     const body = {
-      model: req.context.model.providerModelId,
+      // One catalog model may use a different KIE model id per input mode (for example text- and image-to-video).
+      model: upstreamFor(req.context.model.providerModelId, req.context.job.mode),
       ...(req.callBackUrl ? { callBackUrl: req.callBackUrl } : {}),
       input: buildInput(req),
     };

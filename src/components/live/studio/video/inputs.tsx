@@ -227,7 +227,7 @@ export function SingleSlot({
   onFiles: (files: File[]) => void;
   onRemove: () => void;
   title: string;
-  icon?: "plus" | "image" | "video";
+  icon?: "plus" | "image" | "video" | "audio";
   disabled?: boolean;
   /** Square tile even for a video (two tiles side by side). */
   compact?: boolean;
@@ -236,7 +236,7 @@ export function SingleSlot({
   const id = useId();
   const [drag, setDrag] = useState(false);
   if (item) return <InputThumb item={item} label={spec.label} onRemove={onRemove} onReplace={(f) => onFiles([f])} large={spec.kind === "video" && !compact} />;
-  const Icon = icon === "video" ? Film : icon === "image" ? ImagePlus : Plus;
+  const Icon = icon === "video" ? Film : icon === "audio" ? Music : icon === "image" ? ImagePlus : Plus;
   return (
     <label
       htmlFor={id}

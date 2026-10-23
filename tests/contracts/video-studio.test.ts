@@ -260,6 +260,7 @@ test("drafts persist per account without local file links or unfinished uploads"
     extend: draft({}),
     edit: draft({ prompt: "Snow" }),
     motion: draft({}),
+    avatar: draft({ prompt: "Smiles" }),
   };
   saveDrafts("user-a", drafts);
   const back = loadDrafts("user-a");
@@ -267,6 +268,7 @@ test("drafts persist per account without local file links or unfinished uploads"
   assert.equal(back.create!.slots.first_frame.length, 1);
   assert.equal(back.create!.slots.first_frame[0].previewUrl, undefined);
   assert.equal(back.edit!.prompt, "Snow");
+  assert.equal(back.avatar!.prompt, "Smiles");
   assert.deepEqual(loadDrafts("user-b"), {});
   store.set("genlixs-video-studio-v1:user-c", "{not json");
   assert.deepEqual(loadDrafts("user-c"), {});

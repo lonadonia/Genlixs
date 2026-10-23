@@ -79,7 +79,7 @@ export type InputSlotSpec = {
 export type InputMode = { id: string; label?: string; uses: string[]; requires?: string[]; allowed?: Record<string, (string | number)[]>; allowedMessage?: string };
 export type InputRule = { when: Record<string, string | number>; slot: string; maxSeconds?: number; message?: string };
 
-export type Operation = "create" | "edit" | "motion" | "extend";
+export type Operation = "create" | "edit" | "motion" | "extend" | "avatar";
 
 export type CatalogModel = {
   id: string;
@@ -99,7 +99,14 @@ export type CatalogModel = {
   inputs?: Record<string, InputSlotSpec> | null;
   modes?: InputMode[] | null;
   rules?: InputRule[] | null;
-  derived?: Record<string, { from: string }> | null;
+  /**
+   * Options the server computes from the inputs: "seconds" (default, length of the first file of a slot), "present"
+   * ("yes" when a listed slot has a file) or "billed_seconds" (the "plus" option + the listed slots' total length).
+   */
+  derived?: Record<string, { from: string | string[]; kind?: "seconds" | "present" | "billed_seconds"; plus?: string }> | null;
+  /** Setting combinations the model does not offer (each entry: option → value); never priced, refused at the quote. */
+  exclude?: Record<string, string | number>[] | null;
+  excludeMessage?: string | null;
   output: { kind: "image" | "video"; count: number };
   fixed: Record<string, string> | null;
   priced: boolean;

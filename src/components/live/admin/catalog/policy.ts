@@ -63,7 +63,7 @@ export type PolicyApplyResult = {
   };
 };
 
-/** Model types used by the filters: video editing covers editing, extending and motion control of a video. */
+/** Model types used by the filters: video editing covers editing, upscaling, extending and motion control of a video. */
 export type ModelKind = "image" | "edit" | "video" | "video_edit";
 export const KIND_ORDER: ModelKind[] = ["image", "edit", "video", "video_edit"];
 export const KIND_LABEL: Record<ModelKind, string> = { image: "Images", edit: "Image editing", video: "Videos", video_edit: "Video editing" };
@@ -71,7 +71,8 @@ export const KIND_SINGLE: Record<ModelKind, string> = { image: "Image", edit: "I
 
 export function modelKind(m: Pick<AdminModel, "tool" | "capability">): ModelKind {
   if (m.tool === "image" || m.tool === "edit") return m.tool;
-  return m.capability.spec.jobKind === "text_to_video" ? "video" : "video_edit";
+  // Talking avatars make a new video (from a portrait and audio): they count as videos, not edits.
+  return m.capability.spec.jobKind === "text_to_video" || m.capability.spec.jobKind === "avatar" ? "video" : "video_edit";
 }
 
 /** Inputs of the policy panel: markup up to two decimals (0–2000 %), credit value above $0 with up to six decimals. */

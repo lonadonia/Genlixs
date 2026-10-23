@@ -6,11 +6,11 @@
  */
 import type { CatalogModel, InputKind, InputMode, InputSlotSpec, Operation, OptionSpec } from "./types";
 
-export type TabId = "create" | "edit" | "motion";
-export type DraftKey = "create" | "extend" | "edit" | "motion";
-export const DRAFT_KEYS: DraftKey[] = ["create", "extend", "edit", "motion"];
-export const OPERATION_OF: Record<DraftKey, Operation> = { create: "create", extend: "extend", edit: "edit", motion: "motion" };
-export const TAB_OF: Record<DraftKey, TabId> = { create: "create", extend: "create", edit: "edit", motion: "motion" };
+export type TabId = "create" | "edit" | "motion" | "avatar";
+export type DraftKey = "create" | "extend" | "edit" | "motion" | "avatar";
+export const DRAFT_KEYS: DraftKey[] = ["create", "extend", "edit", "motion", "avatar"];
+export const OPERATION_OF: Record<DraftKey, Operation> = { create: "create", extend: "extend", edit: "edit", motion: "motion", avatar: "avatar" };
+export const TAB_OF: Record<DraftKey, TabId> = { create: "create", extend: "create", edit: "edit", motion: "motion", avatar: "avatar" };
 
 /** One input in the draft: an upload in progress, a verified asset (upload or own saved result) or an own job. */
 export type DraftInput = {
@@ -49,15 +49,20 @@ export function modesOf(model: CatalogModel | null): InputMode[] {
   return model?.modes?.length ? model.modes : [{ id: "default", uses: Object.keys(model?.inputs ?? {}) }];
 }
 
-export function activeMode(model: CatalogModel | null, modeId: string | null): InputMode {
+export function activeMode(model: CatalogModel | null, modeId: string | null, slots?: Record<string, DraftInput[]>): InputMode {
   const modes = modesOf(model);
-  return modes.find((m) => m.id === modeId) ?? modes[0];
+  const exact = modes.find((m) => m.id === modeId);
+  if (exact) return exact;
+  // A combination chosen on another model ("frames" there, "image" here) falls back to the first one that takes the
+  // files already added, so switching models never hides a start frame the customer just uploaded.
+  const filled = Object.entries(slots ?? {}).filter(([k, items]) => model?.inputs?.[k] && readyItems(items).length).map(([k]) => k);
+  return (filled.length ? modes.find((m) => filled.every((k) => m.uses.includes(k))) : undefined) ?? modes[0];
 }
 
 /** Slots shown for the active combination, in the spec's order. */
-export function visibleSlots(model: CatalogModel | null, modeId: string | null): [string, InputSlotSpec][] {
+export function visibleSlots(model: CatalogModel | null, modeId: string | null, slots?: Record<string, DraftInput[]>): [string, InputSlotSpec][] {
   if (!model?.inputs) return [];
-  const uses = activeMode(model, modeId).uses;
+  const uses = activeMode(model, modeId, slots).uses;
   return Object.entries(model.inputs).filter(([name]) => uses.includes(name));
 }
 
@@ -67,8 +72,8 @@ export const readyItems = (items: DraftInput[] | undefined) => (items ?? []).fil
 export function visibleOptions(model: CatalogModel | null, draft: Draft): [string, OptionSpec][] {
   if (!model) return [];
   const hidden = new Set<string>();
-  for (const [name, spec] of visibleSlots(model, draft.modeId)) if (readyItems(draft.slots[name]).length) for (const h of spec.hides ?? []) hidden.add(h);
-  const allowed = activeMode(model, draft.modeId).allowed ?? {};
+  for (const [name, spec] of visibleSlots(model, draft.modeId, draft.slots)) if (readyItems(draft.slots[name]).length) for (const h of spec.hides ?? []) hidden.add(h);
+  const allowed = activeMode(model, draft.modeId, draft.slots).allowed ?? {};
   return Object.entries(model.options ?? {})
     .filter(([k, o]) => !o.derived && !hidden.has(k))
     .map(([k, o]): [string, OptionSpec] => [k, allowed[k] ? { ...o, values: o.values.filter((v) => allowed[k].map(String).includes(String(v))) } : o]);
@@ -85,6 +90,24 @@ export function effectiveOptions(model: CatalogModel, draft: Draft): Record<stri
   }
   return out;
 }
+
+/** True when these settings form a combination the model does not offer (the server refuses it and never prices it). */
+export function isExcluded(model: Pick<CatalogModel, "exclude"> | null, options: Record<string, string | number>): boolean {
+  return (model?.exclude ?? []).some((e) => Object.entries(e).every(([k, v]) => String(options[k]) === String(v)));
+}
+
+/** The model's message for an excluded combination of these settings (null when they are offered). */
+export function exclusionProblem(model: Pick<CatalogModel, "exclude" | "excludeMessage"> | null, options: Record<string, string | number>): string | null {
+  return isExcluded(model, options) ? (model?.excludeMessage ?? "This combination of settings is not available. Choose another setting.") : null;
+}
+
+/** Values of one setting that would form an excluded combination with the other current settings (shown disabled). */
+export function excludedValues(model: Pick<CatalogModel, "exclude"> | null, options: Record<string, string | number>, key: string, values: (string | number)[]): Set<string> {
+  return new Set(values.filter((v) => isExcluded(model, { ...options, [key]: v })).map(String));
+}
+
+/** A tool that takes no prompt at all (an upscaler, a background remover): the prompt box is not shown. */
+export const takesNoPrompt = (model: Pick<CatalogModel, "prompt"> | null) => (model?.prompt?.max ?? 1) === 0;
 
 /** Maximum clip length for a slot once the model's conditional rules (for example orientation) are applied. */
 export function slotMaxSeconds(model: CatalogModel | null, slot: string, spec: InputSlotSpec, options: Record<string, string | number>): { max?: number; message?: string } {
@@ -150,7 +173,7 @@ function addPrompt(spec: InputSlotSpec) {
 /** Why the request cannot be priced yet, in the customer's words (null = ready to price). */
 export function missingReason(model: CatalogModel | null, draft: Draft): string | null {
   if (!model) return "Choose a model";
-  const slots = visibleSlots(model, draft.modeId);
+  const slots = visibleSlots(model, draft.modeId, draft.slots);
   const options = effectiveOptions(model, draft);
   for (const [name, spec] of slots) {
     const items = draft.slots[name] ?? [];
@@ -159,7 +182,7 @@ export function missingReason(model: CatalogModel | null, draft: Draft): string 
     const wrong = items.find((i) => spec.kind !== "job" && spec.mime && !spec.mime.includes(i.mime));
     if (wrong) return `${spec.label}: this model does not accept ${typeName(wrong.mime)} files`;
   }
-  const mode = activeMode(model, draft.modeId);
+  const mode = activeMode(model, draft.modeId, draft.slots);
   for (const req of mode.requires ?? []) {
     const spec = model.inputs?.[req];
     if (spec && readyItems(draft.slots[req]).length < Math.max(1, spec.min)) return addPrompt(spec);
@@ -179,6 +202,9 @@ export function missingReason(model: CatalogModel | null, draft: Draft): string 
       if (total > spec.totalMaxSeconds * 1000 + 50) return `${spec.label} can be ${spec.totalMaxSeconds} s in total`;
     }
   }
+  const excluded = exclusionProblem(model, options);
+  if (excluded) return excluded;
+  if (takesNoPrompt(model)) return null;
   const p = draft.prompt.trim();
   const min = model.prompt?.optional ? 0 : Math.max(1, model.prompt?.min ?? 1);
   if (p.length < min) return p.length ? "Describe it in a few more words" : "Describe what you want";
@@ -196,18 +222,18 @@ export type StudioQuoteRequest = { modelId: string; prompt: string; options: Rec
 export function quoteRequest(model: CatalogModel | null, draft: Draft): StudioQuoteRequest | null {
   if (!model || missingReason(model, draft)) return null;
   const inputs: Record<string, string[]> = {};
-  for (const [name, spec] of visibleSlots(model, draft.modeId)) {
+  for (const [name, spec] of visibleSlots(model, draft.modeId, draft.slots)) {
     const ids = readyItems(draft.slots[name]).map((i) => (spec.kind === "job" ? i.jobId : i.assetId)).filter((x): x is string => Boolean(x));
     if (ids.length) inputs[name] = ids;
   }
-  return { modelId: model.id, prompt: draft.prompt.trim(), options: effectiveOptions(model, draft), inputs };
+  return { modelId: model.id, prompt: takesNoPrompt(model) ? "" : draft.prompt.trim(), options: effectiveOptions(model, draft), inputs };
 }
 
 /** Routes dropped files to the first visible slot that accepts the type and still has room. */
 export function routeFiles<F extends { mime: string }>(model: CatalogModel | null, draft: Draft, files: F[], only?: string[]) {
   const placed: { slot: string; file: F }[] = [];
   const rejected: F[] = [];
-  const candidates = visibleSlots(model, draft.modeId).filter(([name, spec]) => spec.kind !== "job" && (!only || only.includes(name)));
+  const candidates = visibleSlots(model, draft.modeId, draft.slots).filter(([name, spec]) => spec.kind !== "job" && (!only || only.includes(name)));
   const room = new Map(candidates.map(([name, spec]) => [name, spec.max - (draft.slots[name] ?? []).filter((i) => i.status !== "error").length]));
   for (const f of files) {
     const target = candidates.find(([name, spec]) => (room.get(name) ?? 0) > 0 && (spec.mime ?? []).includes(f.mime));
@@ -221,9 +247,21 @@ export function routeFiles<F extends { mime: string }>(model: CatalogModel | nul
 
 /** Billable seconds the server will derive from the source clip (rounded up), for display before the quote. */
 export function derivedSeconds(model: CatalogModel | null, draft: Draft): number | null {
-  const from = model?.derived ? Object.values(model.derived)[0]?.from : null;
-  const item = from ? readyItems(draft.slots[from])[0] : null;
+  const spec = Object.values(model?.derived ?? {}).find((d) => (d.kind ?? "seconds") === "seconds" && typeof d.from === "string");
+  const item = spec ? readyItems(draft.slots[spec.from as string])[0] : null;
   return item?.durationMs ? Math.ceil(item.durationMs / 1000 - 0.05) : null;
+}
+
+/**
+ * Seconds the supplier bills when reference videos count too ("billed_seconds": the clip length + the reference videos'
+ * total length, rounded up), or null when the model has no such rule or no reference video is attached.
+ */
+export function billedSeconds(model: CatalogModel | null, draft: Draft, options: Record<string, string | number>): number | null {
+  const spec = Object.values(model?.derived ?? {}).find((d) => d.kind === "billed_seconds");
+  if (!spec) return null;
+  const ms = [spec.from].flat().flatMap((slot) => readyItems(draft.slots[slot])).reduce((n, i) => n + (i.durationMs ?? 0), 0);
+  if (!ms) return null;
+  return Number(options[spec.plus ?? "duration"] ?? 0) + Math.ceil(ms / 1000 - 0.0005);
 }
 
 /** KIE credits a private test is expected to cost (documented schedule; the server's estimate is authoritative). */

@@ -12,8 +12,10 @@ import { canonicalMime, kindOf, precheck, uploadReference, UploadAborted } from 
 import { TERMINAL_STATES, units, type Catalog, type CatalogModel, type InputSlotSpec, type Job, type JobOutput } from "@/lib/live/types";
 import {
   activeMode,
+  billedSeconds,
   DRAFT_KEYS,
   derivedSeconds,
+  excludedValues,
   effectiveOptions,
   emptyDraft,
   estimateSupplierCredits,
@@ -29,6 +31,7 @@ import {
   routeFiles,
   saveDrafts,
   TAB_OF,
+  takesNoPrompt,
   visibleOptions,
   visibleSlots,
   type Draft,
@@ -62,6 +65,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "create", label: "Create Video" },
   { id: "edit", label: "Edit Video" },
   { id: "motion", label: "Motion Control" },
+  { id: "avatar", label: "Avatar" },
 ];
 
 const BANNER: Record<DraftKey, { title: string; subtitle: string; poster: string }> = {
@@ -69,9 +73,10 @@ const BANNER: Record<DraftKey, { title: string; subtitle: string; poster: string
   extend: { title: "Extend video", subtitle: "Continue one of your own clips", poster: stillOf("goldenHourWalk") },
   edit: { title: "Edit video", subtitle: "Make targeted changes with a prompt", poster: stillOf("hairRollers") },
   motion: { title: "Motion control", subtitle: "Move your character like the person in a video", poster: stillOf("teeDance") },
+  avatar: { title: "Talking avatar", subtitle: "Make a portrait speak or sing your audio", poster: stillOf("studioSessionSolo") },
 };
 
-const MODE_NAME: Record<DraftKey, string> = { create: "Video creation", extend: "Extending videos", edit: "Video editing", motion: "Motion control" };
+const MODE_NAME: Record<DraftKey, string> = { create: "Video creation", extend: "Extending videos", edit: "Video editing", motion: "Motion control", avatar: "Talking avatars" };
 
 const HOW: Record<DraftKey, { title: string; body: string }[]> = {
   create: [
@@ -97,6 +102,12 @@ const HOW: Record<DraftKey, { title: string; body: string }[]> = {
     { title: "Choose the orientation", body: "“Follow the video” makes your character face and turn like the person in the video (clips up to 30 s). “Keep the image's pose” keeps the direction your character faces in the image (clips up to 10 s). This setting does not choose the background." },
     { title: "Price follows the clip", body: "The cost is per second of the motion video, rounded up, and is shown before you generate." },
   ],
+  avatar: [
+    { title: "Add a portrait", body: "A clear photo of a face (some models also take pets and cartoon characters). The person in the photo is who speaks." },
+    { title: "Add the speech", body: "An MP3, WAV or M4A clip with the voice to use. The video is exactly as long as the audio." },
+    { title: "Describe the performance", body: "Expression, gestures and camera — for example “smiles and nods while speaking, slow push-in”." },
+    { title: "Price follows the audio", body: "The cost is per second of audio, rounded up, and is shown before you generate." },
+  ],
 };
 
 const PLACEHOLDER: Record<DraftKey, string> = {
@@ -104,13 +115,17 @@ const PLACEHOLDER: Record<DraftKey, string> = {
   extend: "Describe what happens next — e.g. “The camera keeps rising until the whole city is visible”.",
   edit: "Describe what to change in the video — e.g. “Make it snow” or “Turn the scene into night”.",
   motion: "Optional: describe the scene or style — e.g. “in a neon-lit studio”.",
+  avatar: "Describe the expression, gestures and camera — e.g. “Smiles warmly and nods while speaking, slow push-in”.",
 };
 
-const MODE_SHORT: Record<string, string> = { text: "Text only", frames: "Frames", reference: "References" };
+const MODE_SHORT: Record<string, string> = { text: "Text only", image: "Start frame", frames: "Frames", reference: "References", video: "Video refs", audio: "Audio" };
 const MODE_HELP: Record<string, string> = {
   text: "Describe the whole scene; no files needed.",
+  image: "The clip starts on your image.",
   frames: "The clip starts on your image. Add an end frame to choose where it lands.",
   reference: "Reference images keep a subject, product or style consistent.",
+  video: "Reference videos give the subject or the motion; describe the new scene in the prompt.",
+  audio: "Reference audio guides the voice, music or sound of the clip.",
 };
 
 /** On phones the composer and the result are stacked: bring the relevant one into view after an action. */
@@ -358,13 +373,29 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     if (recent.data) prefetchOutputs(recent.data);
   }, [recent.data]);
 
+  /**
+   * Can this extend model continue that saved video? A model that continues an earlier task takes only its own family
+   * within the days its supplier keeps tasks; a model that takes the video file itself takes any of them.
+   */
+  const takesJob = useCallback(
+    (m: CatalogModel, job: Job) => {
+      const jobSlot = Object.values(m.inputs ?? {}).find((s) => s.kind === "job");
+      if (!jobSlot) return Object.values(m.inputs ?? {}).some((s) => s.kind === "video");
+      const fam = familyOf(job.modelId);
+      return Boolean(fam && (jobSlot.families ?? []).includes(fam)) && ageDays(job.completedAt ?? job.createdAt) <= (jobSlot.maxAgeDays ?? 13);
+    },
+    [familyOf],
+  );
+
   /** "Edit this video", "Copy this motion", "Extend this video": the saved file becomes an input of another mode. */
   const startUse = useCallback(
     (target: DraftKey, job: Job, output: JobOutput) => {
-      const list = modelsFor(target);
+      const list = target === "extend" ? modelsFor(target).filter((x) => takesJob(x, job)) : modelsFor(target);
       const m = list.find((x) => x.id === drafts[target].modelId) ?? list[0];
-      const want = target === "extend" ? "job" : "video";
-      const slot = m?.inputs ? Object.entries(m.inputs).find(([, s]) => s.kind === want)?.[0] : undefined;
+      const entries = Object.entries(m?.inputs ?? {});
+      const found = entries.find(([, s]) => s.kind === "job") ?? entries.find(([, s]) => s.kind === "video");
+      const want = found?.[1].kind === "job" ? "job" : "video";
+      const slot = found?.[0];
       if (!m || !slot) return;
       const mode = modesOf(m).find((x) => x.uses.includes(slot));
       const itemKey = newIdempotencyKey();
@@ -381,23 +412,15 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         width: output.width,
         height: output.height,
       };
-      update(target, (d) => ({ ...d, modelId: d.modelId ?? m.id, modeId: mode?.id ?? d.modeId, slots: { ...d.slots, [slot]: [item] } }));
+      update(target, (d) => ({ ...d, modelId: list.some((x) => x.id === d.modelId) ? d.modelId : m.id, modeId: mode?.id ?? d.modeId, slots: { ...d.slots, [slot]: [item] } }));
       changeTab(TAB_OF[target], target === "extend" ? "extend" : target === "create" ? "create" : undefined);
       if (want !== "job") void probeInto(target, slot, itemKey, output.assetId);
       reveal("video-composer");
     },
-    [modelsFor, drafts, update, changeTab, probeInto],
+    [modelsFor, takesJob, drafts, update, changeTab, probeInto],
   );
 
-  const extendable = useCallback(
-    (job: Job) => {
-      const spec = modelsFor("extend")[0]?.inputs?.source_job;
-      if (!spec) return false;
-      const fam = familyOf(job.modelId);
-      return Boolean(fam && (spec.families ?? []).includes(fam)) && ageDays(job.completedAt ?? job.createdAt) <= (spec.maxAgeDays ?? 13);
-    },
-    [modelsFor, familyOf],
-  );
+  const extendable = useCallback((job: Job) => modelsFor("extend").some((m) => takesJob(m, job)), [modelsFor, takesJob]);
   const uses: UseAction[] = useMemo(
     () => [
       { id: "edit", label: "Edit this video", applies: (_j, o) => o.mime.startsWith("video/") && modelsFor("edit").length > 0, run: (j, o) => startUse("edit", j, o) },
@@ -481,6 +504,10 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const insufficient = cost !== null && cost > available;
   const options = model ? effectiveOptions(model, draft) : {};
   const seconds = quote?.options?.seconds !== undefined ? Number(quote.options.seconds) : derivedSeconds(model, draft);
+  const billed = quote?.options?.billed !== undefined && quote.options.with_video !== "no" && readyItems(draft.slots.reference_videos).length
+    ? Number(quote.options.billed)
+    : billedSeconds(model, draft, model ? effectiveOptions(model, draft) : {});
+  const derivedFromAudio = Object.values(model?.derived ?? {}).some((d) => typeof d.from === "string" && model?.inputs?.[d.from]?.kind === "audio");
   const estimate = testMode && model ? estimateSupplierCredits(model, { ...options, ...(seconds ? { seconds } : {}) }, seconds) : null;
   const paused = Boolean(catalog.data?.generationPaused);
 
@@ -563,10 +590,10 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   const audio = shown.find(([k]) => k === "audio")?.[1] ?? null;
   const orientation = shown.find(([k]) => k === "orientation")?.[1] ?? null;
   const advanced = shown.filter(([k, o]) => !chipKeys.includes(k) && !["mode", "tier", "audio", "orientation"].includes(k) && o.values.length > 1);
-  const mode = activeMode(model, draft.modeId);
+  const mode = activeMode(model, draft.modeId, draft.slots);
   const modes = modesOf(model);
   const promptOptional = Boolean(model?.prompt?.optional);
-  const mentions = Object.entries(model?.inputs ?? {}).filter(([name, s]) => s.mention && visibleSlots(model, draft.modeId).some(([v]) => v === name));
+  const mentions = Object.entries(model?.inputs ?? {}).filter(([name, s]) => s.mention && visibleSlots(model, draft.modeId, draft.slots).some(([v]) => v === name));
 
   const insertMention = (m: string) => {
     const el = promptRef.current;
@@ -578,7 +605,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     window.setTimeout(() => el?.focus(), 0);
   };
 
-  const promptBox = model ? (
+  const promptBox = model && !takesNoPrompt(model) ? (
     <div className="rounded-xl bg-raised ring-1 ring-white/[0.06] focus-within:ring-brand-blue-bright/70">
       <label htmlFor="video-prompt" className="block px-3 pt-2.5 text-[11px] font-medium text-muted">
         {promptOptional ? "Scene description (optional)" : "Prompt"}
@@ -628,7 +655,16 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
     <div className="space-y-2.5">
       <ModelPicker models={models} value={model} onChange={(id) => update(dk, (d) => ({ ...d, modelId: id }))} />
       {rows.map(([k, o]) => (
-        <OptionRow key={k} optionKey={k} spec={o} value={options[k]} onChange={(v) => setOption(k, v)} label={k === "mode" ? "Quality" : undefined} />
+        <OptionRow
+          key={k}
+          optionKey={k}
+          spec={o}
+          value={options[k]}
+          onChange={(v) => setOption(k, v)}
+          label={k === "mode" ? "Quality" : undefined}
+          unavailable={excludedValues(model, options, k, o.values)}
+          unavailableHint="Not with the other settings"
+        />
       ))}
       {chips.length ? (
         <div className="flex gap-1.5">
@@ -640,6 +676,8 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
               value={options[k]}
               onChange={(v) => setOption(k, v)}
               icon={k === "duration" ? <Clock3 aria-hidden className="size-3.5" /> : k === "aspect_ratio" ? <RectangleHorizontal aria-hidden className="size-3.5" /> : <Gem aria-hidden className="size-3.5" />}
+              unavailable={excludedValues(model, options, k, o.values)}
+              unavailableHint="Not with the other settings"
             />
           ))}
         </div>
@@ -647,13 +685,18 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
       {mode.allowedMessage && mode.allowed ? <p className="px-1 text-xs text-muted">{mode.allowedMessage}</p> : null}
       {seconds && model.derived ? (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted">
-          <Clock3 aria-hidden className="size-3.5" /> Billed length: {seconds} s, taken from your clip (rounded up).
+          <Clock3 aria-hidden className="size-3.5" /> Billed length: {seconds} s, taken from your {derivedFromAudio ? "audio" : "clip"} (rounded up).
+        </p>
+      ) : null}
+      {billed ? (
+        <p className="flex items-center gap-1.5 px-1 text-xs text-muted">
+          <Clock3 aria-hidden className="size-3.5" /> Billed length: {billed} s — the clip plus your reference videos (rounded up).
         </p>
       ) : null}
     </div>
   ) : null;
 
-  const slotsNow = visibleSlots(model, draft.modeId);
+  const slotsNow = visibleSlots(model, draft.modeId, draft.slots);
   const singles = slotsNow.filter(([, s]) => s.max === 1 && s.kind !== "job");
   // Images first, then video, then audio (the catalog stores slots in key order).
   const KIND_ORDER = ["image", "video", "audio"];
@@ -672,7 +715,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
         item={item}
         compact={compact}
         title={titles[spec.label] ?? spec.label}
-        icon={spec.kind === "video" ? "video" : spec.label === "Your character" ? "plus" : "image"}
+        icon={spec.kind === "video" ? "video" : spec.kind === "audio" ? "audio" : spec.label === "Your character" ? "plus" : "image"}
         hint={blockedBy ? `Add a ${model?.inputs?.[blockedBy]?.label.toLowerCase() ?? "start frame"} first` : spec.hint ?? slotHint(spec)}
         disabled={Boolean(blockedBy) || !model}
         onFiles={(files) => model && files[0] && void upload(dk, model, name, spec, files[0])}
@@ -732,7 +775,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
   ) : null;
 
   const chosenSource = jobSlot ? draft.slots[jobSlot[0]]?.[0] : undefined;
-  const eligibleSources = jobSlot ? (recent.data ?? []).filter((j) => j.state === "succeeded" && j.outputs.length > 0 && extendable(j)) : [];
+  const eligibleSources = jobSlot && model ? (recent.data ?? []).filter((j) => j.state === "succeeded" && j.outputs.length > 0 && takesJob(model, j)) : [];
   const extendSource = jobSlot ? (
     <div className="space-y-2">
       {chosenSource ? <InputThumb item={chosenSource} label={jobSlot[1].label} large onRemove={() => removeItem(dk, jobSlot[0], chosenSource.key)} /> : null}
@@ -840,7 +883,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
               label="Create from"
               value={createSub}
               options={[
-                { id: "create", label: "References" },
+                { id: "create", label: "New video" },
                 { id: "extend", label: "Extend video" },
               ]}
               onChange={(v) => changeTab("create", v)}
@@ -897,7 +940,7 @@ function Studio({ userId, initialDraft = "create", initialJobId = null, use = nu
                   </p>
                 </fieldset>
               ) : null}
-              {dk === "motion" || advanced.length ? (
+              {(dk === "motion" && promptBox) || advanced.length ? (
                 <Disclosure title="Advanced settings">
                   {dk === "motion" ? promptBox : null}
                   {advanced.map(([k, o]) => (
@@ -1123,6 +1166,7 @@ const EMPTY_HINT: Record<DraftKey, string> = {
   extend: "Choose one of your videos and describe what happens next.",
   edit: "Add the video you want to change, describe the edit and press Generate.",
   motion: "Add a motion video and your character, then press Generate.",
+  avatar: "Add a portrait and a speech clip, describe the performance and press Generate.",
 };
 
 function StudioSkeleton() {

@@ -8,10 +8,10 @@ import { LIVE } from "@/lib/config";
 export const metadata: Metadata = { title: "Video studio" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DRAFTS: Record<string, DraftKey> = { create: "create", extend: "extend", edit: "edit", motion: "motion" };
+const DRAFTS: Record<string, DraftKey> = { create: "create", extend: "extend", edit: "edit", motion: "motion", avatar: "avatar" };
 
 /**
- * Deep links: `?tab=edit|motion|extend` opens a mode, `?job=<id>` reopens a job, `?view=history|library|how` opens a
+ * Deep links: `?tab=edit|motion|extend|avatar` opens a mode, `?job=<id>` reopens a job, `?view=history|library|how` opens a
  * canvas view (How it works when none is given, History for a job or a reused file), and `?use=<assetId>&slot=<name>`
  * (from "Use as …" on a saved result) places that file into a slot once. Ownership is checked by the server.
  */

@@ -68,6 +68,10 @@ export function ChoiceBar<T extends string>({
 const valueLabel = (spec: OptionSpec, v: string | number, key: string) =>
   spec.labels?.[String(v)] ?? (key === "duration" || key === "seconds" ? `${v}s` : String(v).replace(/^4k$/i, "4K"));
 
+/** The values of a setting as menu options; values the model does not offer with the other settings are disabled. */
+const menuOptions = (spec: OptionSpec, optionKey: string, unavailable?: Set<string>, unavailableHint?: string) =>
+  spec.values.map((v) => ({ value: v, label: valueLabel(spec, v, optionKey), ...(unavailable?.has(String(v)) ? { disabled: true, hint: unavailableHint ?? "Not with these settings" } : {}) }));
+
 /** Compact setting chip (length, shape, resolution); opens the shared dark select popover. */
 export function OptionChip({
   optionKey,
@@ -75,19 +79,24 @@ export function OptionChip({
   value,
   onChange,
   icon,
+  unavailable,
+  unavailableHint,
 }: {
   optionKey: string;
   spec: OptionSpec;
   value: string | number;
   onChange: (v: string | number) => void;
   icon: ReactNode;
+  /** Values that would form a combination the model does not offer with the other current settings. */
+  unavailable?: Set<string>;
+  unavailableHint?: string;
 }) {
   const fixed = spec.values.length < 2;
   return (
     <SelectMenu
       label={spec.label}
       value={value}
-      options={spec.values.map((v) => ({ value: v, label: valueLabel(spec, v, optionKey) }))}
+      options={menuOptions(spec, optionKey, unavailable, unavailableHint)}
       onChange={onChange}
       className={cn(
         "control-raised flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-white/[0.07] bg-raised px-2 text-[13px] font-semibold text-ink transition-colors",
@@ -112,19 +121,23 @@ export function OptionRow({
   value,
   onChange,
   label,
+  unavailable,
+  unavailableHint,
 }: {
   optionKey: string;
   spec: OptionSpec;
   value: string | number;
   onChange: (v: string | number) => void;
   label?: string;
+  unavailable?: Set<string>;
+  unavailableHint?: string;
 }) {
   const fixed = spec.values.length < 2;
   return (
     <SelectMenu
       label={label ?? spec.label}
       value={value}
-      options={spec.values.map((v) => ({ value: v, label: valueLabel(spec, v, optionKey) }))}
+      options={menuOptions(spec, optionKey, unavailable, unavailableHint)}
       onChange={onChange}
       className={cn(
         "control-raised flex w-full items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-raised px-3 py-2 text-left transition-colors",

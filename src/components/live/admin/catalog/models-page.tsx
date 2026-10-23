@@ -19,10 +19,12 @@ import { KIND_LABEL, KIND_ORDER, modelKind, type ModelKind, type PolicyApplyResu
 import { PricingPolicyPanel } from "./pricing-policy-panel";
 import { configLabel, Empty, fmtMarkup, Notice, range, Switch, Wrap } from "./shared";
 import type { Supply, SupplyModel } from "./supply";
-import { SearchBox, Segmented, SupplierMark } from "./supply-parts";
+import { GroupRow, SearchBox, Segmented, SupplierMark } from "./supply-parts";
+import { providerOf } from "@/lib/live/makers";
 import type { AdminModel, AvailabilityState, CatalogData, Check } from "./types";
 
 type Filter = "all" | ModelKind;
+type Status = "all" | "on" | "off" | "reference";
 type RowMessage = { tone: "error" | "attention"; text: string; fix?: { label: string; section?: DiagnosticsSection } };
 
 const isOn = (s: AvailabilityState) => s === "enabled" || s === "experimental";
@@ -64,6 +66,7 @@ export function ModelsPage() {
   const pathname = usePathname();
   const opened = sp.get("model");
   const [filter, setFilter] = useState<Filter>("all");
+  const [status, setStatus] = useState<Status>("all");
   const [q, setQ] = useState("");
   const [pending, setPending] = useState<Record<string, AvailabilityState>>({});
   const [messages, setMessages] = useState<Record<string, RowMessage | undefined>>({});
@@ -88,12 +91,28 @@ export function ModelsPage() {
   };
 
   const supplyById = useMemo(() => new Map((supply.data?.models ?? []).map((s) => [s.id, s])), [supply.data]);
+  const statusOf = (m: AdminModel): Exclude<Status, "all"> =>
+    isOn(m.state) ? "on" : m.readiness.checks.some((x) => (x.key === "supplier_cost" || x.key === "price") && !x.ok && x.fix === "edit_cost") ? "reference" : "off";
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
     return (c.data?.models ?? []).filter(
-      (m) => (filter === "all" || modelKind(m) === filter) && (!term || [m.name, m.family ?? "", m.variant ?? ""].some((s) => s.toLowerCase().includes(term))),
+      (m) =>
+        (filter === "all" || modelKind(m) === filter) &&
+        (status === "all" || statusOf(m) === status) &&
+        (!term || [m.name, m.family ?? "", m.variant ?? "", providerOf(m).name].some((s) => s.toLowerCase().includes(term))),
     );
-  }, [c.data, filter, q]);
+  }, [c.data, filter, status, q]);
+  // Grouped by who makes each model, in catalog order (one heading per maker).
+  const groups = useMemo(() => {
+    const out: { name: string; items: AdminModel[] }[] = [];
+    for (const m of rows) {
+      const name = providerOf(m).name;
+      const g = out.find((x) => x.name === name);
+      if (g) g.items.push(m);
+      else out.push({ name, items: [m] });
+    }
+    return out;
+  }, [rows]);
 
   if (c.error && !c.data) {
     return (
@@ -241,7 +260,20 @@ export function ModelsPage() {
           onChange={setFilter}
           options={[{ id: "all", label: "All", count: d.models.length }, ...KIND_ORDER.filter((k) => counts[k]).map((k) => ({ id: k, label: KIND_LABEL[k], count: counts[k] }))]}
         />
-        <SearchBox value={q} onChange={setQ} label="Search models" />
+        <Segmented<Status>
+          label="Status"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { id: "all", label: "Any status" },
+            { id: "on", label: "On", count: d.models.filter((m) => statusOf(m) === "on").length },
+            { id: "off", label: "Off", count: d.models.filter((m) => statusOf(m) === "off").length },
+            ...(d.models.some((m) => statusOf(m) === "reference")
+              ? [{ id: "reference" as const, label: "KIE reference needed", count: d.models.filter((m) => statusOf(m) === "reference").length }]
+              : []),
+          ]}
+        />
+        <SearchBox value={q} onChange={setQ} label="Search models or makers" />
       </div>
 
       <p aria-live="polite" className="sr-only">
@@ -267,21 +299,33 @@ export function ModelsPage() {
                   <tr>
                     <th scope="col" className="px-4 py-3 font-semibold sm:px-5">Model · example settings</th>
                     <th scope="col" className="px-3 py-3 text-right font-semibold">Customer price</th>
-                    {s ? <th scope="col" className="px-3 py-3 font-semibold">Served by · cost</th> : null}
+                    {s ? <th scope="col" className="px-3 py-3 font-semibold">Serves these settings · cost</th> : null}
                     {showCosts ? <th scope="col" className="px-3 py-3 text-right font-semibold">Effective markup</th> : null}
                     <th scope="col" className="px-4 py-3 text-right font-semibold sm:px-5">For customers</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-rule">
-                  {rows.map((m) => (
-                    <ModelRow key={m.id} {...rowProps(m)} />
-                  ))}
-                </tbody>
+                {groups.map((g) => (
+                  <tbody key={g.name} className="divide-y divide-rule">
+                    <GroupRow label={g.name} count={g.items.length} colSpan={2 + (s ? 1 : 0) + (showCosts ? 1 : 0) + 1} />
+                    {g.items.map((m) => (
+                      <ModelRow key={m.id} {...rowProps(m)} />
+                    ))}
+                  </tbody>
+                ))}
               </table>
             </div>
             <ul className="divide-y divide-rule xl:hidden">
-              {rows.map((m) => (
-                <ModelCard key={m.id} {...rowProps(m)} />
+              {groups.map((g) => (
+                <li key={g.name}>
+                  <p className="bg-paper/70 px-4 pt-3 pb-1.5 text-xs font-bold tracking-wide text-muted-dark uppercase">
+                    {g.name} <span className="font-semibold tabular">· {g.items.length}</span>
+                  </p>
+                  <ul className="divide-y divide-rule">
+                    {g.items.map((m) => (
+                      <ModelCard key={m.id} {...rowProps(m)} />
+                    ))}
+                  </ul>
+                </li>
               ))}
             </ul>
           </>

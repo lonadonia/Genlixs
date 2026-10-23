@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/format";
 
-export type SelectOption<T extends string | number> = { value: T; label: string; hint?: string };
+export type SelectOption<T extends string | number> = { value: T; label: string; hint?: string; disabled?: boolean };
 
 const GAP = 6;
 /** Clock read for typeahead (event handlers only, kept out of render). */
@@ -73,6 +73,8 @@ export function SelectMenu<T extends string | number>({
   };
   const choose = (i: number) => {
     const o = options[i];
+    // A value that is not available with the other settings stays visible (with its reason) but cannot be chosen.
+    if (o?.disabled) return;
     if (o) onChange(o.value);
     close();
   };
@@ -166,6 +168,7 @@ export function SelectMenu<T extends string | number>({
               id={`${id}-list`}
               role="listbox"
               aria-label={label}
+              data-popover=""
               tabIndex={-1}
               aria-activedescendant={`${id}-o-${active}`}
               onKeyDown={onListKey}
@@ -181,10 +184,12 @@ export function SelectMenu<T extends string | number>({
                     data-index={i}
                     role="option"
                     aria-selected={on}
+                    aria-disabled={o.disabled || undefined}
                     onMouseEnter={() => setActive(i)}
                     onClick={() => choose(i)}
                     className={cn(
-                      "flex h-9 cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5",
+                      "flex h-9 items-center justify-between gap-3 rounded-lg px-2.5",
+                      o.disabled ? "cursor-not-allowed opacity-45" : "cursor-pointer",
                       i === active ? "bg-white/[0.08] text-ink" : "text-muted",
                       on && "text-ink",
                     )}

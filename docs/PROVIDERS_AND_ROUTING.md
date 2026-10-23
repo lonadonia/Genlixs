@@ -185,8 +185,16 @@ History: every earlier attempt was linked to its model's original KIE route; cha
 | Cuddler | Bearer | `POST /v1/videos`, `/v1/images` with `max_usd` = estimate × 1.15; `GET /v1/{videos,images}/{id}` | `GET /v1/balance` (total, held, available) | `GET /v1/usage` | `Idempotency-Key = genlixs-<attempt>`; one re-send with the same key after a lost/5xx reply |
 | APIMart | Bearer | `POST /v1/videos/generations`, `/v1/images/generations`; `GET /v1/tasks/{id}` | `GET /v1/user/balance` (+ key allowance `/v1/balance`) | `GET /v1/usage` (≤ 31 days, UTC) | none |
 | NezhaGate | Bearer | `POST /v1/videos/generations`, `/v1/images/generations`; `GET /v1/{videos,images}/jobs/{id}` | `GET /v1/usage` (`balance.usd`) | same, today | none (502/503 documented as not billed → retry) |
-| PoYo | Bearer | `POST /api/generate/submit` (Kling 3.0 Motion Control); `GET /api/generate/status/{id}` | `GET /api/user/balance` | — | none |
+| PoYo | Bearer | `POST /api/generate/submit` (Kling 3.0 / 2.6 Motion Control, Wan 2.7, HappyHorse, Gemini Omni 1.1 Flash); `GET /api/generate/status/{id}` | `GET /api/user/balance` | — | none |
 | Duomi | raw `Authorization` | `POST /api/gemini/nano-banana(-edit)`; `GET /api/gemini/nano-banana/{id}`; business errors inside HTTP 200 | `GET https://api.wike.cc/api/account/get` (points) | — | none |
+
+Full catalog (22 Oct 2026): request builders `apimart-wan`, `apimart-pixverse`, `apimart-happyhorse`, `apimart-image-v2`
+(`src/lib/providers/apimart-catalog.ts`) and `poyo-wan-2-7`, `poyo-happyhorse`, `poyo-gemini-omni` (`src/lib/providers/poyo-catalog.ts`)
+use the same task APIs and result hosts as the suppliers' first integrations; a supplier model id may name one model per input mode
+(`"default;mode=id"`, resolved by `src/lib/providers/model-id.ts`). The 29 offers they serve are listed, with what each takes and
+saves, in `docs/CATALOG_COVERAGE.md` §2; all are off until the owner activates them (§3a). The offers are generated from
+`supabase/catalog/offers.mjs` by `supabase/catalog/build.mjs`, which refuses an offer that does not match its model exactly or is
+never cheaper than KIE.
 
 Units: KIE credit and PoYo credit 200/USD, APIMart credit 10/USD (Gold), CNY 6.70/USD and Duomi point 6,700/USD are
 **illustrative** until replaced with the rate actually paid (Providers & balances › Routing & offers › offer › Price, or

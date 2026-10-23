@@ -110,7 +110,10 @@ export function GenerationPreviewCard({
   const pct = displayPercent(progress);
   const [w, h] = frameRatio(job);
   const video = (job.outputKind ?? (job.tool === "video" ? "video" : "image")) === "video";
-  const output = job.outputs?.[0] ?? null;
+  // Some models deliver several files per job (Grok Imagine: two images); one is shown large, the others as thumbnails.
+  const [shown, setShown] = useState(0);
+  const outputs = job.outputs ?? [];
+  const output = outputs[Math.min(shown, Math.max(0, outputs.length - 1))] ?? null;
   const ready = progress.stage === "ready" && output !== null;
   const cost = units(job.units);
   const testRun = job.purpose === "staff_test";
@@ -140,11 +143,18 @@ export function GenerationPreviewCard({
           style={{ aspectRatio: `${w} / ${h}`, width: `min(100%, calc(min(64vh, 680px) * ${w / h}))` }}
         >
           {ready ? (
-            <DeliveredMedia output={output} alt={job.title} video={video} />
+            <DeliveredMedia key={output.assetId} output={output} alt={job.title} video={video} />
           ) : (
             <Stagewell progress={progress} pct={pct} video={video} job={job} reference={reference} now={now} />
           )}
         </div>
+        {ready && outputs.length > 1 ? (
+          <div role="group" aria-label={`${outputs.length} results`} className="mt-2.5 flex flex-wrap justify-center gap-2">
+            {outputs.map((o, i) => (
+              <OutputThumb key={o.assetId} output={o} index={i} selected={o.assetId === output.assetId} onSelect={() => setShown(i)} />
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <footer className="space-y-3 px-4 pb-4 sm:px-5">
@@ -257,6 +267,27 @@ function Stagewell({ progress, pct, video, job, reference, now }: { progress: Pr
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** One of several files of a job, as a small selectable thumbnail. */
+function OutputThumb({ output, index, selected, onSelect }: { output: JobOutput; index: number; selected: boolean; onSelect: () => void }) {
+  const { url } = useSignedUrl(output.assetId);
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-label={`Result ${index + 1}`}
+      onClick={onSelect}
+      className={cn("relative size-14 overflow-hidden rounded-lg bg-canvas ring-1 ring-white/[0.1]", selected && "ring-2 ring-brand-blue-bright")}
+    >
+      {url && output.mime.startsWith("image/") ? (
+        // eslint-disable-next-line @next/next/no-img-element -- short-lived signed link to a private file
+        <img src={url} alt="" className="size-full object-cover" />
+      ) : (
+        <span className="grid size-full place-items-center text-xs font-semibold text-muted">{index + 1}</span>
+      )}
+    </button>
   );
 }
 

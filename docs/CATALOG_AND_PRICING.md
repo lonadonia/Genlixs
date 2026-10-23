@@ -135,7 +135,19 @@ $0.01 per credit is 7 credits, not 8.
 Package rates are a comparison, not the basis: Starter $9 for 200 credits is $0.045 per credit, +125 % above the $0.02
 credit value.
 
-## 3. Curated catalog (checked against docs.kie.ai and kie.ai/pricing on 14 Oct 2026)
+## 3. Full catalog (22 Oct 2026)
+
+Since 22 Oct 2026 the catalog holds every KIE image and video model that can be quoted per request: **118 models** (33 text to
+image, 32 image edit, 53 video including edit, extend, motion and the new **avatar** workflow — portrait + speech audio). The
+list, the KIE reference of each, the supplier offers, the cheapest route per setting and every product that is not a model yet
+(with the reason and the source) are in **`docs/CATALOG_COVERAGE.md`**, generated from `supabase/catalog/`. To add or change
+a model, edit `supabase/catalog/models*.mjs` and run `node supabase/catalog/build.mjs` (it checks that every setting a
+customer can choose has a KIE price) and `node supabase/catalog/coverage.mjs`; new migrations only insert capability and KIE
+cost versions — the global policy prices them. Engine additions used by the catalog: excluded setting combinations
+(`exclude` + `excludeMessage`), derived settings `present` (a reference video is attached: yes/no) and `billed_seconds`
+(clip length + reference-video seconds), and per-input-mode KIE model ids.
+
+## 3a. Curated catalog (checked against docs.kie.ai and kie.ai/pricing on 14 Oct 2026)
 
 All 18 entries start **off, unpriced and not tested**. KIE credits per configuration (USD = credits × the KIE credit cost, $0.005 at the standard rate).
 

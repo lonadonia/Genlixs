@@ -1,4 +1,5 @@
 import "server-only";
+import { APIMART_CATALOG_ADAPTERS, buildApimartCatalog } from "./apimart-catalog";
 import { decimal, NetworkError, obj, onOff, readWithRetry, requestJson, safeId, str, type JsonReply } from "./http";
 import {
   TransientProviderError,
@@ -24,6 +25,8 @@ const slot = (req: RoutedSubmit, name: string) => req.inputUrls?.[name] ?? [];
 
 /** Request for one routed job. Exported for contract tests. */
 export function buildApimart(req: RoutedSubmit): { path: string; body: Record<string, unknown> } {
+  const catalog = buildApimartCatalog(req);
+  if (catalog) return catalog;
   const { route, context } = req;
   const o = context.job.options;
   if (route.adapter === "apimart-video") {
@@ -150,7 +153,7 @@ const auth = (key: string) => ({ Authorization: `Bearer ${key}` });
 
 export const apimartClient: ProviderClient = {
   name: "apimart",
-  adapters: ["apimart-video", "apimart-image"],
+  adapters: ["apimart-video", "apimart-image", ...APIMART_CATALOG_ADAPTERS],
   resultHosts: ["upload.apimart.ai"],
   balanceSupport: "api",
 

@@ -1,4 +1,5 @@
 import type { SubmitRequest } from "../types";
+import { CATALOG_ADAPTERS } from "./catalog-adapters";
 
 /**
  * Per-adapter input builders (guide §12.2–12.3). The provider model id comes from the catalog row persisted with
@@ -246,6 +247,12 @@ const ADAPTERS: Record<string, (req: SubmitRequest) => Input> = {
 /** Signed URLs of one typed input slot (empty when the slot is unused). */
 function slot(req: SubmitRequest, name: string): string[] {
   return req.inputUrls?.[name] ?? [];
+}
+
+// The full image/video catalog (22 Oct 2026) adds its builders under new names; the ones above never change.
+for (const [name, build] of Object.entries(CATALOG_ADAPTERS)) {
+  if (ADAPTERS[name]) throw new Error(`adapter ${name} defined twice`);
+  ADAPTERS[name] = build;
 }
 
 export function buildInput(req: SubmitRequest): Input {

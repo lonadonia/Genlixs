@@ -1,4 +1,5 @@
 import "server-only";
+import { POYO_CATALOG_ADAPTERS, buildPoyoCatalog } from "./poyo-catalog";
 import { decimal, NetworkError, obj, readWithRetry, requestJson, safeId, str, type JsonReply } from "./http";
 import {
   TransientProviderError,
@@ -23,6 +24,8 @@ const slot = (req: RoutedSubmit, name: string) => req.inputUrls?.[name] ?? [];
 
 /** Request for one routed job. Exported for contract tests. */
 export function buildPoyo(req: RoutedSubmit): { path: string; body: Record<string, unknown> } {
+  const catalog = buildPoyoCatalog(req);
+  if (catalog) return catalog;
   const { route, context } = req;
   const o = context.job.options;
   if (route.adapter === "poyo-kling-motion") {
@@ -104,7 +107,7 @@ const auth = (key: string) => ({ Authorization: `Bearer ${key}` });
 
 export const poyoClient: ProviderClient = {
   name: "poyo",
-  adapters: ["poyo-kling-motion"],
+  adapters: ["poyo-kling-motion", ...POYO_CATALOG_ADAPTERS],
   resultHosts: ["storage.poyo.ai"],
   balanceSupport: "api",
 

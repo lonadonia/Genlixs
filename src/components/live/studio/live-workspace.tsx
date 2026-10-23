@@ -12,6 +12,7 @@ import { useAccount, useApi } from "@/lib/live/account";
 import { TERMINAL_STATES, units, type Catalog, type CatalogModel, type Job } from "@/lib/live/types";
 import { canonicalMime, uploadReference, UploadAborted } from "@/lib/live/uploads";
 import { modelsTaking, planAdd, readyRefIds, referenceLimit, referenceProblem, type RefItem } from "@/lib/live/references";
+import { exclusionProblem, excludedValues, takesNoPrompt } from "@/lib/live/video-studio";
 import { fmtCredits, fmtNum } from "@/lib/format";
 import { useDemo } from "@/lib/demo-store";
 import { HistoryTile, prefetchOutputs, type UseAction } from "./preview/generation-card";
@@ -24,7 +25,22 @@ export type ImageMode = "image" | "edit";
 type ModeDraft = { modelId: string | null; options: Record<string, string | number>; prompt: string; refs: RefItem[] };
 
 const selectable = (m: CatalogModel) => (m.state === "enabled" || m.state === "experimental") && m.priced;
-const defaults = (m: CatalogModel) => Object.fromEntries(Object.entries(m.options ?? {}).map(([k, o]) => [k, o.default]));
+
+/**
+ * The settings sent for this model: the customer's choice where the model offers it, otherwise the model's default.
+ * `changed` lists the choices this model does not offer, so the studio can say so instead of changing them silently.
+ */
+function settingsFor(m: CatalogModel, chosen: Record<string, string | number>) {
+  const out: Record<string, string | number> = {};
+  const changed: { label: string; from: string; to: string }[] = [];
+  for (const [k, o] of Object.entries(m.options ?? {})) {
+    const want = chosen[k];
+    const ok = want !== undefined && o.values.map(String).includes(String(want));
+    out[k] = ok ? (typeof o.values[0] === "number" ? Number(want) : String(want)) : o.default;
+    if (want !== undefined && !ok) changed.push({ label: o.label, from: o.labels?.[String(want)] ?? String(want), to: o.labels?.[String(o.default)] ?? String(o.default) });
+  }
+  return { options: out, changed };
+}
 const emptyDraft = (): ModeDraft => ({ modelId: null, options: {}, prompt: "", refs: [] });
 const CHIP_ICON: Record<string, typeof Gem> = { aspect_ratio: RectangleHorizontal, resolution: Gem };
 
@@ -62,6 +78,9 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
   const recent = useApi<Job[]>(`/api/generations?tool=${mode}&limit=8`);
 
   const setMode = (m: ImageMode) => {
+    // The same model family in the other mode (for example GPT Image 2 → GPT Image 2 Edit) unless one was chosen there.
+    const twin = model ? all.find((x) => x.tool === m && selectable(x) && x.family === model.family && x.variant === model.variant) : undefined;
+    if (twin && !drafts[m].modelId) update(m, (d) => ({ ...d, modelId: twin.id }));
     setModeState(m);
     setNotice(null);
     setSubmitError(null);
@@ -193,16 +212,19 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
   };
 
   // ---------------------------------------------------------------- price and submission
-  const effectiveOptions: Record<string, string | number> = model ? { ...defaults(model), ...pick(draft.options, Object.keys(model.options ?? {})) } : {};
+  const settings = model ? settingsFor(model, draft.options) : { options: {}, changed: [] };
+  const effectiveOptions: Record<string, string | number> = settings.options;
+  const excluded = model ? exclusionProblem(model, effectiveOptions) : null;
+  const noPrompt = takesNoPrompt(model);
   const needsRefs = mode === "edit" && limit.max > 0;
   const refProblem = needsRefs ? referenceProblem(limit, refs) : null;
   const refIds = needsRefs ? readyRefIds(refs) : [];
-  const promptOk = model ? draft.prompt.trim().length >= (model.prompt?.min ?? 3) : false;
+  const promptOk = model ? noPrompt || draft.prompt.trim().length >= (model.prompt?.min ?? 3) : false;
   const takingAll = needsRefs && refProblem?.startsWith("This model takes") ? modelsTaking(usable, readyRefIds(refs).length) : [];
 
   // Fresh server quote whenever the request changes. The quote freezes prompt, options, references (in order) and price.
   const quoteRequest: QuoteRequest | null =
-    model && promptOk && !refProblem ? { modelId: model.id, prompt: draft.prompt.trim(), options: effectiveOptions, referenceAssetIds: refIds } : null;
+    model && promptOk && !refProblem && !excluded ? { modelId: model.id, prompt: noPrompt ? "" : draft.prompt.trim(), options: effectiveOptions, referenceAssetIds: refIds } : null;
   // The model was disabled or repriced meanwhile: refresh the choices instead of keeping a stale list.
   const { state: quoteState, quote, renew: renewQuote } = useQuote(quoteRequest, { onUnavailable: () => catalog.reload() });
   const quoting = quoteState.status === "loading";
@@ -262,7 +284,9 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
             ? refProblem.startsWith("This model takes")
               ? "Too many images for this model"
               : refProblem
-            : `${t.promptLabel} to get a price`;
+            : excluded
+              ? "Choose another setting"
+              : `${t.promptLabel} to get a price`;
 
   return (
     <div className="lg:flex lg:items-start lg:gap-5 lg:pr-5 lg:pb-3">
@@ -310,6 +334,11 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
                 </div>
               ) : null}
 
+              {noPrompt ? (
+                <p className="flex items-start gap-2 rounded-xl bg-raised px-3 py-2.5 text-[13px] text-muted ring-1 ring-white/[0.06]">
+                  <Info aria-hidden className="mt-0.5 size-4 shrink-0" /> {model.name} needs no prompt: add the image and generate.
+                </p>
+              ) : (
               <div className="rounded-xl bg-raised ring-1 ring-white/[0.06] focus-within:ring-brand-blue-bright/70">
                 <div className="flex items-baseline justify-between gap-3 px-3 pt-2.5">
                   <label htmlFor="live-prompt" className="text-[11px] font-medium text-muted">
@@ -343,6 +372,7 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
                   </div>
                 ) : null}
               </div>
+              )}
 
               <ModelPicker models={usable} value={model} unavailable={inMaintenance} onChange={(id) => update(mode, (d) => ({ ...d, modelId: id }))} />
               {model.note ? <p className="px-0.5 text-[13px] text-orange-on-dark">{model.note}</p> : null}
@@ -351,13 +381,39 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
                 <div className="flex gap-1.5">
                   {chips.map(([k, o]) => {
                     const Icon = CHIP_ICON[k];
-                    return <OptionChip key={k} optionKey={k} spec={o} value={effectiveOptions[k]} onChange={(v) => setOption(k, v)} icon={<Icon aria-hidden className="size-3.5" />} />;
+                    return (
+                      <OptionChip
+                        key={k}
+                        optionKey={k}
+                        spec={o}
+                        value={effectiveOptions[k]}
+                        onChange={(v) => setOption(k, v)}
+                        icon={<Icon aria-hidden className="size-3.5" />}
+                        unavailable={excludedValues(model, effectiveOptions, k, o.values)}
+                        unavailableHint="Not with the other settings"
+                      />
+                    );
                   })}
                 </div>
               ) : null}
               {rows.map(([k, o]) => (
-                <OptionRow key={k} optionKey={k} spec={o} value={effectiveOptions[k]} onChange={(v) => setOption(k, v)} />
+                <OptionRow
+                  key={k}
+                  optionKey={k}
+                  spec={o}
+                  value={effectiveOptions[k]}
+                  onChange={(v) => setOption(k, v)}
+                  unavailable={excludedValues(model, effectiveOptions, k, o.values)}
+                  unavailableHint="Not with the other settings"
+                />
               ))}
+              {excluded ? <p className="px-0.5 text-[12.5px] text-orange-on-dark">{excluded}</p> : null}
+              {settings.changed.length ? (
+                <p className="px-0.5 text-[11.5px] text-muted">
+                  {model.name} does not offer {settings.changed.map((c) => `${c.label.toLowerCase()} ${c.from}`).join(", ")}; it uses{" "}
+                  {settings.changed.map((c) => c.to).join(", ")} instead. Choose another setting above if you prefer.
+                </p>
+              ) : null}
               {model.fixed
                 ? Object.values(model.fixed).map((note) => (
                     <p key={note} className="px-0.5 text-[11.5px] text-muted">
@@ -459,10 +515,6 @@ export function LiveWorkspace({ initialMode = "image" }: { initialMode?: ImageMo
 /** A stored job followed until it settles (reload-safe: everything comes from the database). */
 export function LiveJobPanel({ jobId, onSettled }: { jobId: string; onSettled?: () => void }) {
   return <LiveJobCard jobId={jobId} onSettled={onSettled ? () => onSettled() : undefined} />;
-}
-
-function pick(o: Record<string, string | number>, keys: string[]) {
-  return Object.fromEntries(Object.entries(o).filter(([k]) => keys.includes(k)));
 }
 
 function PanelSkeleton() {

@@ -92,13 +92,27 @@ begin
   if jsonb_array_length(r -> 'products') <> (select count(distinct product_key) from app_private.provider_offers where model_id is null) then
     raise exception 'S5 products %', jsonb_array_length(r -> 'products');
   end if;
-  p := (select x from jsonb_array_elements(r -> 'products') x where x ->> 'productKey' = 'pixverse-v6');
-  if jsonb_array_length(p -> 'offers') <> 3
-     or (select (x ->> 'fromUsd')::numeric from jsonb_array_elements(p -> 'offers') x where x ->> 'provider' = 'apimart') <> 0.016
-     or (select (x ->> 'fromUsd')::numeric from jsonb_array_elements(p -> 'offers') x where x ->> 'provider' = 'kie') <> 0.02
-     or (select (x ->> 'fromUsd')::numeric from jsonb_array_elements(p -> 'offers') x where x ->> 'provider' = 'cuddler') <> 0.0332325
-     or (select (x -> 'ratesUsd' ->> '1080p|on')::numeric from jsonb_array_elements(p -> 'offers') x where x ->> 'provider' = 'kie') <> 0.092 then
-    raise exception 'S5 PixVerse %', p;
+  -- every offer outside the catalog is listed exactly once, under its own product key
+  if (select coalesce(sum(jsonb_array_length(x -> 'offers')), 0) from jsonb_array_elements(r -> 'products') x)
+     <> (select count(*) from app_private.provider_offers where model_id is null) then
+    raise exception 'S5 offers listed % times', (select sum(jsonb_array_length(x -> 'offers')) from jsonb_array_elements(r -> 'products') x);
+  end if;
+  -- each quote's lowest USD rate is computed like the router: native rate, unit conversion and funding terms
+  select count(*) into v_n
+  from jsonb_array_elements(r -> 'products') x
+  cross join lateral jsonb_array_elements(x -> 'offers') o
+  join app_private.provider_offers f on f.id = (o ->> 'offerId')::uuid
+  join app_private.provider_accounts a on a.id = f.provider_account_id
+  cross join lateral (select app_private.offer_price(f.id) as p) pp
+  left join lateral (select * from app_private.cost_unit(pp.p ->> 'unit')) cu on true
+  where f.model_id is not null or f.product_key <> x ->> 'productKey'
+     or (o ->> 'fromUsd')::numeric is distinct from (select min(app_private.effective_usd(app_private.num(rr.value), cu.units_per_usd, a.funding_fee_bps, a.funding_bonus_bps))
+                                                    from jsonb_each(coalesce(pp.p -> 'schedule' -> 'rates', '{}'::jsonb)) rr);
+  if v_n <> 0 then raise exception 'S5 % product quote(s) differ from the router''s conversion', v_n; end if;
+  -- a KIE product that became a Genlixs model (PixVerse V6, 22 Oct 2026) is no longer offered as a product
+  if exists (select 1 from jsonb_array_elements(r -> 'products') x cross join lateral jsonb_array_elements(x -> 'offers') o
+             where o ->> 'provider' = 'kie' and x ->> 'productKey' in ('pixverse-v6', 'seedream-4.5', 'wan-3.0')) then
+    raise exception 'S5 a KIE product that is now a model is still listed';
   end if;
   v_ok := v_ok + 1;
 
